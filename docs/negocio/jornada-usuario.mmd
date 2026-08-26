@@ -1,0 +1,53 @@
+flowchart TD
+    Start([Usuário acessa o site]) --> HasAccount{Já tem conta?}
+    HasAccount -->|Sim| Login[Faz login]
+    HasAccount -->|Não| Signup[Cadastro<br/>Email/senha ou Google]
+
+    Login -->|Esqueceu a senha| ForgotPassword[Solicita recuperação<br/>de senha por e-mail]
+    ForgotPassword --> ResetPassword[Define nova senha<br/>via link recebido]
+    ResetPassword --> Login
+
+    Signup --> EmailVerified{E-mail verificado?}
+    EmailVerified -->|Não, via Google| ChoosePlan
+    EmailVerified -->|Sim| ChoosePlan
+    EmailVerified -->|Não, cadastro direto| SendVerification[Envia link<br/>de verificação]
+    SendVerification --> EmailVerified
+
+    ChoosePlan[Escolhe um plano]
+    Login --> Dashboard[Acessa dashboard]
+
+    ChoosePlan --> Payment[Realiza pagamento]
+
+    Payment --> PaymentOk{Pagamento<br/>aprovado?}
+    PaymentOk -->|Não, corrige dados| Payment
+    PaymentOk -->|Não, desiste| Abandon((Abandona<br/>o cadastro))
+    PaymentOk -->|Sim| Dashboard
+
+    Dashboard --> RegisterProduct[Cadastra produto]
+    RegisterProduct --> ProductLimit{Atingiu limite<br/>de produtos do plano?}
+    ProductLimit -->|Sim| Upgrade[Oferta de upgrade<br/>de plano]
+    Upgrade --> ChoosePlan
+    ProductLimit -->|Não| ConnectMkt[Conecta marketplace]
+
+    ConnectMkt --> MktLimit{Atingiu limite<br/>de marketplaces?}
+    MktLimit -->|Sim| Upgrade
+    MktLimit -->|Não| LinkProduct[Vincula produto<br/>ao marketplace]
+
+    LinkProduct --> CheckPricing[Verifica precificação<br/>na dashboard]
+    CheckPricing --> MarginOk{Preço sugerido está<br/>dentro da margem?}
+    MarginOk -->|Sim| Success((Aplica o preço<br/>no marketplace))
+    MarginOk -->|Não| Notify[Recebe notificação<br/>de ajuste]
+    Notify --> AdjustPrice[Ajusta preço de<br/>compra ou venda]
+    AdjustPrice --> CheckPricing
+
+    classDef process fill:#EEEDFE,stroke:#534AB7,color:#26215C
+    classDef decision fill:#FEF6E0,stroke:#8A6D0B,color:#4A3B05
+    classDef success fill:#E1F5EE,stroke:#0F6E56,color:#04342C
+    classDef exit fill:#FAECE7,stroke:#993C1D,color:#4A1B0C
+    classDef notif fill:#FBEAF0,stroke:#993556,color:#4B1528
+
+    class Start,Login,Signup,ChoosePlan,Payment,Dashboard,RegisterProduct,ConnectMkt,LinkProduct,CheckPricing,AdjustPrice,Upgrade,ForgotPassword,ResetPassword,SendVerification process
+    class HasAccount,PaymentOk,ProductLimit,MktLimit,MarginOk,EmailVerified decision
+    class Success success
+    class Abandon exit
+    class Notify notif

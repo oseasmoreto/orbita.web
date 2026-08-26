@@ -1,0 +1,229 @@
+```mermaid
+erDiagram
+    PLAN ||--o{ SUBSCRIPTION : defines
+    USER ||--o{ SUBSCRIPTION : has
+    USER ||--o{ PRODUCT : registers
+    USER ||--o{ USER_MARKETPLACE : connects
+    MARKETPLACE ||--o{ USER_MARKETPLACE : is_connected_by
+    MARKETPLACE ||--o{ PRICING_RULE : has
+    PRODUCT ||--o{ PRODUCT_LAUNCH : has
+    PRODUCT ||--o{ PRODUCT_MARKETPLACE : links
+    USER_MARKETPLACE ||--o{ PRODUCT_MARKETPLACE : receives
+    USER ||--o{ USER_NOTIFICATION : receives
+    NOTIFICATION ||--o{ USER_NOTIFICATION : delivered_as
+    USER ||--o{ SSO_ACCOUNT : authenticates_via
+    USER ||--o{ AUDIT_LOG : generates
+    USER ||--o{ TRANSACTION : makes
+    SUBSCRIPTION ||--o{ TRANSACTION : generates
+
+    PLAN {
+        uuid id PK
+        string name
+        decimal price
+        string billing_cycle
+        int max_marketplaces
+        int max_products
+        boolean active
+        timestamp created_at
+        timestamp updated_at
+    }
+
+    USER {
+        uuid id PK
+        string name
+        string email
+        timestamp email_verified_at
+        string password_hash
+        string document
+        string role
+        string status
+        timestamp created_at
+        timestamp updated_at
+    }
+    %% USER.document stores CPF or CNPJ (billing/LGPD)
+    %% USER.role accepted values: admin_master, user — único controle de acesso no MVP (sem group_id/menu granular)
+    %% USER.status accepted values: active, deleted (default active) — deleted = soft
+    %% delete/anonimização (name/email/password/document apagados, nunca DELETE físico,
+    %% histórico financeiro/auditoria ligado ao id continua íntegro). Não usa SoftDeletes/
+    %% deleted_at nativo do Laravel de propósito — esconderia a linha de toda query por
+    %% Global Scope, inclusive a tela de admin que precisa listar/ver qualquer usuário.
+
+    SUBSCRIPTION {
+        uuid id PK
+        uuid user_id FK
+        uuid plan_id FK
+        uuid pending_plan_id FK
+        string status
+        boolean cancel_at_period_end
+        string payment_id
+        date start_date
+        date end_date
+        timestamp created_at
+        timestamp updated_at
+    }
+    %% pending_plan_id (nullable): troca de plano solicitada, aguardando
+    %% confirmação de pagamento (checkout Mercado Pago prorata) — plan_id só
+    %% muda quando o webhook aprova o pagamento
+    %% cancel_at_period_end (default false): cancelamento da renovação sem
+    %% DELETE físico — mantém acesso até end_date, sem reembolso; status
+    %% continua active normalmente (mesmo modelo do Stripe)
+
+    PRODUCT {
+        uuid id PK
+        uuid user_id FK
+        string name
+        string sku
+        string ean
+        string ncm
+        decimal full_sale_price
+        decimal purchase_price
+        decimal target_margin
+        decimal weight
+        decimal height
+        decimal width
+        decimal length
+        timestamp created_at
+        timestamp updated_at
+    }
+    %% weight (kg) e height/width/length (cm) são nullable — opcionais no
+    %% cadastro, ainda sem uso em nenhuma regra de precificação/frete
+
+    PRODUCT_LAUNCH {
+        uuid id PK
+        uuid product_id FK
+        decimal purchase_price
+        int quantity
+        date date
+        timestamp created_at
+        timestamp updated_at
+    }
+
+    MARKETPLACE {
+        uuid id PK
+        string name
+        boolean active
+        timestamp created_at
+        timestamp updated_at
+    }
+
+    USER_MARKETPLACE {
+        uuid id PK
+        uuid user_id FK
+        uuid marketplace_id FK
+        string store_name
+        boolean active
+        timestamp created_at
+        timestamp updated_at
+    }
+    %% unique (user_id, marketplace_id): 1 conta por marketplace por usuário
+
+    PRICING_RULE {
+        uuid id PK
+        uuid marketplace_id FK
+        decimal range_min
+        decimal range_max
+        decimal percentage
+        decimal fixed_fee
+        int order
+        timestamp created_at
+        timestamp updated_at
+    }
+
+    PRODUCT_MARKETPLACE {
+        uuid id PK
+        uuid product_id FK
+        uuid user_marketplace_id FK
+        timestamp created_at
+        timestamp updated_at
+    }
+    %% vínculo puro (decisão 2026-08-26) — suggested_price/is_approximated
+    %% removidos nesta rodada, ficam pra uma tela/tabela futura quando o
+    %% PricingCalculator (já existente) entrar em uso de verdade
+
+    NOTIFICATION {
+        uuid id PK
+        string type
+        string title
+        text message
+        string status
+        timestamp created_at
+        timestamp updated_at
+    }
+    %% Conteúdo agnóstico de usuário (decisão 2026-08-26) — sem user_id/read,
+    %% isso mora em USER_NOTIFICATION. title/message aceitam CHAVE
+    %% (NotificationMessageKey, mesma disciplina do ApiMessageKey) OU texto
+    %% livre — o front decide traduzir ou mostrar cru. status
+    %% (pending/sending/sent/cancelled) só é relevante pra broadcast.
+
+    USER_NOTIFICATION {
+        uuid id PK
+        uuid user_id FK
+        uuid notification_id FK
+        boolean read
+        timestamp created_at
+        timestamp updated_at
+    }
+    %% entrega de 1 NOTIFICATION pra 1 destinatário — "lida"/"não lida" mora
+    %% aqui, nunca em NOTIFICATION. unique (user_id, notification_id)
+
+    SSO_ACCOUNT {
+        uuid id PK
+        uuid user_id FK
+        string provider
+        string provider_id
+        text access_token
+        text refresh_token
+        timestamp expires_at
+        timestamp created_at
+        timestamp updated_at
+    }
+    %% SSO_ACCOUNT.provider accepted values: google, microsoft
+    %% access_token/refresh_token nullable, criptografados em repouso (cast encrypted do Laravel)
+
+    SETTINGS {
+        string hash PK
+        string name
+        text value
+        string type
+        timestamp created_at
+        timestamp updated_at
+    }
+    %% SETTINGS.type accepted values: int, string, enum, text, json, bool, float
+
+    AUDIT_LOG {
+        uuid id PK
+        uuid user_id FK
+        uuid impersonated_by FK
+        string action
+        string module
+        text description
+        string ip_address
+        timestamp created_at
+        timestamp updated_at
+    }
+    %% impersonated_by (nullable): FK pro admin ORIGINAL, preenchido só quando a ação
+    %% foi feita durante uma impersonation (user_id continua sendo o usuário
+    %% impersonado, dono do dado — impersonated_by só marca que foi via impersonation
+    %% e por quem, ver seção 3 e mapeamento-cruds-admin.md)
+
+    TRANSACTION {
+        uuid id PK
+        uuid user_id FK
+        uuid subscription_id FK
+        string gateway
+        string gateway_transaction_id
+        string status
+        decimal value
+        string payment_method
+        timestamp created_at
+        timestamp updated_at
+    }
+
+    PASSWORD_RESET {
+        string email PK
+        string token
+        timestamp created_at
+    }
+    %% PASSWORD_RESET has no FK on purpose: mirrors Laravel's default password_reset_tokens table
+    %% PASSWORD_RESET keeps only created_at (no updated_at) — mirrors Laravel's own password_reset_tokens migration, not a domain entity
+```

@@ -1,0 +1,12 @@
+npm run format
+npm run check
+npm run lint
+
+# Auto-commit files modified by format/check/lint
+FIXED=$(git diff --name-only)
+if [ -n "$FIXED" ]; then
+  echo "Auto-committing files fixed by format/check/lint:"
+  echo "$FIXED"
+  git add $FIXED
+  git commit -m "style: auto-fix format and lint"
+fi

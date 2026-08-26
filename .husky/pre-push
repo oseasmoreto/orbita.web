@@ -1,0 +1,11 @@
+npm run typecheck
+npm run build
+
+# Auto-commit files modified by typecheck/build (e.g. generated types)
+FIXED=$(git diff --name-only)
+if [ -n "$FIXED" ]; then
+  echo "Auto-committing files fixed by typecheck/build:"
+  echo "$FIXED"
+  git add $FIXED
+  git commit -m "build: auto-fix generated files"
+fi
