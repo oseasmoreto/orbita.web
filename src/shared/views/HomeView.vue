@@ -16,11 +16,13 @@ import {
   Star,
   Trash,
 } from '@/shared/components/icons/regular.generated'
+import ChartCard from '@/shared/components/blocks/ChartCard.vue'
 import ConfirmDialog from '@/shared/components/blocks/ConfirmDialog.vue'
 import DataTable from '@/shared/components/blocks/DataTable.vue'
 import FormGroup from '@/shared/components/blocks/FormGroup.vue'
 import ListToolbar from '@/shared/components/blocks/ListToolbar.vue'
 import PaginationNav from '@/shared/components/blocks/PaginationNav.vue'
+import StatCard from '@/shared/components/blocks/StatCard.vue'
 import Avatar from '@/shared/components/ui/Avatar.vue'
 import Badge from '@/shared/components/ui/Badge.vue'
 import Breadcrumb from '@/shared/components/ui/Breadcrumb.vue'
@@ -43,6 +45,7 @@ import type {
 } from '@/shared/components/ui/types/dataTable.type'
 import type { DropdownMenuOption } from '@/shared/components/ui/types/dropdownMenu.type'
 import type { TabBarOption } from '@/shared/components/ui/types/tabBar.type'
+import type { ChartMetricOption } from '@/shared/components/blocks/types/chartCard.type'
 
 const checkboxUnchecked = ref(false)
 const checkboxChecked = ref(true)
@@ -190,6 +193,12 @@ const tabs: TabBarOption[] = [
   { key: 'settings', label: 'Configurações' },
 ]
 const activeTab = ref('overview')
+
+const chartMetrics: ChartMetricOption[] = [
+  { key: 'price', label: 'Preço sugerido' },
+  { key: 'margin', label: 'Margem' },
+]
+const activeChartMetric = ref('price')
 </script>
 
 <template>
@@ -448,6 +457,50 @@ const activeTab = ref('overview')
     </section>
 
     <section class="showcase__section">
+      <h2>StatCard / ChartCard</h2>
+      <p>
+        Casca pronta pra Fase 4 — conteúdo real (preço sugerido) segue bloqueado pelo gap de
+        backend (<code>PricingCalculator</code> nunca exposto em rota).
+      </p>
+      <div class="showcase__row">
+        <StatCard
+          label="Produtos cadastrados"
+          tint="blue"
+          :trend="{ direction: 'up', value: '+12%' }"
+          value="128"
+        />
+        <StatCard label="Marketplaces conectados" tint="purple" value="3" />
+      </div>
+      <div class="showcase__row showcase__row--charts">
+        <ChartCard
+          :labels="['Shopee', 'TikTok', 'Amazon', 'ML', 'Magalu', 'Outros']"
+          :series="[{ label: 'Produtos', values: [18, 32, 22, 40, 12, 26] }]"
+          title="Produtos por marketplace (exemplo)"
+          type="bar"
+        />
+        <ChartCard
+          :labels="['Shopee', 'Mercado Livre', 'Amazon', 'Outros']"
+          :series="[{ label: 'Produtos', values: [52, 23, 14, 11] }]"
+          title="Produtos por marketplace (exemplo)"
+          type="doughnut"
+        />
+      </div>
+      <div class="showcase__row showcase__row--charts">
+        <ChartCard
+          v-model:active-metric="activeChartMetric"
+          :labels="['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul']"
+          :metrics="chartMetrics"
+          :series="[
+            { label: 'Este ano', values: [42, 45, 41, 48, 50, 47, 49] },
+            { dashed: true, label: 'Ano passado', values: [38, 40, 44, 43, 46, 45, 48] },
+          ]"
+          title="Preço sugerido"
+          type="line"
+        />
+      </div>
+    </section>
+
+    <section class="showcase__section">
       <h2>Spinner</h2>
       <div class="showcase__row">
         <Spinner :size="16" />
@@ -516,5 +569,14 @@ const activeTab = ref('overview')
   display: flex;
   align-items: center;
   gap: $spacing-8;
+}
+
+.showcase__row--charts {
+  align-items: stretch;
+}
+
+.showcase__row--charts > * {
+  flex: 1 1 320px;
+  max-width: 480px;
 }
 </style>

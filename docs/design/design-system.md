@@ -260,6 +260,19 @@ components:
   tab-bar-trigger-inactive:
     textColor: "{colors.ink-40}"
     typography: "{typography.body}"
+  stat-card:
+    rounded: "{rounded.16}"
+    padding: "24px"
+  stat-card-label:
+    textColor: "{colors.ink}"
+    typography: "{typography.body-strong}"
+  stat-card-value:
+    textColor: "{colors.ink}"
+    typography: "{typography.title}"
+  chart-card:
+    backgroundColor: "{colors.bg-1}"
+    rounded: "{rounded.16}"
+    padding: "24px"
 ---
 
 ## Overview
@@ -1144,6 +1157,256 @@ mesmo padrão "Badge-Dot" do Figma, mas usado aqui como o Figma realmente
 mostra (sobreposto a ícone de botão). Verificado em browser real: ponto
 aparece quando há notificação não lida na lista placeholder.
 
+### StatCard (`shared/components/blocks/StatCard.vue`)
+
+Grounded no `COMPONENT_SET "Status"` do frame "Widget" do Figma
+(`#4113:41876`, `Type=A`/`Type=B`) — label `14 Semibold` em `{colors.ink}`,
+valor `24 Semibold` (`{typography.title}`) em `{colors.ink}`, fundo
+tintado (`Primary/Blue`/`Primary/Purple`, mesma aproximação
+`{colors.tint-1}`/`{colors.tint-2}` já usada no `NotificationItem` —
+primeiro uso como fundo de CARD inteiro, não só tile de ícone),
+`{radius.16}`, padding `{spacing.24}`.
+
+- Casca pronta pra Fase 4 (dashboard de precificação) — conteúdo real
+  (preço sugerido, margem) segue bloqueado pelo mesmo gap de backend já
+  registrado (`PricingCalculator` nunca exposto em rota,
+  `docs/planejamento/plano-implementacao.md`). Não decide nada de
+  negócio: só recebe `label`/`value`/`trend` já calculados.
+- Prop `trend?: { direction: 'up' | 'down'; value: string }` reaproveita
+  `Badge.vue` — o Figma só mostra o caso positivo (`+11.01%` com ícone
+  "ArrowRise", que não existe no export gerado, mesma classe de gap já
+  registrada pro `CaretUpDown`/`ArrowLineUpDown` do Select); `TrendUp`/
+  `TrendDown` são os ícones mais próximos disponíveis, com o par completo
+  (Figma não mostrou o caso negativo).
+- **Achado real, descoberto simulando `data-theme="dark"` (sem toggle de
+  UI ainda)**: `{colors.tint-1}`/`{colors.tint-2}` não têm variante pro
+  tema escuro no export de origem — o fundo do card continua claro (é o
+  único valor que o token tem), mas `{colors.ink}` no texto vira branco
+  no tema escuro, resultando em texto branco sobre fundo claro. Sem
+  impacto hoje (nenhum toggle liga o tema escuro em produção ainda — ver
+  "Known Gaps"), mas documentado pra quem for construir o toggle não ser
+  pego de surpresa.
+
+### ChartCard (`shared/components/blocks/ChartCard.vue`)
+
+Wrapper de gráfico (seção 3.2 de `docs/infra/convencoes-frontend-infra.md`)
+— **sem grounding pixel-a-pixel no Figma de propósito**: o frame "Chart"
+da página "Components" (`Histogram`/`ChartDot`/`ChartScale`) são
+elementos SVG desenhados à mão pra ilustrar um gráfico, não a saída real
+do `chart.js` (que renderiza em `<canvas>`, com sua própria API de estilo
+via JS, não CSS/SVG). A decisão de stack já fixou `chart.js`/`vue-chartjs`
+(seção 15.3) — o trabalho aqui é aplicar os tokens do design system nas
+opções do `chart.js`, não replicar o desenho estático do Figma.
+
+**Revisão em 2026-08-27, mesmo dia**: a primeira versão (série única,
+`type: 'line' | 'bar'`) foi feita sem examinar telas de exemplo reais do
+mesmo arquivo Figma — o usuário enviou 3 screenshots de telas fora da
+página "Components" já em cache ("Traffic by Device", "Traffic by
+Location", "Total Users") mostrando um vocabulário bem mais rico: barra
+colorida por categoria, donut com legenda, linha dupla (atual + tracejada
+de comparação) com seletor de métrica no cabeçalho. Reescrito pra cobrir
+os 3 padrões. Medidas abaixo são aproximação visual a partir dos
+screenshots (não foi possível confirmar valores exatos via API — rate
+limit em curso), documentado como tal, não pixel exato.
+
+- Props: `title`, `type: 'bar' | 'line' | 'doughnut'`, `labels: string[]`,
+  `series: ChartSeriesConfig[]` (`{ label, values, dashed? }` — `dashed`
+  só faz sentido em `type="line"`, renderiza uma segunda linha de
+  comparação sem preenchimento), `metrics?: ChartMetricOption[]`
+  (`{ key, label }`, opcional).
+- **Fundo do card revisado**: `{colors.bg-2}` sem borda (não
+  `{colors.bg-1}` + borda como na primeira versão) — os 3 screenshots de
+  referência mostram um cinza bem sutil contra a página branca, sem
+  borda visível.
+- **Barra com cor por categoria**: paleta categórica fixa (6 tons —
+  `{colors.accent-indigo}`, `{colors.accent-mint}`, `{colors.ink}`,
+  `{colors.accent-blue}`, `{colors.accent-purple}`,
+  `{colors.accent-green}`, repete em ciclo se houver mais categorias),
+  atribuída por índice da barra via `backgroundColor: string[]` do
+  `chart.js` (um array em vez de uma cor só, funciona porque é sempre 1
+  dataset com N categorias, não N datasets). Cantos com arredondamento
+  suave nos 4 lados (`borderRadius: 12`, `borderSkipped: false`) —
+  **revisado na 2ª rodada pixel-perfect** abaixo: a v1 usava só topo em
+  pill total (`999`), que o usuário comparou lado a lado contra o Figma
+  real e apontou como errado — a referência arredonda topo E base com um
+  raio moderado, não uma cápsula.
+- **Donut com legenda própria em HTML**, não o plugin `legend` nativo do
+  `chart.js` — lista renderizada com nossos tokens (bullet colorido +
+  label + porcentagem), mesma paleta categórica da barra. Porcentagem
+  calculada aqui (`valor / soma total`, arredondado a 1 casa) — é
+  formatação de apresentação, não decisão de negócio, aceitável num
+  block. **Simplificação documentada**: o maior segmento do Figma usa um
+  gradiente preto→cinza; aqui é cor sólida (`{colors.ink}`) — implementar
+  um gradiente real de canvas (`ctx.createLinearGradient`) é possível mas
+  não valia o esforço pra um detalhe decorativo sem grounding exato.
+- **Linha dupla (atual + comparação tracejada)**: primeira série sempre
+  sólida em `{colors.ink}` com preenchimento (`fill: true`,
+  `backgroundColor: {colors.ink-10}`); séries seguintes tracejadas
+  (`borderDash: [6, 6]`) sem preenchimento, cor da paleta categórica.
+  Legenda inline no cabeçalho (bullet + label por série, cor do bullet
+  acompanha a cor da linha) só aparece quando há mais de 1 série.
+- **Seletor de métrica no cabeçalho** (`metrics`) — o mesmo padrão
+  "BlockTab" que a Tier 8 descartou como "não é navegação de verdade"
+  (`TabBar.vue`) tem aqui um uso real: alternar qual métrica alimenta o
+  MESMO gráfico (ex.: "Preço sugerido" vs "Margem"), não navegação de
+  página/rota. Por isso não reaproveita `TabBar.vue`/`TabsRoot` da Reka
+  UI — é só texto clicável emitindo `update:activeMetric`, sem painel de
+  conteúdo trocando via `role=tab`. **Nunca decide o que fazer com a
+  troca** — quem decide que dado alimenta `series` depois do clique é o
+  composable do módulo consumidor (mesma régua de bloco sem regra de
+  negócio).
+- **Achado real, técnico, plugin `Filler` esquecido na primeira reescrita**:
+  a primeira versão do preenchimento de área (`fill: true`) foi escrita
+  sem registrar o plugin `Filler` do `chart.js` — resultado: warning no
+  console (`"Tried to use the 'fill' option without the 'Filler'
+  plugin enabled"`) e a área simplesmente não desenhava, sem erro fatal
+  (silencioso o bastante pra passar despercebido se não fosse verificado
+  em browser real). Corrigido adicionando `Filler` ao `ChartJS.register(...)`.
+- **Achado real, técnico**: `<canvas>` não resolve `var()` em cadeia
+  sozinho — ler `getPropertyValue('--color-primary')` direto devolveria o
+  texto literal `"var(--color-accent-indigo)"` no tema escuro (onde
+  `--color-primary` é definido como referência a outro token, não um hex
+  direto), não o valor final resolvido. **Corrigido** lendo a cor de
+  `<span>` escondidos (criados dinamicamente, um por token, removidos
+  logo em seguida — não `display:none`, que os tiraria da árvore de
+  render antes da leitura) com a variável aplicada como `color` (uma
+  propriedade CSS de verdade força a resolução completa da cadeia) —
+  `getComputedStyle(probe).color` sempre devolve o valor final resolvido
+  (`rgb(...)`), nunca o texto da variável. Reconfirmado simulando
+  `data-theme="dark"`: a sonda resolveu `{colors.primary}` pra
+  `rgb(173, 173, 251)` (o hex real de `{colors.accent-indigo}`), não a
+  string da variável.
+- **Cores só são lidas uma vez, no `onMounted`** — como não existe toggle
+  de tema em runtime ainda (ver "Known Gaps"), o gráfico não precisa
+  reagir a mudança de tema; quando o toggle existir, isso precisa virar
+  um `watch` no estado do tema, não só uma leitura única.
+- Verificado em browser real contra os 3 screenshots de referência:
+  barra com 6 cores + topo arredondado, donut com legenda e porcentagens
+  corretas, linha dupla com preenchimento + tracejado + seletor de
+  métrica trocando a classe `--active` corretamente ao clicar.
+
+**2ª rodada pixel-perfect, mesmo dia (2026-08-27)** — o usuário comparou a
+implementação lado a lado com um mockup completo do dashboard no Figma
+(4 cards de gráfico juntos) e apontou que o resultado "não está pixel
+perfect, nem parecido", pedindo rigor pixel a pixel daqui pra frente, não
+só aproximação visual. Achados reais desta rodada:
+
+- **Barras finas/espaçadas demais**: a v1 tinha vão grande entre
+  categorias. Corrigido com `barPercentage: 0.9` + `categoryPercentage: 0.7`
+  (barras ocupam quase toda a largura da categoria) e removido o
+  `maxBarThickness` que limitava a largura mesmo em telas largas.
+- **Rótulo do eixo X rotacionando sozinho**: o `chart.js` rotaciona rótulo
+  automaticamente quando não cabe na horizontal — a referência mantém
+  sempre horizontal. Corrigido com `maxRotation: 0, minRotation: 0` nos
+  ticks do eixo X.
+- **Regressão real causada pela correção acima**: sem rotação disponível,
+  o `autoSkip: true` (default do `chart.js`) escondeu 3 das 6 categorias
+  silenciosamente pra evitar overlap — sem aviso nenhum, só sumiram do
+  eixo. Categoria sem rótulo visível é pior que rótulo apertado. Corrigido
+  com `autoSkip: false` nos mesmos ticks.
+- **Arredondamento da barra corrigido de novo**: `borderRadius: 12` nos 4
+  cantos (não só topo, não pill/`999`) — ver bullet específico acima.
+- **Linhas de grade atrás das barras removidas**: a referência
+  ("Traffic by Device") não tem nenhuma grade horizontal atrás das barras,
+  só os labels do eixo Y. Corrigido com `grid: { display: props.type !== 'bar' }`
+  no eixo Y — só o gráfico de linha mantém a grade horizontal sutil (papel
+  de guia de leitura ao longo do tempo, diferente de um gráfico de
+  categoria).
+- **Preenchimento sob a linha era cor chapada, não gradiente**: a
+  referência ("Total Users") desvanece de escuro no topo pra transparente
+  perto do eixo. Corrigido com uma função scriptable
+  (`backgroundColor: (context: ScriptableContext<'line'>) => ...`) que usa
+  `context.chart.ctx.createLinearGradient(0, chartArea.top, 0, chartArea.bottom)`
+  com `{colors.ink-10}` (já um token com alfa) como stop inicial e a
+  palavra-chave `'transparent'` como stop final — evita qualquer parsing
+  de string de cor já resolvida, só 2 valores seguros.
+- **Traço da linha mais fino + feedback de hover**: `borderWidth: 2` (era
+  o default de 3px do `chart.js`, mais grosso que a referência) e
+  `pointRadius: 0` em repouso (sem bolinha, igual antes) mas
+  `pointHoverRadius: 4`/`pointHitRadius: 8` no hover — sem isso o cursor
+  sobre a linha não confirma em qual ponto exato o tooltip está ancorado.
+- **Tooltip nunca tinha sido estilizado**: o default do `chart.js` é uma
+  caixa preta sem raio, fonte do sistema — destoava de todo o resto do
+  card. Estilizado com os tokens do design system
+  (`backgroundColor: {colors.ink}`, texto `{colors.paper}`, fonte
+  "Inter Variable" 12px, `cornerRadius: 8`, `padding: 8`) e
+  `displayColors: false` no gráfico de linha (sem o quadradinho de cor
+  antes do valor, que não agrega nada quando já existe legenda no
+  cabeçalho).
+- Reverificado em browser real depois de cada correção: os 6 rótulos de
+  categoria aparecem horizontais sem serem escondidos, as barras têm
+  arredondamento suave nos 4 cantos sem grade atrás, e a área sob a linha
+  mostra o gradiente esmaecendo até transparente.
+
+**3ª rodada pixel-perfect, mesmo dia (2026-08-27)** — usuário enviou um
+crop isolado do card "Traffic by Location" (mesmo arquivo Figma) e pediu
+ajuste específico do donut. Achados reais desta rodada:
+
+- **Segmentos colados, sem vão nem ponta arredondada**: a referência tem
+  cada fatia visivelmente separada das vizinhas, com as duas pontas
+  arredondadas. Corrigido com `spacing: 4` (vão em px entre arcos) +
+  `borderRadius: 8` (arredondamento das pontas) no dataset — as duas
+  opções nativas do `chart.js` pra `doughnut`/`pie`, nenhuma precisa de
+  desenho manual.
+- **Maior fatia é um gradiente escuro, não preto chapado**: a referência
+  destaca a categoria de maior valor (52,1% no exemplo do Figma) com um
+  gradiente diagonal de preto pra cinza — mesmo padrão de "maior valor
+  ganha destaque em preto" já usado em outros lugares do design system,
+  aqui como gradiente em vez de cor sólida. Implementado com
+  `doughnutMaxIndex` (computed que acha o índice do maior valor de
+  `series[0].values` — não hardcoded, funciona com qualquer dataset) +
+  `doughnutSegmentColor`, uma função scriptable de `backgroundColor` que
+  devolve `createDarkArcGradient(context)` só pro índice do maior valor e
+  `categoricalColor(index)` (cor pastel chapada) pros demais. O gradiente
+  reaproveita a mesma técnica já usada na área da linha
+  (`createAreaGradient`): `ctx.createLinearGradient` nos limites do
+  `chartArea`, stops `{colors.ink}` → `{colors.ink-40}` — o segundo stop é
+  parcialmente transparente de propósito, deixando o fundo `{colors.bg-2}`
+  do card "vazar" através da fatia e produzir o esmaecimento pra cinza
+  claro visto na referência, sem precisar resolver um segundo tom de cinza
+  sólido.
+- **Anel fino demais**: `cutout: '65%'` deixava o buraco grande e o anel
+  proporcionalmente fino; a referência tem um anel bem mais grosso.
+  Ajustado pra `cutout: '50%'` — aproximação visual medida no screenshot,
+  não um valor exato via API (mesmo critério já usado nas demais medidas
+  desta seção).
+- Reverificado em browser real: os 4 segmentos aparecem com vão visível
+  entre si, pontas arredondadas nas duas extremidades de cada fatia, o
+  segmento de maior valor (Shopee, 52%) com gradiente preto→cinza
+  diagonal, e o anel visivelmente mais grosso que a versão anterior.
+
+**4ª rodada pixel-perfect, mesmo dia (2026-08-27)** — usuário enviou um
+crop isolado do card "Total Users" (linha dupla) pedindo ajuste
+específico. Achados reais desta rodada:
+
+- **Cor da linha tracejada errada**: a v1 usava `categoricalColor(0)`
+  (cíclico, caía no indigo/roxo) pra série de comparação; a referência
+  sempre usa azul claro. Corrigido com `dashedSeriesColor`, um computed
+  fixo em `{colors.accent-blue}` (não cíclico) — só existe 1 papel de
+  "série de comparação" no padrão visto, não faz sentido ciclar cor aqui.
+- **Tracejado grosso demais**: `borderDash: [6, 6]` produzia um traço-e-
+  espaço largo; a referência tem um pontilhado fino e delicado. Ajustado
+  pra `[3, 4]` + `borderWidth: 1.5` (contra `2` da linha sólida) — a linha
+  de comparação é visivelmente mais fina que a linha principal no Figma.
+- **Bullet da legenda colorido por série, deveria ser neutro**: a v1
+  pintava o bullet da série tracejada com a cor categórica (indigo);a
+  referência usa o mesmo bullet preto pequeno pras duas séries — a
+  distinção entre "This year"/"Last year" é feita pela própria linha
+  (cor + tracejado), não pelo marcador da legenda. Removida a variante
+  `--dashed` do bullet; tamanho também reduzido de `{spacing.8}` pra
+  `{spacing.4}` (a referência tem um bullet bem pequeno, quase um ponto).
+- **Grade horizontal atrás da linha, que não deveria existir**: a
+  suposição da 2ª rodada ("só o gráfico de linha mantém grade, como guia
+  de leitura ao longo do tempo") era especulação sem grounding — o
+  screenshot real de "Total Users" não tem nenhuma linha de grade, só os
+  labels do eixo Y. Corrigido trocando `grid: { display: props.type !==
+  'bar' }` por `grid: { display: false }` fixo — nenhum tipo de gráfico
+  cartesiano (`bar`/`line`) tem grade no design system, só os labels.
+- Reverificado em browser real: linha de comparação agora nasce azul
+  clara com pontilhado fino e mais fina que a sólida, os dois bullets da
+  legenda aparecem pretos e pequenos, e não há mais nenhuma linha de
+  grade atrás do gráfico de linha.
+
 ## Do's and Don'ts
 
 ### Do
@@ -1214,8 +1477,22 @@ Media queries sempre `min-width` (mobile-first) — sem exceção.
 - **Uso de `{colors.logo-1}`/`{colors.logo-2}` ainda indefinido**: trazidos
   pra não se perderem do export original, mas nenhum componente os
   consome hoje. `{colors.tint-1}`/`{colors.tint-2}` já têm um primeiro
-  papel real desde 2026-08-27 (tile de ícone do `NotificationItem`, seção
-  Components acima) — aproximação, não valor exato do Figma.
+  papel real desde 2026-08-27 (tile de ícone do `NotificationItem`, fundo
+  de card do `StatCard`, seção Components acima) — aproximação, não valor
+  exato do Figma.
+- **`{colors.tint-1}`/`{colors.tint-2}` não têm variante pro tema
+  escuro** — o export de origem só define um valor (claro) pros dois,
+  sem par `[data-theme='dark']` como o resto da paleta. Achado real ao
+  simular `data-theme="dark"` no `StatCard` (2026-08-27): o fundo
+  continua claro (correto, é o mesmo valor único do token), mas o texto
+  em cima usa `{colors.ink}`, que troca pra branco no tema escuro — texto
+  branco sobre fundo claro, ilegível. **Sem impacto hoje** (não existe
+  toggle de tema em produção ainda, ver gap logo abaixo), mas quem for
+  ligar o toggle precisa resolver isso antes: ou definir um par escuro de
+  verdade pra `tint-1`/`tint-2` (não inventado por nós — puxar do export
+  de origem quando existir) ou trocar `{colors.ink}` por um tom fixo que
+  não acompanhe o tema nos textos que ficam em cima desses tints
+  especificamente.
 - **Escala tipográfica não foi validada em tela de verdade**: os nomes de
   papel (`lead`, `title`, `display-sm`...) são um mapeamento razoável dos 8
   tamanhos do token `paragraph/Paragraph.tokens.json` pros papéis comuns de
