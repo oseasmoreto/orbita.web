@@ -116,38 +116,60 @@ components:
     textColor: "{colors.paper}"
     typography: "{typography.body}"
     rounded: "{rounded.8}"
+    padding: "4px 8px"
+  button-primary-large:
+    backgroundColor: "{colors.primary}"
+    textColor: "{colors.paper}"
+    typography: "{typography.lead}"
+    rounded: "{rounded.8}"
     padding: "8px 16px"
   button-secondary:
-    backgroundColor: "{colors.bg-2}"
+    backgroundColor: "{colors.ink-4}"
+    textColor: "{colors.ink}"
+    typography: "{typography.body}"
+    rounded: "{rounded.8}"
+    padding: "4px 8px"
+  button-outline:
+    backgroundColor: transparent
     textColor: "{colors.ink}"
     typography: "{typography.body}"
     rounded: "{rounded.8}"
     border: "1px solid {colors.ink-10}"
-    padding: "8px 16px"
+    padding: "4px 8px"
   button-ghost:
     backgroundColor: transparent
     textColor: "{colors.ink}"
     typography: "{typography.body}"
     rounded: "{rounded.8}"
-    padding: "8px 16px"
-  button-danger:
-    backgroundColor: "{colors.accent-red}"
-    textColor: "{colors.paper}"
-    typography: "{typography.body}"
-    rounded: "{rounded.8}"
-    padding: "8px 16px"
+    padding: "4px 8px"
   text-input:
-    backgroundColor: "{colors.bg-2}"
+    backgroundColor: "{colors.bg-1}"
     textColor: "{colors.ink}"
     typography: "{typography.body}"
     rounded: "{rounded.8}"
     border: "1px solid {colors.ink-10}"
     padding: "8px 16px"
+  text-input-labeled:
+    backgroundColor: "{colors.bg-1}"
+    textColor: "{colors.ink}"
+    typography: "{typography.body}"
+    rounded: "{rounded.8}"
+    border: "1px solid {colors.ink-10}"
+    padding: "16px 20px"
   text-input-invalid:
-    backgroundColor: "{colors.bg-2}"
+    backgroundColor: "{colors.bg-1}"
     textColor: "{colors.ink}"
     rounded: "{rounded.8}"
     border: "1px solid {colors.accent-red}"
+  toggle-track-off:
+    backgroundColor: "{colors.ink-20}"
+    rounded: "{rounded.80}"
+  toggle-track-on:
+    backgroundColor: "{colors.primary}"
+    rounded: "{rounded.80}"
+  toggle-thumb:
+    backgroundColor: "{colors.paper}"
+    rounded: "{rounded.80}"
 ---
 
 ## Overview
@@ -335,22 +357,41 @@ por fase, igual o catálogo do `core/i18n` (`docs/planejamento/plano-implementac
 
 ### Button (`shared/components/ui/Button.vue`)
 
-Variantes via prop `variant`, tamanhos via prop `size` (`sm`/`md`/`lg`).
+**Reimplementado em 2026-08-27 contra a spec real do componente `Button`
+do Figma** (`docs/design/catalogo-componentes.md`, seção 1) — a versão
+anterior tinha `size: sm/md/lg` e `variant: primary/secondary/ghost/danger`
+inventados, sem checar o Figma. Variantes via prop `variant`
+(`primary`/`secondary`/`outline`/`ghost` — **sem `danger`**, o Figma não
+define essa variante), tamanho via prop `size` (`medium`/`large` — **sem
+`sm`**, o Figma só tem os dois).
 
-- **`button-primary`** (default): fundo `{colors.primary}`, texto
-  `{colors.paper}`, `{typography.body}` semibold, `{rounded.8}`. Hover:
-  `filter: brightness(92%)` (sem cor fixa — funciona nos dois temas).
-- **`button-secondary`**: fundo `{colors.bg-2}`, texto `{colors.ink}`,
-  borda `1px solid {colors.ink-10}`, `{rounded.8}`.
-- **`button-ghost`**: fundo transparente, texto `{colors.ink}`, hover
-  ganha fundo `{colors.bg-2}`.
-- **`button-danger`**: fundo `{colors.accent-red}`, texto `{colors.paper}`.
-- **Tamanhos**: `sm` → padding `{spacing.4} {spacing.8}` / `{typography.label}`
-  (12px); `md` → padding `{spacing.8} {spacing.16}` / `{typography.body}`
-  (14px); `lg` → padding `{spacing.8} {spacing.24}` / `{typography.lead}`
-  (18px, sem o peso 600 do token `lead` — o botão grande usa peso 600 de
-  qualquer forma, é o padrão do próprio componente).
-- **Disabled**: `opacity: 0.5`, `cursor: not-allowed`.
+- **`primary`**: fundo `{colors.primary}`, texto `{colors.paper}`. Hover:
+  `--color-primary-hover` (`#494949` no modo claro) — **não** dá pra usar
+  `filter: brightness()` aqui, preto puro (`#000000`) não clareia com esse
+  filtro (0 × qualquer fator continua 0); achado real, o botão antigo não
+  tinha efeito de hover nenhum. Disabled: fundo `{colors.ink-4}`, texto
+  `{colors.ink-40}` — o Figma troca o fundo inteiro pro cinza quase-branco
+  do Secondary, não só reduz opacidade.
+- **`secondary`**: fundo `{colors.ink-4}` (Figma usa "Black/5%", nosso
+  token mais próximo é 4% — a escala não tem 5%). Hover: `{colors.ink-10}`.
+  Disabled: mesmo fundo do default, só o texto vira `{colors.ink-40}`.
+- **`outline`**: sem fundo, borda `1px solid {colors.ink-10}`. Hover:
+  ganha fundo `{colors.ink-4}`. Disabled: mesmo tratamento do secondary.
+- **`ghost`**: sem fundo, sem borda. Hover: `{colors.ink-4}`. Disabled:
+  idem.
+- **Tamanhos**: `medium` → padding `{spacing.4} {spacing.8}`,
+  `{typography.body}` (14/400) — altura nasce do padding + line-height, não
+  é um valor fixo. `large` → padding `{spacing.8} {spacing.16}`,
+  `{typography.lead}` (18/600).
+- **Ícones** (`icon-before`/`icon-after`, aceitam qualquer componente de
+  `shared/components/icons/`): tamanho do ícone é **20px no `medium`,
+  28px no `large`** — medido direto no Figma (padding + ícone = altura
+  desenhada: `4+20+4=28`, `8+28+8=44`), diferente do ícone de apoio de
+  Select/Date (16px, ver seção Components → Select mais abaixo quando
+  existir). Sem texto no slot padrão + 1 ícone = variante "Icon Only" do
+  Figma, vira padding quadrado uniforme automaticamente.
+- **Disabled**: `cursor: not-allowed` (tratamento de cor é por variante,
+  acima — não é `opacity: 0.5` genérico como na versão anterior).
 - **Focus**: outline 2px `{colors.primary}`, offset 2px (mixin `focus-ring`).
 
 ### Icon (`shared/components/ui/Icon.vue`)
@@ -419,13 +460,88 @@ precisa ficar versionado pra sempre).
 
 ### Input (`shared/components/ui/Input.vue`)
 
-- **`text-input`**: fundo `{colors.bg-2}`, texto `{colors.ink}`,
-  `{typography.body}`, borda `1px solid {colors.ink-10}`, `{rounded.8}`,
-  padding `{spacing.8} {spacing.16}`.
-- **`text-input-invalid`** (prop `invalid`): mesma base, borda vira
-  `1px solid {colors.accent-red}`.
+**Reimplementado em 2026-08-27 contra a spec real do Figma** — a versão
+anterior usava `{colors.bg-2}` como fundo; o componente real do Figma
+(`Type=Input-A`/`Input-B`, dentro do frame "Form") usa fundo
+**`{colors.bg-1}` (branco), não `bg-2`**.
+
+- **Input-A** (sem prop `label` — campo isolado): padding
+  `{spacing.8} {spacing.16}`, altura fixa por padding+line-height (não um
+  valor hardcoded), `{typography.body}`.
+- **Input-B** (com prop `label` — campo com rótulo dentro da mesma caixa):
+  padding `{spacing.16} {spacing.20}`, altura por conteúdo, label em
+  `{typography.label}` (12px) na cor `{colors.ink-40}` acima do valor —
+  mesmo padrão visual dos outros campos do frame "Form" do Figma
+  (`Select`, `Date`, `Switch`, `Tags`).
+- Ambos: fundo `{colors.bg-1}`, borda `1px solid {colors.ink-10}`,
+  `{rounded.8}`.
+- **`invalid`** (prop): borda vira `1px solid {colors.accent-red}` — a
+  borda mora no wrapper (`:has(.ui-input--invalid)`), não no `<input>` em
+  si, porque a variante `label` precisa de um wrapper compartilhado pro
+  label + campo caberem na mesma caixa.
 - **Disabled**: `opacity: 0.5`, `cursor: not-allowed`.
-- **Focus**: mesmo `focus-ring` do botão.
+- **Focus**: mesmo `focus-ring` do botão, aplicado ao wrapper via
+  `:has(.ui-input:focus-visible)`.
+
+### Checkbox (`shared/components/ui/Checkbox.vue`)
+
+Construído sobre `CheckboxRoot` da Reka UI. **Os ícones de estado são os
+próprios assets do design system** (`docs/icons-snow-ui/Checkbox*.svg`,
+já gerados em `shared/components/icons/snow-ui.generated.ts`) — não é
+ilustração de referência, é o componente renderizado com o asset final:
+`Checkbox` (vazio), `Checkbox3` (indeterminado), `Checkbox6` (marcado),
+e as variantes `2`/`5`/`8` pros mesmos três estados quando `disabled`.
+Hover (`Checkbox1`/`4`/`7`) não é usado — não troca de ícone no hover, só
+o cursor muda.
+
+- Prop `label` (opcional): texto clicável ao lado, alterna o estado (não é
+  um `<label>` nativo porque `CheckboxRoot` renderiza um `<button>`, que o
+  HTML não associa automaticamente a um `<label>`).
+- Tipo do model é `boolean | 'indeterminate'` — o mesmo tipo nativo do
+  `CheckboxRoot`, sem prop bridging.
+- **Focus**: `focus-ring` no botão interno.
+
+### Toggle (`shared/components/ui/Toggle.vue`)
+
+Construído sobre `SwitchRoot`/`SwitchThumb` da Reka UI, **estilizado via
+CSS** (trilho + thumb com transição), não com os ícones planos de
+`docs/icons-snow-ui/Toggle*.svg` — um ícone plano não anima a transição
+do thumb deslizando, e o primitivo Reka UI já resolve o trilho/thumb como
+dois elementos estilizáveis separadamente (é o padrão idiomático da lib,
+"só estiliza via SCSS/props em cima do que a lib já resolve" — seção 3.1
+de `docs/infra/convencoes-frontend-infra.md`). Os ícones do Figma
+continuam servindo de referência visual de proporção/cor, só não são
+renderizados diretamente.
+
+- Trilho: `{size.40}` × `{size.20}`, `{rounded.80}` (pill), fundo
+  `{colors.ink-20}` (off) / `{colors.primary}` (on).
+- Thumb: `{size.16}`, círculo `{colors.paper}`, translada 2px→22px via
+  `data-state` que o Reka UI já expõe.
+- **Dimensões não verificadas no Figma** (rate limit da API bateu antes de
+  medir esse componente) — construídas a partir da escala de tamanho já
+  existente, proporção comum de toggle. Revisar quando o Figma voltar a
+  responder (ver `docs/design/catalogo-componentes.md`).
+
+### Select (`shared/components/ui/Select.vue`)
+
+Construído sobre a família `Select*` da Reka UI (`SelectRoot`,
+`SelectTrigger`, `SelectContent` via `SelectPortal`, `SelectItem`...).
+Mesmo tratamento visual do Input (fundo `{colors.bg-1}`, borda
+`{colors.ink-10}`, `{rounded.8}`) — variantes Input-A/Input-B (prop
+`label`) se aplicam igual.
+
+- Ícone do trigger: `CaretUpDown` de `icons/regular.generated` — o Figma
+  usa um ícone chamado "ArrowLineUpDown" que **não existe** no export de
+  `docs/icons-regular/` (gap real, não um erro de nomeação nosso).
+- **Achado real**: `SelectContent` é teletransportado (`SelectPortal`)
+  pra fora da árvore do componente, direto pro fim do `<body>` — o
+  atributo de escopo do Vue (`data-v-xxx`) não alcança esse conteúdo, e
+  as classes `.ui-select-content`/`.ui-select-viewport`/`.ui-select-item`/
+  `.ui-select-scroll`/`.ui-select-item-indicator` ficam sem nenhum estilo
+  se declaradas num `<style scoped>` normal. Corrigido envolvendo essas
+  regras em `:global(...)` — técnica documentada do próprio Vue pra esse
+  cenário exato (portal/teleport + scoped style). Confirmado inspecionando
+  o DOM real antes e depois da correção, não só inferido.
 
 ## Do's and Don'ts
 
@@ -506,7 +622,9 @@ Media queries sempre `min-width` (mobile-first) — sem exceção.
 - **Sem componente de card/tabela/badge ainda**: o dashboard de
   precificação (Fase 4 de `docs/planejamento/plano-implementacao.md`) é o
   primeiro lugar que vai exigir isso — os tokens de `rounded`/`spacing`
-  reservados (16, 24...) esperam por eles.
+  reservados (16, 24...) esperam por eles. Categorização micro/macro e
+  ordem de construção de todo o catálogo (não só card/tabela/badge) em
+  `docs/design/catalogo-componentes.md`.
 - **Os quase 2600 ícones gerados não foram revisados um a um
   visualmente** — a estrutura é uniforme e validada programaticamente
   (todo `<path>`/`<circle>` extraído, `fill` trocado por `currentColor`

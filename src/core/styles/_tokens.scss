@@ -10,6 +10,11 @@
 :root {
   // Cor — SnowUI-Light
   --color-primary: #000000;
+  // Hover do botão primary, medido direto no componente Figma (não
+  // derivável de `$color-primary` via filter: brightness() — 0 * qualquer
+  // fator continua 0, "brightness" não ilumina preto puro; achado real ao
+  // reimplementar Button.vue, ver docs/design/catalogo-componentes.md).
+  --color-primary-hover: #494949;
   --color-ink: #000000;
   --color-ink-80: rgb(0 0 0 / 80%);
   --color-ink-40: rgb(0 0 0 / 40%);
@@ -107,6 +112,11 @@
 // Gaps" em design-system.md).
 [data-theme='dark'] {
   --color-primary: var(--color-accent-indigo);
+  // Não verificado no Figma (sem variante dark do Button nesse arquivo) —
+  // aproximação por filtro sobre o indigo, ao contrário do modo claro
+  // funciona (indigo não é preto puro). Revisar quando o modo escuro tiver
+  // toggle de verdade.
+  --color-primary-hover: #9a9af5;
   --color-ink: #ffffff;
   --color-ink-80: rgb(255 255 255 / 80%);
   --color-ink-40: rgb(255 255 255 / 40%);
