@@ -1,5 +1,5 @@
 import { isAxiosError } from 'axios'
-import type { ApiError, ApiResponse } from '@/shared/types/api'
+import type { ApiError, ApiResponse } from '@/shared/types/api.type'
 
 const FALLBACK_MESSAGE_KEY = 'errors.unknown'
 

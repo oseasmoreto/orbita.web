@@ -1,5 +1,5 @@
 import type { Router } from 'vue-router'
-import type { UserRole } from '@/core/store/useAuthStore'
+import type { UserRole } from '@/core/store/types/auth.type'
 import { useAuthStore } from '@/core/store/useAuthStore'
 
 declare module 'vue-router' {

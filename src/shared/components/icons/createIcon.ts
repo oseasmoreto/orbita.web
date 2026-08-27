@@ -1,14 +1,5 @@
-import { defineComponent, h } from 'vue'
-
-/**
- * Um elemento de ícone gerado (`regular.generated.ts`/`duotone.generated.ts`/
- * `snow-ui.generated.ts`) — tag SVG (`path`, `circle`...) + atributos.
- * `fill` só aparece aqui quando o SVG de origem usava uma cor diferente do
- * placeholder padrão do export (`#1C1C1C` → sempre vira `currentColor`,
- * nunca guardado) — ex.: o cutout branco de um checkbox marcado preserva
- * `fill: 'white'` de propósito (ver scripts/generate-icons.mjs).
- */
-export type IconElement = [tag: string, attrs: Record<string, string>]
+import { defineComponent, h, useAttrs } from 'vue'
+import type { IconElement } from './types/icon.type'
 
 /**
  * Fábrica de componente de ícone — mesmo padrão usado internamente por
@@ -24,11 +15,20 @@ export function createIcon(elements: IconElement[], viewBox = '0 0 32 32') {
   const aspectRatio = vbWidth / vbHeight
 
   return defineComponent({
+    // `inheritAttrs: false` bloqueia o fallthrough automático de propósito
+    // (o `Icon.vue` sempre manda `stroke-width`, que só faz sentido pro
+    // @lucide/vue — não queremos isso vazando pro <svg> gerado aqui). Mas
+    // isso também bloquearia `class`/`style`, que são esperados (ex.:
+    // Spinner.vue precisa aplicar uma classe de animação) — por isso
+    // `useAttrs()` abaixo repassa só os dois manualmente, achado real ao
+    // construir Spinner.vue (a classe simplesmente não chegava no DOM).
     inheritAttrs: false,
     props: {
       size: { default: 20, type: [Number, String] },
     },
     setup(props) {
+      const attrs = useAttrs()
+
       return () => {
         const height = typeof props.size === 'number' ? props.size : Number.parseFloat(props.size)
         const width = height * aspectRatio
@@ -36,13 +36,15 @@ export function createIcon(elements: IconElement[], viewBox = '0 0 32 32') {
         return h(
           'svg',
           {
+            class: attrs.class,
             fill: 'none',
             height,
+            style: attrs.style,
             viewBox,
             width,
             xmlns: 'http://www.w3.org/2000/svg',
           },
-          elements.map(([tag, attrs]) => h(tag, { fill: 'currentColor', ...attrs })),
+          elements.map(([tag, elementAttrs]) => h(tag, { fill: 'currentColor', ...elementAttrs })),
         )
       }
     },

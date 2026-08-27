@@ -170,6 +170,26 @@ components:
   toggle-thumb:
     backgroundColor: "{colors.paper}"
     rounded: "{rounded.80}"
+  badge-ghost:
+    textColor: "{colors.ink}"
+    rounded: "{rounded.4}"
+    padding: "1px 4px"
+  badge-gray:
+    backgroundColor: "{colors.ink-4}"
+    textColor: "{colors.ink}"
+    rounded: "{rounded.4}"
+    padding: "1px 4px"
+  avatar:
+    backgroundColor: "{colors.bg-2}"
+    textColor: "{colors.ink}"
+    typography: "{typography.label}"
+    rounded: "{rounded.80}"
+  tooltip:
+    backgroundColor: "{colors.ink-80}"
+    textColor: "{colors.paper}"
+    typography: "{typography.label}"
+    rounded: "{rounded.8}"
+    padding: "4px 8px"
 ---
 
 ## Overview
@@ -542,6 +562,75 @@ Mesmo tratamento visual do Input (fundo `{colors.bg-1}`, borda
   regras em `:global(...)` — técnica documentada do próprio Vue pra esse
   cenário exato (portal/teleport + scoped style). Confirmado inspecionando
   o DOM real antes e depois da correção, não só inferido.
+
+### Badge (`shared/components/ui/Badge.vue`)
+
+- **`ghost`**: sem fundo, texto `{colors.ink}`.
+- **`gray`**: fundo `{colors.ink-4}` (aproximação do "Black/5%" do Figma
+  pro token mais próximo da escala, mesmo critério já usado no
+  `button-secondary`).
+- **Tamanhos**: `sm` → `{typography.caption}` (10px); `md` →
+  `{typography.label}` (12px, default).
+- Padding medido no Figma: `1px {spacing.4}` — o `1px` vertical é um valor
+  real do componente de origem, não arredondado pra escala de 4px (a
+  escala de espaçamento não tem um degrau de 1px, e não é caso de "traga o
+  valor que falta" — aqui é o próprio componente que usa um valor fora da
+  escala geral, só documentado tal como é).
+- `icon-before`/`icon-after` (mesmo padrão do Button): ícone fixo em 12px,
+  não escala com `size`.
+
+### Avatar (`shared/components/ui/Avatar.vue`)
+
+- Círculo (`{rounded.80}`), fundo `{colors.bg-2}`, iniciais em
+  `{typography.label}` semibold, cor `{colors.ink}`.
+- **`USER` não tem campo de foto** (`docs/negocio/contexto-plataforma-precificacao.md`
+  seção 2.1) — o fallback de iniciais (`AvatarFallback` da Reka UI) é o
+  caminho normal do produto, não uma exceção rara de erro de carregamento.
+  `src` continua aceito (planos futuros podem adicionar foto), mas hoje
+  todo consumidor real passa só `name`.
+- Tamanho via prop `size` (px), default 32 — sem variantes fixas
+  `sm`/`md`/`lg`, porque o Figma usa o mesmo componente em vários tamanhos
+  ad-hoc (dropdown de usuário, lista de contatos), não uma escala fechada.
+
+### Tooltip (`shared/components/ui/Tooltip.vue`)
+
+Construído sobre `TooltipProvider`/`TooltipRoot`/`TooltipContent` (via
+`TooltipPortal`) da Reka UI.
+
+- Fundo `{colors.ink-80}` (match exato com "Black/80%" do Figma), texto
+  `{colors.paper}`, `{typography.label}` (12px), padding
+  `{spacing.4} {spacing.8}`, `{rounded.8}`.
+- Prop `shortcut` opcional (ex.: `"⌘N"`) — espelha a propriedade "Show
+  Shortcut" do componente Figma; texto do atalho em `{colors.paper-40}`.
+- `backdrop-filter: blur(8px)` — o Figma usa um efeito "BG blur 40" atrás
+  do tooltip; não existe token de blur na escala trazida, então o valor é
+  uma aproximação visual (glassmorphism sutil), não uma medida exata.
+- **Achado real, mesma classe do Select**: `TooltipContent` também é
+  teletransportado via `TooltipPortal` — todas as classes (`.ui-tooltip`,
+  `.ui-tooltip__shortcut`) precisam de `:global(...)`.
+
+### Spinner (`shared/components/ui/Spinner.vue`)
+
+Ícone `Loading` (de `snow-ui.generated.ts`, não `Loading1` — ver "Known
+Gaps" sobre a perda do gradiente cônico nesse último) com rotação aplicada
+via `@keyframes` CSS (`animation: ui-spinner-spin 0.8s linear infinite`),
+não uma segunda variante de ícone por frame.
+
+- **Achado real, sistêmico — afeta todo ícone gerado, não só o Spinner**:
+  `createIcon.ts` (a fábrica usada por `regular.generated.ts`/
+  `duotone.generated.ts`/`snow-ui.generated.ts`) tinha `inheritAttrs: false`
+  pra bloquear o `stroke-width` que `Icon.vue` sempre manda (prop que só
+  faz sentido pro `@lucide/vue`, vazaria pro `<svg>` gerado aqui sem
+  bloqueio). Efeito colateral não percebido até este componente: isso
+  também bloqueava `class`/`style`, então `<Icon class="ui-spinner" .../>`
+  simplesmente não chegava no DOM — a animação nunca era aplicada, sem
+  nenhum erro/warning no console. Confirmado com
+  `document.querySelector('.ui-spinner')` retornando `null` antes da
+  correção. **Corrigido** com `useAttrs()` dentro do `setup()`, repassando
+  `attrs.class`/`attrs.style` manualmente pro `h('svg', ...)` enquanto
+  `inheritAttrs: false` continua bloqueando o resto (`stroke-width`
+  incluso). Reconfirmado depois: elemento encontrado,
+  `animationName`/`animationDuration` computados corretos.
 
 ## Do's and Don'ts
 

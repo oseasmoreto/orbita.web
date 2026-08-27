@@ -20,5 +20,5 @@
  * `<Icon :icon="Check" />`
  */
 
-export type { IconElement } from './createIcon'
 export { createIcon } from './createIcon'
+export type { IconElement } from './types/icon.type'

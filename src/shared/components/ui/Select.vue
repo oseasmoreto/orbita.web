@@ -20,11 +20,7 @@ import { Check } from '@/shared/components/icons/regular.generated'
 // mais próximo disponível com o mesmo propósito.
 import { CaretUpDown } from '@/shared/components/icons/regular.generated'
 import Icon from './Icon.vue'
-
-export interface SelectOption {
-  label: string
-  value: string
-}
+import type { SelectOption } from './types/select.type'
 
 withDefaults(
   defineProps<{

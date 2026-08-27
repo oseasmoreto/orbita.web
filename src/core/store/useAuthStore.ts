@@ -1,16 +1,6 @@
 import { defineStore } from 'pinia'
 import { computed, ref } from 'vue'
-
-export type UserRole = 'admin_master' | 'user'
-
-export interface AuthUser {
-  email: string
-  emailVerifiedAt: string | null
-  id: string
-  name: string
-  role: UserRole
-  status: string
-}
+import type { AuthUser } from './types/auth.type'
 
 /**
  * Único estado genuinamente global de sessão (docs/infra/convencoes-frontend-infra.md

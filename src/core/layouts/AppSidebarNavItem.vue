@@ -2,7 +2,7 @@
 import { computed } from 'vue'
 import { CaretDown } from '@/shared/components/icons/regular.generated'
 import Icon from '@/shared/components/ui/Icon.vue'
-import type { NavItem } from './navigation'
+import type { NavItem } from './types/navigation.type'
 import { useAppShell } from './useAppShell'
 
 defineOptions({ name: 'AppSidebarNavItem' })
