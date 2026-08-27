@@ -190,6 +190,24 @@ components:
     typography: "{typography.label}"
     rounded: "{rounded.8}"
     padding: "4px 8px"
+  search-idle:
+    backgroundColor: "{colors.ink-4}"
+    rounded: "{rounded.8}"
+    padding: "4px 6px"
+  search-hover:
+    backgroundColor: "{colors.paper-80}"
+    border: "1px solid {colors.ink-10}"
+    rounded: "{rounded.8}"
+  search-focus:
+    backgroundColor: "{colors.paper}"
+    border: "1px solid {colors.ink-20}"
+    rounded: "{rounded.8}"
+  form-group-label:
+    textColor: "{colors.ink-40}"
+    typography: "{typography.label}"
+  form-group-error:
+    textColor: "{colors.accent-red}"
+    typography: "{typography.label}"
 ---
 
 ## Overview
@@ -649,6 +667,65 @@ não uma segunda variante de ícone por frame.
   `inheritAttrs: false` continua bloqueando o resto (`stroke-width`
   incluso). Reconfirmado depois: elemento encontrado,
   `animationName`/`animationDuration` computados corretos.
+
+### Search (`shared/components/ui/Search.vue`)
+
+**Decisão revista em 2026-08-27** — `docs/design/catalogo-componentes.md`
+originalmente descrevia isso como "variante de `Input.vue` (`type="search"`
++ ícone)", escrito antes de examinar o frame "Search" de verdade no Figma.
+Na prática o componente tem grafia própria (caixa compacta tipo pílula,
+3 estados de interação com fundo diferente, hint de atalho de teclado,
+botão de limpar) — distante o bastante do Input-A/B (sempre branco, sempre
+com borda) pra justificar um arquivo próprio em vez de props extras
+empilhadas no Input.
+
+- **3 estados são só CSS de interação, não props** — `Type=Grey` (idle:
+  fundo `{colors.ink-4}`, sem borda visível — implementado como borda
+  `1px solid transparent` pra não pular o layout quando a borda de verdade
+  aparece), `Type=White` (`:hover:not(:focus-within)`: fundo
+  `{colors.paper-80}`, borda `{colors.ink-10}`), `Type=Typing`
+  (`:focus-within`: fundo `{colors.paper}`, borda `{colors.ink-20}` +
+  `focus-ring`).
+- Ícone de lupa (`MagnifyingGlass`, `icons/regular.generated`) fixo em
+  16px, mesma dimensão medida no Figma (`layout_e4b6f33f`, 16×16).
+- Prop `shortcut` opcional (ex.: `"⌘/"`, mesmo padrão do Tooltip) — só
+  aparece quando o campo está vazio; texto `12 Regular` em
+  `{colors.ink-20}` (medido do próprio frame do Figma, não aproximado).
+- Botão de limpar (ícone `XCircles`) aparece só quando há valor —
+  substitui o "x" nativo do `type="search"`
+  (`::-webkit-search-cancel-button { display: none }`, removido de
+  propósito pra não duplicar). "XCircles" é o nome mais próximo do
+  `XCircle-f` do Figma que existe no export gerado — mesma classe de gap
+  já registrada pro `CaretUpDown`/`ArrowLineUpDown` do Select.
+- Padding real medido no Figma: `4px 6px` — o `6px` horizontal não bate
+  com nenhum degrau da escala de spacing (0/4/8/12/16...), mesmo caso já
+  registrado no padding vertical de `1px` do Badge: valor legítimo do
+  componente de origem, não arredondado pra escala geral.
+
+### FormGroup (`shared/components/blocks/FormGroup.vue`)
+
+**Sem frame próprio no Figma** — o "Form" do Figma só define
+Input/Select/Date/Switch/Tags/Checkbox isolados, nenhum com um padrão de
+mensagem de erro (confirmado lendo o `COMPONENT_SET "Form"` inteiro).
+`FormGroup` é composição nossa mesmo, prevista desde a seção 3.2 de
+`docs/infra/convencoes-frontend-infra.md` — agrupa label + controle +
+mensagem de erro, nunca decide regra de validação (isso é do composable
+`use<Recurso>Form` de cada módulo, `error` chega já resolvido via prop).
+
+- **`label` envolve o controle** (`<label>` ao redor do `<slot />`, não
+  `for`/`id`) — `Input.vue`/`Select.vue`/`Checkbox.vue` não expõem um `id`
+  externo (cada um gera o próprio via `useId()` interno), então a
+  associação por atributo não alcançaria o elemento real de dentro do
+  slot. Envolver funciona sem isso: `<label>` foca automaticamente o
+  primeiro descendente focável (`<input>` nativo do Input.vue, `<button>`
+  do Reka UI por trás de Select/Checkbox), confirmado clicando o texto do
+  label e checando `document.activeElement` — focou o `<input>` real.
+  Existe uma sobreposição possível a evitar: usar a prop `label` do
+  `FormGroup` já cobre o rótulo, então o controle dentro do slot deveria
+  ficar sem a própria prop `label` interna (Input-A/Select-A, não
+  Input-B/Select-B) pra não duplicar o rótulo.
+- `error` (opcional): mensagem abaixo do controle, `{colors.accent-red}`,
+  `role="alert"`.
 
 ## Do's and Don'ts
 

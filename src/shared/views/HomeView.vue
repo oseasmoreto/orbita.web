@@ -13,11 +13,13 @@ import {
   Star,
   Trash,
 } from '@/shared/components/icons/regular.generated'
+import FormGroup from '@/shared/components/blocks/FormGroup.vue'
 import Avatar from '@/shared/components/ui/Avatar.vue'
 import Badge from '@/shared/components/ui/Badge.vue'
 import Button from '@/shared/components/ui/Button.vue'
 import Checkbox from '@/shared/components/ui/Checkbox.vue'
 import Input from '@/shared/components/ui/Input.vue'
+import Search from '@/shared/components/ui/Search.vue'
 import Select from '@/shared/components/ui/Select.vue'
 import Spinner from '@/shared/components/ui/Spinner.vue'
 import Toggle from '@/shared/components/ui/Toggle.vue'
@@ -41,6 +43,11 @@ const marketplaceOptions = [
   { label: 'Amazon', value: 'amazon' },
   { label: 'Mercado Livre', value: 'mercado-livre' },
 ]
+
+const searchEmpty = ref('')
+const searchFilled = ref('produto azul')
+
+const formGroupValue = ref('')
 </script>
 
 <template>
@@ -143,6 +150,27 @@ const marketplaceOptions = [
         <Tooltip text="Baixar relatório">
           <Button aria-label="Baixar" :icon-before="Download" variant="outline" />
         </Tooltip>
+      </div>
+    </section>
+
+    <section class="showcase__section">
+      <h2>Search</h2>
+      <div class="showcase__row">
+        <Search v-model="searchEmpty" placeholder="Buscar produto" shortcut="⌘/" />
+        <Search v-model="searchFilled" placeholder="Buscar produto" />
+        <Search disabled placeholder="Desabilitado" />
+      </div>
+    </section>
+
+    <section class="showcase__section">
+      <h2>FormGroup</h2>
+      <div class="showcase__row showcase__row--wrap">
+        <FormGroup label="Nome do produto">
+          <Input v-model="formGroupValue" placeholder="Sem label interna, label vem do FormGroup" />
+        </FormGroup>
+        <FormGroup error="Selecione ao menos um marketplace">
+          <Select :options="marketplaceOptions" placeholder="Marketplace" />
+        </FormGroup>
       </div>
     </section>
 
