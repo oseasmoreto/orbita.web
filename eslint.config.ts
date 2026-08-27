@@ -7,7 +7,7 @@ import vueParser from 'vue-eslint-parser'
 export default [
   // ── Global ignores ────────────────────────────────────────────────────────
   {
-    ignores: ['dist/**', 'node_modules/**', 'public/**', '*.d.ts'],
+    ignores: ['dist/**', 'node_modules/**', 'public/**', '*.d.ts', '**/*.generated.ts'],
   },
 
   // ── Vue files ─────────────────────────────────────────────────────────────

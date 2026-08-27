@@ -7,7 +7,15 @@
     "useIgnoreFile": true
   },
   "files": {
-    "includes": ["**/*", "!!dist", "!!node_modules", "!!**/*.d.ts", "!!public"]
+    "includes": [
+      "**/*",
+      "!!dist",
+      "!!node_modules",
+      "!!**/*.d.ts",
+      "!!public",
+      "!!**/*.generated.ts",
+      "!!docs"
+    ]
   },
   "formatter": {
     "indentStyle": "space",

@@ -102,6 +102,37 @@ implementá-la a partir só da doc.
 
 ---
 
+## Fase 0.6 — Ícones (concluída)
+
+Conjunto de ícones do design system, gerado a partir de dois exports do
+Figma: `docs/icons-regular/` (1 tom) e `docs/icons-duotone/` (2 tons —
+mesma cor em opacidades diferentes, nunca duas cores).
+
+**Entregue:**
+- `scripts/generate-icons.mjs` + `npm run generate:icons` — regenera
+  `src/shared/components/icons/{regular,duotone}.generated.ts` (1248
+  ícones cada) a partir dos SVGs.
+- `shared/components/icons/createIcon.ts` — fábrica de componente (mesmo
+  padrão usado internamente por `@lucide/vue`), `fill` sempre trocado por
+  `currentColor` no render.
+- 19 arquivos excluídos da geração: banners de categoria do Figma
+  exportados por engano (texto renderizado como path — `Arrows`, `Brands`,
+  `Header`, `Time`... — confirmado por diff entre as duas pastas + viewBox
+  incompatível tipo "0 0 3224 88").
+
+**Bug real pego durante a implementação** (registro, não repetir): um
+primeiro teste de bundle mostrou que importar um ícone por namespace
+(`import { IconsRegular } from '.../icons'` + `IconsRegular.Check`) infla
+o chunk de ~1kB pra ~2,4MB — o bundler não consegue eliminar os outros
+1247 ícones ao acessar propriedade de um objeto namespace, mesmo com
+`/* @__PURE__ */` em cada `createIcon(...)`. Corrigido removendo a
+reexportação por namespace de `shared/components/icons/index.ts` de
+propósito — import tem que ser sempre direto do módulo gerado
+(`import { Check } from '.../icons/regular.generated'`). Medido com
+`npm run build` antes/depois da correção, não só inferido.
+
+---
+
 ## Fase 1 — Identity
 
 Cadastro, login, sessão. Bloqueia todas as fases seguintes (tudo exige

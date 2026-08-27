@@ -355,10 +355,45 @@ Variantes via prop `variant`, tamanhos via prop `size` (`sm`/`md`/`lg`).
 
 ### Icon (`shared/components/ui/Icon.vue`)
 
-Wrapper fino sobre `@lucide/vue` — recebe o componente do ícone via prop
-`icon` (nunca um mapa nome→ícone), `size` (número/string, default 20),
-`stroke-width` fixo em 1.75. Não tem cor própria — herda `color` do
-elemento pai via `currentColor` (comportamento nativo do Lucide).
+Wrapper fino sobre um componente de ícone — recebe o componente via prop
+`icon` (nunca um mapa nome→ícone), `size` (número/string, default 20). Duas
+fontes de ícone convivem:
+
+- **`@lucide/vue`** — ícones stroke-based genéricos, `Icon.vue` passa
+  `stroke-width` fixo em 1.75 pra eles.
+- **Conjunto próprio do design system** (`shared/components/icons/`),
+  gerado a partir de `docs/icons-regular/` (1 tom) e `docs/icons-duotone/`
+  (2 tons — mesma cor em duas opacidades, nunca duas cores) via
+  `npm run generate:icons` (`scripts/generate-icons.mjs`). 1248 ícones em
+  cada estilo — todos os SVGs exportados, exceto 19 banners de categoria do
+  Figma exportados por engano (texto renderizado como path, não um ícone:
+  `Arrows`, `Brands`, `Commerce`, `Communication`, `Design`, `Development`,
+  `Education`, `Games`, `Header`, `Health & Wellness`, `Maps & Travel`,
+  `Math & Finance`, `Media`, `Office & Editing`, `People`,
+  `Security & Warnings`, `System & Devices`, `Time`, `Weather & Nature`).
+
+Ambas as fontes não têm cor própria — herdam `color` do elemento pai via
+`currentColor`.
+
+**Regra não-negociável de import — nunca por namespace:**
+
+```ts
+// ✅ Certo — tree-shake elimina os outros 1247 ícones do bundle
+import { Check } from '@/shared/components/icons/regular.generated'
+
+// ❌ Errado — bundler não consegue eliminar o resto do módulo ao acessar
+// propriedade de um namespace; um `IconsRegular.Check` sozinho já infla o
+// chunk de ~1kB pra ~2.4MB (achado real, medido em build de verdade — ver
+// docs/planejamento/plano-implementacao.md)
+import { IconsRegular } from '@/shared/components/icons'
+```
+
+`shared/components/icons/index.ts` de propósito **não** reexporta os
+ícones por esse motivo — só `createIcon`/`IconPath` (uso interno do
+gerador). `regular.generated.ts`/`duotone.generated.ts` são gerados,
+nunca editados à mão (mesmo espírito de `core/api/schema.d.ts`) — rodar
+`npm run generate:icons` de novo sempre que `docs/icons-regular/`/
+`docs/icons-duotone/` mudarem.
 
 ### Input (`shared/components/ui/Input.vue`)
 
@@ -450,3 +485,10 @@ Media queries sempre `min-width` (mobile-first) — sem exceção.
   precificação (Fase 4 de `docs/planejamento/plano-implementacao.md`) é o
   primeiro lugar que vai exigir isso — os tokens de `rounded`/`spacing`
   reservados (16, 24...) esperam por eles.
+- **1248 ícones gerados não foram revisados um a um visualmente** — a
+  estrutura é uniforme e validada programaticamente (todo `<path>`
+  extraído, `fill` sempre trocado por `currentColor`, viewBox preservado
+  por ícone), mas não há como conferir manualmente cada pictograma
+  individual. Se um ícone específico renderizar errado, o bug mais provável
+  é no SVG de origem (`docs/icons-regular/`/`docs/icons-duotone/`), não no
+  gerador.
