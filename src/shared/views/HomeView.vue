@@ -14,7 +14,10 @@ import {
   Trash,
 } from '@/shared/components/icons/regular.generated'
 import ConfirmDialog from '@/shared/components/blocks/ConfirmDialog.vue'
+import DataTable from '@/shared/components/blocks/DataTable.vue'
 import FormGroup from '@/shared/components/blocks/FormGroup.vue'
+import ListToolbar from '@/shared/components/blocks/ListToolbar.vue'
+import PaginationNav from '@/shared/components/blocks/PaginationNav.vue'
 import Avatar from '@/shared/components/ui/Avatar.vue'
 import Badge from '@/shared/components/ui/Badge.vue'
 import Button from '@/shared/components/ui/Button.vue'
@@ -27,6 +30,10 @@ import Select from '@/shared/components/ui/Select.vue'
 import Spinner from '@/shared/components/ui/Spinner.vue'
 import Toggle from '@/shared/components/ui/Toggle.vue'
 import Tooltip from '@/shared/components/ui/Tooltip.vue'
+import type {
+  DataTableColumn,
+  DataTableSortDirection,
+} from '@/shared/components/ui/types/dataTable.type'
 
 const checkboxUnchecked = ref(false)
 const checkboxChecked = ref(true)
@@ -59,6 +66,96 @@ const confirmDialogResult = ref('')
 const drawerSmOpen = ref(false)
 const drawerMdOpen = ref(false)
 const drawerLgOpen = ref(false)
+
+interface ProductRow {
+  createdAt: string
+  id: string
+  margin: 'ok' | 'low'
+  marketplace: string
+  name: string
+  price: string
+}
+
+const productColumns: DataTableColumn[] = [
+  { key: 'name', sortable: true, title: 'Produto' },
+  { key: 'price', sortable: true, title: 'Preço' },
+  { key: 'margin', title: 'Margem' },
+  { key: 'marketplace', title: 'Marketplace' },
+  { key: 'createdAt', sortable: true, title: 'Cadastrado em' },
+]
+
+const productRows: ProductRow[] = [
+  {
+    createdAt: '12/08/2026',
+    id: '1',
+    margin: 'ok',
+    marketplace: 'Shopee',
+    name: 'Camiseta azul',
+    price: 'R$ 59,90',
+  },
+  {
+    createdAt: '10/08/2026',
+    id: '2',
+    margin: 'low',
+    marketplace: 'Mercado Livre',
+    name: 'Tênis esportivo',
+    price: 'R$ 199,90',
+  },
+  {
+    createdAt: '08/08/2026',
+    id: '3',
+    margin: 'ok',
+    marketplace: 'Amazon',
+    name: 'Fone de ouvido',
+    price: 'R$ 89,90',
+  },
+]
+
+const selectedProductIds = ref<string[]>([])
+const lastSortEvent = ref('nenhuma')
+
+function handleSort(key: string, direction: DataTableSortDirection): void {
+  lastSortEvent.value = direction ? `${key} (${direction})` : 'nenhuma'
+}
+
+const toolbarSearch = ref('')
+const lastToolbarAction = ref('nenhuma')
+const currentPage = ref(1)
+
+interface TaskRow {
+  assignedTo: string
+  status: 'in-progress' | 'complete' | 'pending'
+  timeSpent: string
+  title: string
+}
+
+const taskColumns: DataTableColumn[] = [
+  { key: 'title', title: 'Título' },
+  { key: 'assignedTo', title: 'Responsável' },
+  { key: 'timeSpent', title: 'Tempo gasto' },
+  { key: 'status', title: 'Status' },
+]
+
+const taskRows: TaskRow[] = [
+  {
+    assignedTo: 'Ana Barbosa',
+    status: 'in-progress',
+    timeSpent: '3h 20min',
+    title: 'Página de detalhe',
+  },
+  {
+    assignedTo: 'Oseas Moreto',
+    status: 'complete',
+    timeSpent: '12h 21min',
+    title: 'Gráficos de consumo',
+  },
+  {
+    assignedTo: 'Ana Barbosa',
+    status: 'pending',
+    timeSpent: '78h 5min',
+    title: 'App de desenvolvimento',
+  },
+]
 </script>
 
 <template>
@@ -240,6 +337,63 @@ const drawerLgOpen = ref(false)
     </section>
 
     <section class="showcase__section">
+      <h2>DataTable</h2>
+      <p>
+        Selecionados: {{ selectedProductIds.length }} · Última ordenação: {{ lastSortEvent }} ·
+        Última ação da toolbar: {{ lastToolbarAction }}
+      </p>
+      <ListToolbar
+        v-model:search="toolbarSearch"
+        search-placeholder="Buscar produto"
+        @add="lastToolbarAction = 'adicionar'"
+        @filter="lastToolbarAction = 'filtrar'"
+        @sort="lastToolbarAction = 'ordenar'"
+      />
+      <DataTable
+        v-model:selected="selectedProductIds"
+        :columns="productColumns"
+        row-key="id"
+        :rows="productRows"
+        selectable
+        @sort="handleSort"
+      >
+        <template #cell-margin="{ row }">
+          <Badge :variant="row.margin === 'ok' ? 'gray' : 'ghost'">
+            {{ row.margin === 'ok' ? 'Dentro da margem' : 'Fora da margem' }}
+          </Badge>
+        </template>
+        <template #cell-marketplace="{ row }">
+          <div class="showcase__cell-marketplace">
+            <Avatar :name="row.marketplace" :size="20" />
+            <span>{{ row.marketplace }}</span>
+          </div>
+        </template>
+      </DataTable>
+      <PaginationNav v-model:current-page="currentPage" :total-pages="5" />
+    </section>
+
+    <section class="showcase__section">
+      <h2>DataTable (variante simples, sem seleção)</h2>
+      <DataTable :columns="taskColumns" :rows="taskRows">
+        <template #cell-assignedTo="{ row }">
+          <div class="showcase__cell-marketplace">
+            <Avatar :name="row.assignedTo" :size="20" />
+            <span>{{ row.assignedTo }}</span>
+          </div>
+        </template>
+        <template #cell-status="{ row }">
+          <Badge variant="ghost">
+            {{
+              { complete: 'Completo', 'in-progress': 'Em andamento', pending: 'Pendente' }[
+                row.status
+              ]
+            }}
+          </Badge>
+        </template>
+      </DataTable>
+    </section>
+
+    <section class="showcase__section">
       <h2>Spinner</h2>
       <div class="showcase__row">
         <Spinner :size="16" />
@@ -302,5 +456,11 @@ const drawerLgOpen = ref(false)
 
 .showcase__row--wrap > * {
   min-width: 220px;
+}
+
+.showcase__cell-marketplace {
+  display: flex;
+  align-items: center;
+  gap: $spacing-8;
 }
 </style>

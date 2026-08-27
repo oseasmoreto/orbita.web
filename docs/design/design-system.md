@@ -225,6 +225,21 @@ components:
   drawer-content-lg:
     backgroundColor: "{colors.bg-1}"
     padding: "24px"
+  data-table-header:
+    textColor: "{colors.ink-40}"
+    typography: "{typography.label}"
+    border: "1px solid {colors.ink-20}"
+  data-table-cell:
+    textColor: "{colors.ink}"
+    typography: "{typography.label}"
+    border: "1px solid {colors.ink-4}"
+  pagination-current:
+    backgroundColor: "{colors.ink-4}"
+    rounded: "{rounded.8}"
+  list-toolbar:
+    backgroundColor: "{colors.bg-2}"
+    rounded: "{rounded.8}"
+    padding: "8px"
 ---
 
 ## Overview
@@ -840,6 +855,111 @@ continua painel lateral direito como antes.
   vez depois dela estabilizar (~1s). Não é bug, é phys-based animation;
   quem for testar isso de novo precisa esperar a animação terminar antes
   de inspecionar posição/transform.
+
+### DataTable (`shared/components/blocks/DataTable.vue`)
+
+Grounded no `COMPONENT_SET "Table Components"` do Figma — header 40px
+(padding `{spacing.8} {spacing.16}`), texto de título "12 Regular" em
+`{colors.ink-40}` (match com "Black/40%"), borda inferior do header em
+`{colors.ink-20}` ("Black/20%"), divisor entre linhas em `{colors.ink-4}`
+(aproximação de um gradiente quase imperceptível, "Black/5%" — mesmo
+critério já usado no Badge/Search pra valor fora da escala sólida).
+
+- **As variantes de célula do Figma
+  (`Type=Status/Date/Text-Icon/Users/User/Activity`...) viram o slot
+  nomeado `#cell-<key>="{ row, value }"`, não componentes fixos** — quem
+  decide o que renderizar em cada célula é o consumidor (`Badge` de
+  status, `Avatar`, data formatada...), o `DataTable` só monta a grade e
+  nunca decide regra de negócio (mesma régua de bloco da seção 3.2 de
+  `docs/infra/convencoes-frontend-infra.md`).
+- **Genérico de verdade** (`<script setup generic="T extends object">`,
+  Vue 3.3+) — tipagem forte sem `any`, mas a constraint é `object`, não
+  `Record<string, unknown>`: uma `interface` TS comum (sem index signature
+  explícita, como qualquer DTO tipado do projeto) não é estruturalmente
+  atribuível a `Record<string, unknown>`, o generic ficaria inutilizável
+  pra tipos de domínio reais. O acesso por chave dinâmica (`column.key`,
+  só conhecida em runtime) usa um cast pontual pra `Record<string,
+  unknown>`, isolado numa única função (`getCellValue`).
+- **Seleção** (`selectable` + `v-model:selected`) e **ordenação**
+  (`column.sortable` + evento `sort`) são só mecânica de UI — o
+  `DataTable` não ordena os dados sozinho (quem decide a ordenação real é
+  o composable do módulo consumidor), só emite `sort` com `key`/`direction`
+  e mantém o ícone do cabeçalho em sincronia.
+- **Sem paginação/filtro embutidos** (gap real, não implementado nesta
+  rodada) — `Pagination` é um componente próprio no Figma, ainda não
+  mapeado em nenhum tier do catálogo.
+- **Achado real, sistêmico — afeta qualquer ícone dentro de célula de
+  `<table>`, não só o `Checkbox`**: o reset global (`svg { max-width:
+  100% }`, `core/styles/_reset.scss`) colapsa a largura de um `<svg>` pra
+  `0` quando ele fica dentro de uma célula de tabela com `table-layout:
+  auto` — é uma dependência circular de resolução de largura (a célula
+  quer se ajustar ao conteúdo, o conteúdo quer ser 100% da célula), não um
+  bug do `Checkbox` em si (o mesmo componente funciona normalmente fora de
+  tabela, confirmado por comparação). Descoberto ao testar o checkbox de
+  seleção de linha: `getBoundingClientRect()` retornava `width: 0` mesmo
+  com a `<td>` já tendo largura resolvida (32px) e o atributo `width="20"`
+  presente no próprio SVG. **Corrigido** com `.ui-data-table :deep(svg) {
+  max-width: none; }` — o `:deep()` alcança o `<svg>` de qualquer
+  componente filho **por posição no DOM real**, cobrindo tanto os ícones
+  que o próprio `DataTable` renderiza (checkbox, seta de ordenação) quanto
+  os que vierem de dentro de um slot de célula do consumidor (ex.: `Badge`
+  com ícone em `#cell-margin`), sem exigir que cada consumidor lembre de
+  aplicar a correção manualmente. Reconfirmado depois: `20px` de largura
+  real em toda a cadeia de ancestrais.
+
+### PaginationNav (`shared/components/blocks/PaginationNav.vue`)
+
+Grounded na instância "Pagination" do Figma (`#4113:42236`, ao lado do
+frame "Table", reportado pelo usuário em 2026-08-27 a partir de um
+screenshot mais completo do mesmo arquivo) — seta anterior/próxima
+(`ArrowLineLeft`/`ArrowLineRight`) + até 5 botões de número de página, o
+atual destacado com `variant="secondary"` do `Button` (aproxima
+`{colors.ink-4}`, "Black/5%" no Figma).
+
+- **Lógica de janela é estado de bloco de verdade, com teste primeiro**
+  (test-first obrigatório pra bloco com lógica de estado, seção 11.2 de
+  `docs/infra/convencoes-frontend-infra.md` — "emite `update:page` ao
+  clicar próximo" é literalmente o exemplo canônico usado na própria
+  convenção). Testado em
+  `tests/shared/components/blocks/PaginationNav.test.ts`: janela completa
+  quando `totalPages` cabe em 5, janela centralizada na página atual
+  quando excede, clamp nas bordas (início/fim do intervalo), emissão de
+  `update:currentPage` ao clicar num número ou nas setas, setas
+  desabilitadas nos limites.
+- **Nunca decide o total de páginas/busca dado novo** — só recebe
+  `totalPages` e emite a página desejada; quem busca os dados da página
+  nova é o composable do módulo consumidor (mesma régua de bloco sem
+  regra de negócio).
+- Renomeado de "Pagination" (nome do Figma) pra `PaginationNav` durante a
+  implementação — `vue/multi-word-component-names` exige nome composto
+  pra blocks (a exceção de nome único, seção 3.1, vale só pros átomos de
+  `shared/components/ui/`).
+
+### ListToolbar (`shared/components/blocks/ListToolbar.vue`)
+
+Grounded na instância "Function Bar" do Figma (`#4113:42235`) — fundo
+`{colors.bg-2}` (aproximação de `#F7F9FB`, mesmo critério de valor fora da
+escala sólida já usado no Search/Badge), 3 `Button` `variant="ghost"`
+ícone-only (Adicionar/Filtrar/Ordenar — o "Button Group" do Figma **não é
+um primitivo próprio**: confirmado no `layout` do Figma que é só 3
+`Button` independentes com `gap: 8px`, sem borda compartilhada) + `Search`
+embutido.
+
+- **Nome genérico de propósito, não `TableToolbar`** — o mesmo padrão
+  "Function Bar" aparece solto em outras telas do Figma, não é exclusivo
+  de tabela.
+- **Puramente de apresentação, sem estado interno de bloco** — só emite
+  `add`/`filter`/`sort` (eventos, sem decidir o que cada ação faz de
+  verdade) e repassa o texto de busca via `v-model:search`. Não exige
+  test-first (não há lógica de estado além de passthrough), mas foi
+  verificado em browser real (clique nos 3 botões, digitação na busca).
+
+**Achado de escopo, não achado técnico**: `Table-B` do Figma (variante
+mais simples, sem seleção nem menu de operação por linha — colunas
+Title/Assigned to/Time Spend/Status) **não exigiu nenhuma mudança de
+código** — já é coberta pela API genérica do `DataTable` (`selectable`
+omitido, colunas sem `sortable`), confirmado renderizando o mesmo
+componente com esse conjunto de colunas.
 
 ## Do's and Don'ts
 
