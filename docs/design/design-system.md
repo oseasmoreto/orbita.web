@@ -362,18 +362,36 @@ fontes de ícone convivem:
 - **`@lucide/vue`** — ícones stroke-based genéricos, `Icon.vue` passa
   `stroke-width` fixo em 1.75 pra eles.
 - **Conjunto próprio do design system** (`shared/components/icons/`),
-  gerado a partir de `docs/icons-regular/` (1 tom) e `docs/icons-duotone/`
-  (2 tons — mesma cor em duas opacidades, nunca duas cores) via
-  `npm run generate:icons` (`scripts/generate-icons.mjs`). 1248 ícones em
-  cada estilo — todos os SVGs exportados, exceto 19 banners de categoria do
-  Figma exportados por engano (texto renderizado como path, não um ícone:
-  `Arrows`, `Brands`, `Commerce`, `Communication`, `Design`, `Development`,
-  `Education`, `Games`, `Header`, `Health & Wellness`, `Maps & Travel`,
-  `Math & Finance`, `Media`, `Office & Editing`, `People`,
-  `Security & Warnings`, `System & Devices`, `Time`, `Weather & Nature`).
+  gerado via `npm run generate:icons` (`scripts/generate-icons.mjs`) a
+  partir de três exports do Figma:
+  - `docs/icons-regular/` (1 tom, 1248 ícones) — conteúdo genérico
+    (pictogramas, logos de marca, setas...). Todos os SVGs exportados,
+    exceto 19 banners de categoria exportados por engano (texto renderizado
+    como path, não um ícone: `Arrows`, `Brands`, `Commerce`,
+    `Communication`, `Design`, `Development`, `Education`, `Games`,
+    `Header`, `Health & Wellness`, `Maps & Travel`, `Math & Finance`,
+    `Media`, `Office & Editing`, `People`, `Security & Warnings`,
+    `System & Devices`, `Time`, `Weather & Nature`).
+  - `docs/icons-duotone/` (2 tons — mesma cor em duas opacidades, nunca
+    duas cores — 1248 ícones), mesmo conteúdo do regular em outro estilo.
+  - `docs/icons-snow-ui/` (101 ícones) — iconografia própria do kit SnowUI:
+    mistura ícones de conteúdo genérico (`Search`, `Close`, `Add`, `Star`,
+    `Help`...) com **swatches de estado de controle de UI**
+    (`Checkbox`/`Checkbox-1`...`8`, `Toggle`/`Toggle-1`...`5`,
+    `Radio`/`Radio-1`...`5` — cada número é um estado visual diferente do
+    mesmo controle: vazio, hover, marcado, focado...) e specs de
+    tamanho/estilo (`IconSize-N`, `Icon-N`). Gerados como ícones normais
+    (não são texto, respeitam a regra de inclusão), mas **não são conteúdo
+    genérico** — servem de referência visual pra quando `Checkbox.vue`/
+    `Toggle.vue`/`Radio.vue` forem construídos de verdade (ainda não
+    existem), não pra uso solto num botão/menu qualquer.
 
-Ambas as fontes não têm cor própria — herdam `color` do elemento pai via
-`currentColor`.
+Nenhuma das três fontes tem cor própria por padrão — herdam `color` do
+elemento pai via `currentColor`. Exceção de propósito: alguns ícones de
+`docs/icons-snow-ui/` (cutout de checkbox/toggle marcado) têm uma segunda
+cor literal (`fill="white"`) preservada tal como veio do Figma — o gerador
+só substitui por `currentColor` a cor placeholder padrão (`#1C1C1C`),
+qualquer outra cor explícita do SVG de origem é mantida.
 
 **Regra não-negociável de import — nunca por namespace:**
 
@@ -389,11 +407,15 @@ import { IconsRegular } from '@/shared/components/icons'
 ```
 
 `shared/components/icons/index.ts` de propósito **não** reexporta os
-ícones por esse motivo — só `createIcon`/`IconPath` (uso interno do
-gerador). `regular.generated.ts`/`duotone.generated.ts` são gerados,
-nunca editados à mão (mesmo espírito de `core/api/schema.d.ts`) — rodar
-`npm run generate:icons` de novo sempre que `docs/icons-regular/`/
-`docs/icons-duotone/` mudarem.
+ícones por esse motivo — só `createIcon`/`IconElement` (uso interno do
+gerador). `regular.generated.ts`/`duotone.generated.ts`/`snow-ui.generated.ts`
+são gerados, nunca editados à mão (mesmo espírito de `core/api/schema.d.ts`)
+— rodar `npm run generate:icons` de novo sempre que `docs/icons-regular/`/
+`docs/icons-duotone/`/`docs/icons-snow-ui/` mudarem. O gerador tolera pasta
+de origem ausente (pula com aviso, mantém o `.generated.ts` já existente) —
+`docs/icons-regular/`/`docs/icons-duotone/` já foram removidas do disco
+depois de geradas (só o resultado importa, o export bruto do Figma não
+precisa ficar versionado pra sempre).
 
 ### Input (`shared/components/ui/Input.vue`)
 
@@ -485,10 +507,16 @@ Media queries sempre `min-width` (mobile-first) — sem exceção.
   precificação (Fase 4 de `docs/planejamento/plano-implementacao.md`) é o
   primeiro lugar que vai exigir isso — os tokens de `rounded`/`spacing`
   reservados (16, 24...) esperam por eles.
-- **1248 ícones gerados não foram revisados um a um visualmente** — a
-  estrutura é uniforme e validada programaticamente (todo `<path>`
-  extraído, `fill` sempre trocado por `currentColor`, viewBox preservado
-  por ícone), mas não há como conferir manualmente cada pictograma
-  individual. Se um ícone específico renderizar errado, o bug mais provável
-  é no SVG de origem (`docs/icons-regular/`/`docs/icons-duotone/`), não no
+- **Os quase 2600 ícones gerados não foram revisados um a um
+  visualmente** — a estrutura é uniforme e validada programaticamente
+  (todo `<path>`/`<circle>` extraído, `fill` trocado por `currentColor`
+  exceto cor explícita preservada, viewBox por ícone), mas não há como
+  conferir manualmente cada pictograma individual. Se um ícone específico
+  renderizar errado, o bug mais provável é no SVG de origem, não no
   gerador.
+- **`Loading1` (`docs/icons-snow-ui/Loading-1.svg`) perde o efeito de
+  gradiente cônico** — o Figma exportou esse spinner com um hack de
+  `foreignObject`/`conic-gradient` que não é um `<path>`/`<circle>` de
+  verdade; o gerador ignora esse elemento (não tem como reproduzir gradiente
+  cônico com a factory atual) e mantém só o anel sólido de fallback que o
+  próprio SVG já trazia — degrada bem (não quebra), só perde o fade.

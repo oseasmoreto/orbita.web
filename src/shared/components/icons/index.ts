@@ -1,8 +1,11 @@
 /**
  * Ícones do design system (docs/design/design-system.md), gerados a partir
- * de docs/icons-regular/ e docs/icons-duotone/ via `npm run generate:icons`
- * (scripts/generate-icons.mjs). Cor sempre `currentColor` (herda do
- * elemento pai via CSS `color`) — nunca uma cor fixa por ícone.
+ * de docs/icons-regular/, docs/icons-duotone/ e docs/icons-snow-ui/ via
+ * `npm run generate:icons` (scripts/generate-icons.mjs). Cor sempre
+ * `currentColor` (herda do elemento pai via CSS `color`) — nunca uma cor
+ * fixa por ícone, exceto quando o SVG de origem já tinha uma cor literal
+ * diferente do placeholder padrão (ex.: cutout branco de um checkbox
+ * marcado em `snow-ui.generated.ts` — preservado de propósito).
  *
  * **Sempre importe o ícone direto do módulo gerado, nunca por namespace
  * daqui** — achado real (ver docs/planejamento/plano-implementacao.md):
@@ -17,5 +20,5 @@
  * `<Icon :icon="Check" />`
  */
 
-export type { IconPath } from './createIcon'
+export type { IconElement } from './createIcon'
 export { createIcon } from './createIcon'

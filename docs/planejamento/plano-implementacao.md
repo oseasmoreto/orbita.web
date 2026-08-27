@@ -131,6 +131,50 @@ propósito — import tem que ser sempre direto do módulo gerado
 (`import { Check } from '.../icons/regular.generated'`). Medido com
 `npm run build` antes/depois da correção, não só inferido.
 
+### Extensão — terceiro conjunto `docs/icons-snow-ui/` (concluída)
+
+101 ícones do próprio kit SnowUI, estruturalmente diferentes dos dois
+primeiros (misturam ícone de conteúdo genérico com swatch de estado de
+controle — `Checkbox-N`/`Toggle-N`/`Radio-N`, cada número é um estado
+visual do mesmo controle, não um ícone novo). Gerados como ícones normais
+(nenhum é texto — mesma régua de inclusão da Fase 0.6 original), mas
+documentados em `docs/design/design-system.md` como referência de estado
+de UI, não conteúdo genérico solto.
+
+**3 bugs reais pegos durante esta extensão** (registro, não repetir):
+1. `docs/icons-regular/`/`docs/icons-duotone/` **já não existiam mais em
+   disco** (geradas e removidas depois, ficou só o `.generated.ts`) — o
+   script quebrava com `ENOENT` ao tentar reler pra regenerar os três de
+   uma vez. Corrigido: `generateModule` agora checa `existsSync` e pula com
+   aviso, mantendo o `.generated.ts` já existente, em vez de travar a
+   geração inteira do que ainda está disponível.
+2. `Checkbox-N`/`Toggle-N`/`Radio-N` usam `fill="white"` literal (cutout do
+   estado marcado) e `Radio-1`/`Radio-4` usam `<circle>` em vez de
+   `<path>` — o gerador anterior (i) sempre trocava `fill` por
+   `currentColor` incondicionalmente (quebraria o cutout branco) e (ii) só
+   extraía `<path>` (perderia o círculo de fundo do radio). Corrigido:
+   `createIcon`/o gerador agora trabalham com tuplas `[tag, attrs]`
+   genéricas (`path` ou `circle`), e só a cor placeholder `#1C1C1C`
+   vira `currentColor` — qualquer outra cor literal do SVG de origem é
+   preservada. **Efeito colateral**: isso mudou o formato de dado que
+   `regular.generated.ts`/`duotone.generated.ts` guardam — como a fonte
+   desses dois já não existia mais (achado 1), migrei o dado já gerado
+   pro formato novo com um script pontual (envolver cada entrada existente
+   em `["path", {...}]`), sem precisar re-derivar dos SVGs.
+3. `Loading-1.svg` tinha um atributo `data-figma-gradient-fill` com um
+   JSON gigante (metadado de um gradiente cônico que o Figma não exportou
+   como gradiente SVG de verdade) — o extrator de atributo antigo não
+   distinguia isso de um atributo válido e vazava o JSON inteiro pro
+   arquivo gerado. Corrigido filtrando qualquer atributo `data-figma-*`.
+   Achado relacionado: o mesmo ícone tinha o `<path>` visível duplicado
+   dentro de um `<defs><clipPath>` (definição de recorte, nunca forma
+   visível) — corrigido removendo o conteúdo de `<defs>` antes de
+   extrair, pra não desenhar a mesma silhueta duas vezes por engano.
+
+Todos os três achados foram confirmados visualmente (ícone renderizado num
+browser real, não só inferido pelo código) antes de considerar a extensão
+concluída.
+
 ---
 
 ## Fase 1 — Identity
