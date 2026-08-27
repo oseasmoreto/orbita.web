@@ -8,6 +8,8 @@ declare module 'vue-router' {
     requiresAuth?: boolean
     /** Restringe a rota a `USER.role` específicos — sem granularidade além disso no MVP. */
     roles?: UserRole[]
+    /** Título exibido no header do `AppLayout` e na aba do browser. */
+    title?: string
   }
 }
 
@@ -30,5 +32,9 @@ export function setupRouterGuards(router: Router): void {
     }
 
     return true
+  })
+
+  router.afterEach((to) => {
+    document.title = to.meta.title ? `${to.meta.title} · Orbita` : 'Orbita'
   })
 }
