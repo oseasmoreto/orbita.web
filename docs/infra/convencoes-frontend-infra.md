@@ -76,6 +76,7 @@ src/
 ### 3.1 Componentes "micro" (`shared/components/ui/`)
 
 - Átomo de design system: não sabe nada de domínio, não importa `modules/*`, não faz chamada de API. Recebe dado, emite evento (`Button`, `Input`, `Select`, `Badge`, `Modal`, `Icon`).
+- **`docs/design/design-system.md` é a fonte de verdade visual, obrigatória sem exceção** (regra não-negociável, repetida no `CLAUDE.md` raiz do repo): cor, tipografia, espaçamento, raio e as receitas de componente já documentadas ali. Todo átomo/bloco novo consome só as variáveis SCSS de `core/styles/_variables.scss` (que por sua vez só são aliases de `core/styles/_tokens.scss`) — nunca um hex/px direto no componente, nunca um valor fora da escala documentada. Componente novo entra na seção "Components" do design system no mesmo PR que o introduz.
 - **Decisão 2026-08-26 — não reinventar primitivo acessível do zero**: componente com comportamento complexo (`Select`, `Modal`/`Dialog`, `Popover`, `Tooltip`, `Tabs`, `Combobox`) é sempre construído **em cima** do primitivo headless equivalente da **Reka UI** — só estiliza via SCSS/props em cima do que a lib já resolve (foco, teclado, ARIA, posicionamento). Nunca implementar isso à mão quando a Reka UI já cobre. `vaul-vue` é o primitivo específico pro padrão de *bottom sheet*/drawer mobile (não coberto pela Reka UI) — usar em vez de simular drawer com `Modal`. Ícones sempre via `@lucide/vue` (`Icon` = wrapper fino em cima dele, nunca SVG solto colado no componente).
 - Estado interno permitido só quando é puramente de UI (ex: `Modal` sabe se está aberto, `Input` sabe se está focado) — nunca estado de negócio.
 - É o componente mais barato de tornar 100% reutilizável — qualquer prop nova deve ser genérica (`variant`, `size`, `disabled`), nunca nomeada por caso de uso de um módulo específico (ex: nunca `showMarketplaceIcon`).
@@ -154,9 +155,11 @@ Esta é a camada equivalente ao `Domain/Services` + `Application/Actions` do bac
 
 ## 7. SCSS
 
-- Estrutura em `core/styles/`: `_variables.scss` (cores, espaçamento, breakpoints, tipografia), `_mixins.scss`, `_reset.scss`, `main.scss` (único ponto de entrada global).
+- **Fonte de verdade é `docs/design/design-system.md`** (gerado a partir de `docs/design/tokens/` — paleta SnowUI, fonte Inter Variable, densidade Standard). Regra não-negociável: nenhuma cor, espaçamento, raio, tamanho ou peso de fonte hardcoded num componente — sempre pela variável SCSS correspondente. Precisar de um valor que não existe na escala já trazida? Ele existe no export de origem (`docs/design/tokens/`) — traga o valor que falta pra `_tokens.scss`, nunca invente um novo fora dele.
+- Estrutura em `core/styles/`: `_tokens.scss` (as custom properties CSS de verdade — `:root`/`[data-theme='dark']` — importado **uma única vez**, só por `main.scss`, nunca por um componente: como são regras CSS reais, `@use` num componente duplicaria o bloco inteiro no CSS compilado daquele componente, já que cada `.vue` é uma unidade de compilação Sass separada), `_variables.scss` (só `$nome: var(--x)`, aliases finos sem nenhuma regra CSS própria — esse sim é `@use`d livremente por qualquer componente), `_mixins.scss`, `_reset.scss`, `main.scss` (único ponto de entrada global, importa `tokens` + `reset` + `variables`).
 - Componentes usam **scoped styles** (`<style scoped lang="scss">`) por padrão — SCSS global só pra tokens de design (variáveis/mixins) e reset.
-- Nunca hardcode cor/espaçamento direto no componente — sempre via variável SCSS (`$color-primary`, `$spacing-md`).
+- Nunca hardcode cor/espaçamento direto no componente — sempre via variável SCSS (`$color-primary`, `$spacing-16`).
+- Fonte auto-hospedada (`@fontsource-variable/inter`), nunca CDN do Google Fonts — o app é PWA offline-first (seção 13.5) e o service worker já faz precache de `.woff2`; uma fonte via CDN quebraria isso e adicionaria uma requisição de rede fora do controle do precache.
 - BEM como convenção de classe quando não estiver isolado por scoped style (ex: componente com muitas variações de estado): `.pricing-card__header--active`.
 - Mobile-first: media queries sempre `min-width`, nunca `max-width` como padrão.
 
@@ -338,6 +341,7 @@ Decisões fechadas sobre linguagem/ferramentas. Lib nova fora dessa lista passa 
 
 | Item | Escolha | Observação |
 |---|---|---|
+| Fonte | `@fontsource-variable/inter` (Inter Variable, auto-hospedada) | Design system (`docs/design/design-system.md`) — nunca CDN do Google Fonts, quebraria o precache do PWA (seção 7/13.5). Família registrada é `"Inter Variable"`, não `"Inter"`. |
 | Primitivos headless | Reka UI | Fundação de `shared/components/ui/` pra componente com comportamento complexo — seção 3.1. |
 | Drawer/bottom sheet | `vaul-vue` | Complementa a Reka UI pro padrão mobile de drawer — seção 3.1. |
 | Ícones | `@lucide/vue` | Fonte única de ícone — nunca SVG solto colado em componente. |

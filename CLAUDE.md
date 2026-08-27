@@ -22,6 +22,9 @@ ERD isolado (fonte de verdade estrutural das tabelas — útil pra tipar `module
 Diagrama de jornada do usuário isolado (login vs. cadastro, verificação de e-mail, recuperação de senha, pagamento, limite de plano, preço fora da margem — mapeia as Views/guards que este frontend implementa):
 @docs/negocio/jornada-usuario.mmd
 
+Design system (fonte de verdade visual — cor, tipografia, espaçamento, raio, componentes de UI já implementados). Gerado a partir de `docs/design/tokens/`; qualquer componente/view novo segue isso, sem exceção:
+@docs/design/design-system.md
+
 Convenções de backend (`docs/infra/convencoes-backend-infra.md`, cópia neste repo) não são carregadas automaticamente aqui — consultar sob demanda quando precisar entender a forma do endpoint/DTO que o `services/` de um módulo vai consumir, ou os detalhes de CORS/Sanctum citados na seção 13.3 do doc de infra do frontend. Docs de implementação de API (padrão de resposta/envelope, mensagens de erro, roteiro de cadastro/assinatura/login) ficam no repositório `orbita.api`, em `docs/api/` — não existem cópia aqui, consultar lá quando integrar um novo endpoint.
 
 ---
@@ -40,6 +43,7 @@ Convenções de backend (`docs/infra/convencoes-backend-infra.md`, cópia neste 
 - **1 login = 1 assinatura ativa.** Sem UI de conta compartilhada/multiusuário no MVP.
 - **TypeScript `strict: true` sem exceção, nunca `any`** — payload realmente desconhecido usa `unknown` + narrowing explícito.
 - **Todo código é em inglês, sem exceção** — componente, composable, variável, prop, emit, rota, nome de teste. Só prosa de documentação (`.md`) e diagramas de fluxo/jornada (`.mmd` do tipo `flowchart`) ficam em português — regra completa na seção "Convenção de idioma nos documentos" do `CLAUDE.md` raiz e seção 10 de `docs/infra/convencoes-frontend-infra.md`.
+- **`docs/design/design-system.md` é obrigatório, sem exceção.** Nenhuma cor, espaçamento, raio, tamanho ou peso de fonte é hardcoded num componente — sempre via variável SCSS de `core/styles/_variables.scss` (`$color-primary`, `$spacing-16`, `$radius-8`...), que por sua vez são aliases das custom properties definidas em `core/styles/_tokens.scss`. Precisa de um valor que não existe na escala documentada? Ele está no export de origem (`docs/design/tokens/`) — traga o valor que falta, nunca invente um novo. Componente novo em `shared/components/ui/` ou `blocks/` entra na seção "Components" do design system no mesmo PR.
 
 ---
 

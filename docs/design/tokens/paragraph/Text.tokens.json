@@ -1,0 +1,69 @@
+{
+  "8": {
+    "$type": "number",
+    "$value": 0,
+    "$extensions": {
+      "com.figma.variableId": "VariableID:71877:1655",
+      "com.figma.scopes": ["PARAGRAPH_SPACING"]
+    }
+  },
+  "10": {
+    "$type": "number",
+    "$value": 0,
+    "$extensions": {
+      "com.figma.variableId": "VariableID:71877:1656",
+      "com.figma.scopes": ["PARAGRAPH_SPACING"]
+    }
+  },
+  "12": {
+    "$type": "number",
+    "$value": 0,
+    "$extensions": {
+      "com.figma.variableId": "VariableID:71877:1657",
+      "com.figma.scopes": ["PARAGRAPH_SPACING"]
+    }
+  },
+  "14": {
+    "$type": "number",
+    "$value": 0,
+    "$extensions": {
+      "com.figma.variableId": "VariableID:71877:1658",
+      "com.figma.scopes": ["PARAGRAPH_SPACING"]
+    }
+  },
+  "18": {
+    "$type": "number",
+    "$value": 0,
+    "$extensions": {
+      "com.figma.variableId": "VariableID:71877:1659",
+      "com.figma.scopes": ["PARAGRAPH_SPACING"]
+    }
+  },
+  "24": {
+    "$type": "number",
+    "$value": 0,
+    "$extensions": {
+      "com.figma.variableId": "VariableID:71877:1660",
+      "com.figma.scopes": ["PARAGRAPH_SPACING"]
+    }
+  },
+  "36": {
+    "$type": "number",
+    "$value": 0,
+    "$extensions": {
+      "com.figma.variableId": "VariableID:71877:1661",
+      "com.figma.scopes": ["PARAGRAPH_SPACING"]
+    }
+  },
+  "48": {
+    "$type": "number",
+    "$value": 0,
+    "$extensions": {
+      "com.figma.variableId": "VariableID:71877:1662",
+      "com.figma.scopes": ["PARAGRAPH_SPACING"]
+    }
+  },
+  "$extensions": {
+    "com.figma.modeName": "Text"
+  }
+}

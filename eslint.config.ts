@@ -73,6 +73,16 @@ export default [
     },
   },
 
+  // ── Design-system atoms ───────────────────────────────────────────────────
+  // Nome de átomo (Button, Icon, Input...) é de propósito uma palavra só —
+  // seção 3.1 de docs/infra/convencoes-frontend-infra.md.
+  {
+    files: ['src/shared/components/ui/**/*.vue'],
+    rules: {
+      'vue/multi-word-component-names': 'off',
+    },
+  },
+
   // ── TypeScript files ──────────────────────────────────────────────────────
   {
     files: ['**/*.ts', '**/*.tsx'],
@@ -110,7 +120,9 @@ export default [
       eqeqeq: ['error', 'always'],
 
       // Base ESLint rules
-      'no-console': 'warn',
+      // console.error é o canal sancionado do app.config.errorHandler (seção 14
+      // de docs/infra/convencoes-frontend-infra.md) — console.log/warn seguem banidos.
+      'no-console': ['warn', { allow: ['error'] }],
       'no-debugger': 'error',
       'no-var': 'error',
       'prefer-const': 'error',

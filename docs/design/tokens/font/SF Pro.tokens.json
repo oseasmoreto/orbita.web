@@ -1,0 +1,22 @@
+{
+  "Font": {
+    "$type": "string",
+    "$value": "SF Pro",
+    "$extensions": {
+      "com.figma.variableId": "VariableID:71877:1650",
+      "com.figma.scopes": ["FONT_FAMILY"],
+      "com.figma.type": "string"
+    }
+  },
+  "Letter spacing": {
+    "$type": "number",
+    "$value": 0,
+    "$extensions": {
+      "com.figma.variableId": "VariableID:71889:30921",
+      "com.figma.scopes": ["LETTER_SPACING"]
+    }
+  },
+  "$extensions": {
+    "com.figma.modeName": "SF Pro"
+  }
+}

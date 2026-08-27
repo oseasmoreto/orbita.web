@@ -1,0 +1,105 @@
+// Aliases Sass dos tokens de design — fonte de verdade é
+// docs/design/design-system.md (gerado a partir de docs/design/tokens/,
+// paleta SnowUI + fonte Inter + densidade Standard). Regra não-negociável
+// (seção "Design system" de docs/infra/convencoes-frontend-infra.md): nunca
+// hardcode cor/espaçamento/raio/tamanho direto no componente — sempre via
+// variável SCSS daqui (`$color-primary`, `$spacing-16`...), nunca um
+// hex/px solto.
+//
+// Este arquivo contém só `$nome: var(--x)` — nenhuma regra CSS de verdade,
+// então pode ser `@use`d por qualquer componente sem duplicar nada no CSS
+// compilado. As custom properties em si (`--color-primary`...) vivem em
+// `_tokens.scss`, importado uma única vez por `main.scss` — nunca aqui (ver
+// o comentário desse arquivo pro motivo). Nomes seguem o valor
+// numérico/semântico do token original do Figma (`docs/design/tokens/`),
+// não um nome inventado — só "Black"/"White" viraram "ink"/"paper" (ver
+// design-system.md, seção Colors, para o porquê).
+
+// Breakpoints — não cobertos por docs/design/tokens/ (fora do escopo do
+// export de design), mantidos da Fase 0. Mobile-first, sempre min-width.
+$breakpoint-sm: 40rem;
+$breakpoint-md: 64rem;
+$breakpoint-lg: 80rem;
+
+$color-primary: var(--color-primary);
+$color-ink: var(--color-ink);
+$color-ink-80: var(--color-ink-80);
+$color-ink-40: var(--color-ink-40);
+$color-ink-20: var(--color-ink-20);
+$color-ink-10: var(--color-ink-10);
+$color-ink-4: var(--color-ink-4);
+$color-paper: var(--color-paper);
+$color-paper-80: var(--color-paper-80);
+$color-paper-40: var(--color-paper-40);
+$color-paper-20: var(--color-paper-20);
+$color-paper-10: var(--color-paper-10);
+$color-paper-4: var(--color-paper-4);
+$color-bg-1: var(--color-bg-1);
+$color-bg-2: var(--color-bg-2);
+$color-bg-3: var(--color-bg-3);
+$color-surface-1: var(--color-surface-1);
+$color-surface-2: var(--color-surface-2);
+$color-surface-3: var(--color-surface-3);
+$color-accent-purple: var(--color-accent-purple);
+$color-accent-indigo: var(--color-accent-indigo);
+$color-accent-blue: var(--color-accent-blue);
+$color-accent-cyan: var(--color-accent-cyan);
+$color-accent-mint: var(--color-accent-mint);
+$color-accent-green: var(--color-accent-green);
+$color-accent-yellow: var(--color-accent-yellow);
+$color-accent-orange: var(--color-accent-orange);
+$color-accent-red: var(--color-accent-red);
+$color-tint-1: var(--color-tint-1);
+$color-tint-2: var(--color-tint-2);
+$color-logo-1: var(--color-logo-1);
+$color-logo-2: var(--color-logo-2);
+
+$font-family-base: var(--font-family-base);
+$letter-spacing-base: var(--letter-spacing-base);
+$font-weight-regular: var(--font-weight-regular);
+$font-weight-semibold: var(--font-weight-semibold);
+$font-size-2xs: var(--font-size-2xs);
+$font-size-xs: var(--font-size-xs);
+$font-size-sm: var(--font-size-sm);
+$font-size-md: var(--font-size-md);
+$font-size-lg: var(--font-size-lg);
+$font-size-xl: var(--font-size-xl);
+$font-size-2xl: var(--font-size-2xl);
+$font-size-3xl: var(--font-size-3xl);
+
+$spacing-0: var(--spacing-0);
+$spacing-4: var(--spacing-4);
+$spacing-8: var(--spacing-8);
+$spacing-12: var(--spacing-12);
+$spacing-16: var(--spacing-16);
+$spacing-20: var(--spacing-20);
+$spacing-24: var(--spacing-24);
+$spacing-28: var(--spacing-28);
+$spacing-40: var(--spacing-40);
+$spacing-48: var(--spacing-48);
+
+$size-12: var(--size-12);
+$size-16: var(--size-16);
+$size-20: var(--size-20);
+$size-24: var(--size-24);
+$size-28: var(--size-28);
+$size-32: var(--size-32);
+$size-40: var(--size-40);
+$size-48: var(--size-48);
+$size-56: var(--size-56);
+$size-64: var(--size-64);
+$size-72: var(--size-72);
+$size-80: var(--size-80);
+
+$radius-0: var(--radius-0);
+$radius-4: var(--radius-4);
+$radius-8: var(--radius-8);
+$radius-12: var(--radius-12);
+$radius-16: var(--radius-16);
+$radius-20: var(--radius-20);
+$radius-24: var(--radius-24);
+$radius-28: var(--radius-28);
+$radius-32: var(--radius-32);
+$radius-40: var(--radius-40);
+$radius-48: var(--radius-48);
+$radius-80: var(--radius-80);

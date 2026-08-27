@@ -1,0 +1,101 @@
+{
+  "0": {
+    "$type": "number",
+    "$value": 0,
+    "$extensions": {
+      "com.figma.variableId": "VariableID:12345:4045",
+      "com.figma.scopes": ["CORNER_RADIUS"]
+    }
+  },
+  "4": {
+    "$type": "number",
+    "$value": 12,
+    "$extensions": {
+      "com.figma.variableId": "VariableID:11828:14224",
+      "com.figma.scopes": ["CORNER_RADIUS"]
+    }
+  },
+  "8": {
+    "$type": "number",
+    "$value": 16,
+    "$extensions": {
+      "com.figma.variableId": "VariableID:11828:14225",
+      "com.figma.scopes": ["CORNER_RADIUS"]
+    }
+  },
+  "12": {
+    "$type": "number",
+    "$value": 20,
+    "$extensions": {
+      "com.figma.variableId": "VariableID:11828:14226",
+      "com.figma.scopes": ["CORNER_RADIUS"]
+    }
+  },
+  "16": {
+    "$type": "number",
+    "$value": 24,
+    "$extensions": {
+      "com.figma.variableId": "VariableID:11828:14227",
+      "com.figma.scopes": ["CORNER_RADIUS"]
+    }
+  },
+  "20": {
+    "$type": "number",
+    "$value": 28,
+    "$extensions": {
+      "com.figma.variableId": "VariableID:14836:69678",
+      "com.figma.scopes": ["CORNER_RADIUS"]
+    }
+  },
+  "24": {
+    "$type": "number",
+    "$value": 32,
+    "$extensions": {
+      "com.figma.variableId": "VariableID:11828:14228",
+      "com.figma.scopes": ["CORNER_RADIUS"]
+    }
+  },
+  "28": {
+    "$type": "number",
+    "$value": 36,
+    "$extensions": {
+      "com.figma.variableId": "VariableID:67317:1368",
+      "com.figma.scopes": ["CORNER_RADIUS"]
+    }
+  },
+  "32": {
+    "$type": "number",
+    "$value": 40,
+    "$extensions": {
+      "com.figma.variableId": "VariableID:11828:14229",
+      "com.figma.scopes": ["CORNER_RADIUS"]
+    }
+  },
+  "40": {
+    "$type": "number",
+    "$value": 48,
+    "$extensions": {
+      "com.figma.variableId": "VariableID:67317:1369",
+      "com.figma.scopes": ["CORNER_RADIUS"]
+    }
+  },
+  "48": {
+    "$type": "number",
+    "$value": 56,
+    "$extensions": {
+      "com.figma.variableId": "VariableID:67317:1370",
+      "com.figma.scopes": ["CORNER_RADIUS"]
+    }
+  },
+  "80": {
+    "$type": "number",
+    "$value": 88,
+    "$extensions": {
+      "com.figma.variableId": "VariableID:11828:14230",
+      "com.figma.scopes": ["CORNER_RADIUS"]
+    }
+  },
+  "$extensions": {
+    "com.figma.modeName": "Expanded (+8)"
+  }
+}

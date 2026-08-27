@@ -1,0 +1,21 @@
+{
+  "Regular": {
+    "$type": "number",
+    "$value": 400,
+    "$extensions": {
+      "com.figma.variableId": "VariableID:60927:208",
+      "com.figma.scopes": ["FONT_STYLE"]
+    }
+  },
+  "Semibold": {
+    "$type": "number",
+    "$value": 600,
+    "$extensions": {
+      "com.figma.variableId": "VariableID:60927:209",
+      "com.figma.scopes": ["FONT_STYLE"]
+    }
+  },
+  "$extensions": {
+    "com.figma.modeName": "Regular / Semi Bold"
+  }
+}

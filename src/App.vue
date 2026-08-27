@@ -6,5 +6,6 @@ useAppUpdatePrompt()
 </script>
 
 <template>
+  <RouterView />
   <Toaster rich-colors position="top-right" />
 </template>

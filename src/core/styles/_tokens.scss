@@ -1,0 +1,129 @@
+// Custom properties CSS reais (docs/design/design-system.md, gerado a
+// partir de docs/design/tokens/ — paleta SnowUI + fonte Inter + densidade
+// Standard). Este arquivo só é `@use`d UMA VEZ, em main.scss — nunca por um
+// componente/view individual: como o `:root { ... }` abaixo é CSS de
+// verdade (não Sass puro), qualquer `.vue` que desse `@use` aqui duplicaria
+// o bloco inteiro no próprio `<style>` compilado (cada SFC é uma unidade de
+// compilação Sass separada). Componente consome os tokens via
+// `_variables.scss` (`$color-primary`...), que só contém `$nome: var(--x)`
+// — isso não emite CSS nenhum, então pode ser `@use`d livremente.
+:root {
+  // Cor — SnowUI-Light
+  --color-primary: #000000;
+  --color-ink: #000000;
+  --color-ink-80: rgb(0 0 0 / 80%);
+  --color-ink-40: rgb(0 0 0 / 40%);
+  --color-ink-20: rgb(0 0 0 / 20%);
+  --color-ink-10: rgb(0 0 0 / 10%);
+  --color-ink-4: rgb(0 0 0 / 4%);
+  --color-paper: #ffffff;
+  --color-paper-80: rgb(255 255 255 / 80%);
+  --color-paper-40: rgb(255 255 255 / 40%);
+  --color-paper-20: rgb(255 255 255 / 20%);
+  --color-paper-10: rgb(255 255 255 / 10%);
+  --color-paper-4: rgb(255 255 255 / 4%);
+  --color-bg-1: #ffffff;
+  --color-bg-2: #f9f9fa;
+  --color-bg-3: rgb(255 255 255 / 90%);
+  --color-surface-1: rgb(255 255 255 / 80%);
+  --color-surface-2: rgb(0 0 0 / 3%);
+  --color-surface-3: rgb(0 0 0 / 2%);
+  --color-accent-purple: #b899eb;
+  --color-accent-indigo: #adadfb;
+  --color-accent-blue: #7dbbff;
+  --color-accent-cyan: #a0bce8;
+  --color-accent-mint: #6be6d3;
+  --color-accent-green: #71dd8c;
+  --color-accent-yellow: #ffcc00;
+  --color-accent-orange: #ffb55b;
+  --color-accent-red: #ff4747;
+  --color-tint-1: #e6f1fd;
+  --color-tint-2: #edeefc;
+  --color-logo-1: #4c98fd;
+  --color-logo-2: #4f507f;
+
+  // Tipografia — Inter, escala "Paragraph" dos tokens. Nome da família é
+  // "Inter Variable" (não "Inter") — é como @fontsource-variable/inter
+  // registra o @font-face; "Inter" sozinho não bate com nenhuma fonte
+  // carregada e cai silenciosamente pro fallback do stack.
+  --font-family-base: 'Inter Variable', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --letter-spacing-base: 0;
+  --font-weight-regular: 400;
+  --font-weight-semibold: 600;
+  --font-size-2xs: 8px;
+  --font-size-xs: 10px;
+  --font-size-sm: 12px;
+  --font-size-md: 14px;
+  --font-size-lg: 18px;
+  --font-size-xl: 24px;
+  --font-size-2xl: 36px;
+  --font-size-3xl: 48px;
+
+  // Espaçamento — densidade Standard
+  --spacing-0: 0px;
+  --spacing-4: 4px;
+  --spacing-8: 8px;
+  --spacing-12: 12px;
+  --spacing-16: 16px;
+  --spacing-20: 20px;
+  --spacing-24: 24px;
+  --spacing-28: 28px;
+  --spacing-40: 40px;
+  --spacing-48: 48px;
+
+  // Tamanho (ícone/avatar/controle) — densidade Standard
+  --size-12: 12px;
+  --size-16: 16px;
+  --size-20: 20px;
+  --size-24: 24px;
+  --size-28: 28px;
+  --size-32: 32px;
+  --size-40: 40px;
+  --size-48: 48px;
+  --size-56: 56px;
+  --size-64: 64px;
+  --size-72: 72px;
+  --size-80: 80px;
+
+  // Raio de borda — densidade Standard
+  --radius-0: 0px;
+  --radius-4: 4px;
+  --radius-8: 8px;
+  --radius-12: 12px;
+  --radius-16: 16px;
+  --radius-20: 20px;
+  --radius-24: 24px;
+  --radius-28: 28px;
+  --radius-32: 32px;
+  --radius-40: 40px;
+  --radius-48: 48px;
+  --radius-80: 80px;
+}
+
+// SnowUI-Dark — só os tokens estruturais mudam (ink/paper trocam de papel,
+// primary vira o acento indigo, bg/surface escurecem); acentos e tints
+// ficam idênticos ao modo claro. Reservado pra quando existir um toggle de
+// tema de verdade (nenhum composable liga `data-theme` ainda — ver "Known
+// Gaps" em design-system.md).
+[data-theme='dark'] {
+  --color-primary: var(--color-accent-indigo);
+  --color-ink: #ffffff;
+  --color-ink-80: rgb(255 255 255 / 80%);
+  --color-ink-40: rgb(255 255 255 / 40%);
+  --color-ink-20: rgb(255 255 255 / 20%);
+  --color-ink-10: rgb(255 255 255 / 15%);
+  --color-ink-4: rgb(255 255 255 / 10%);
+  --color-paper: #000000;
+  --color-paper-80: rgb(0 0 0 / 80%);
+  --color-paper-40: rgb(0 0 0 / 40%);
+  --color-paper-20: rgb(0 0 0 / 20%);
+  --color-paper-10: rgb(0 0 0 / 10%);
+  --color-paper-4: rgb(0 0 0 / 4%);
+  --color-bg-1: #333333;
+  --color-bg-2: rgb(255 255 255 / 4%);
+  --color-bg-3: rgb(64 64 64 / 90%);
+  --color-surface-1: rgb(255 255 255 / 4%);
+  --color-surface-2: rgb(0 0 0 / 10%);
+  --color-surface-3: rgb(255 255 255 / 4%);
+  --color-logo-2: #ededff;
+}

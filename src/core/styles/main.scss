@@ -1,0 +1,12 @@
+@use 'tokens';
+@use 'reset';
+@use 'variables' as *;
+
+body {
+  font-family: $font-family-base;
+  font-size: $font-size-md;
+  font-weight: $font-weight-regular;
+  letter-spacing: $letter-spacing-base;
+  color: $color-ink;
+  background-color: $color-bg-1;
+}

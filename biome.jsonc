@@ -61,6 +61,12 @@
           }
         }
       }
+    },
+    {
+      "includes": ["tests/**", "**/*.test.ts"],
+      "javascript": {
+        "globals": ["describe", "it", "expect", "beforeEach", "afterEach", "vi"]
+      }
     }
   ]
 }

@@ -1,0 +1,19 @@
+@use 'variables' as *;
+
+@mixin respond-above($breakpoint) {
+  @media (min-width: $breakpoint) {
+    @content;
+  }
+}
+
+@mixin focus-ring {
+  outline: 2px solid $color-primary;
+  outline-offset: 2px;
+}
+
+// Espaçamento após parágrafo == tamanho da fonte (token "Paragraph" de
+// docs/design/tokens/paragraph/) — só em prosa de verdade (<p>), nunca em
+// texto de UI (label/botão), que fica com o modo "Text" (0) por padrão.
+@mixin paragraph-spacing($font-size) {
+  margin-bottom: $font-size;
+}
