@@ -208,6 +208,23 @@ components:
   form-group-error:
     textColor: "{colors.accent-red}"
     typography: "{typography.label}"
+  modal-overlay:
+    backgroundColor: "{colors.ink-40}"
+  modal-content:
+    backgroundColor: "{colors.bg-1}"
+    rounded: "{rounded.16}"
+    padding: "24px"
+  drawer-overlay:
+    backgroundColor: "{colors.ink-40}"
+  drawer-content-sm:
+    backgroundColor: "{colors.bg-1}"
+    padding: "24px"
+  drawer-content-md:
+    backgroundColor: "{colors.bg-1}"
+    padding: "24px"
+  drawer-content-lg:
+    backgroundColor: "{colors.bg-1}"
+    padding: "24px"
 ---
 
 ## Overview
@@ -726,6 +743,103 @@ mensagem de erro, nunca decide regra de validação (isso é do composable
   Input-B/Select-B) pra não duplicar o rótulo.
 - `error` (opcional): mensagem abaixo do controle, `{colors.accent-red}`,
   `role="alert"`.
+
+### Modal (`shared/components/ui/Modal.vue`)
+
+**Sem frame próprio no Figma** (gap já registrado em
+`docs/design/catalogo-componentes.md`, seção 3) — construído direto sobre
+`Dialog*` da Reka UI (`DialogRoot`/`DialogPortal`/`DialogOverlay`/
+`DialogContent`/`DialogTitle`/`DialogDescription`/`DialogClose`) + tokens
+do design system, mesmo caminho já usado por Select/Tooltip.
+
+- Overlay `{colors.ink-40}`, conteúdo `{colors.bg-1}`, `{rounded.16}` —
+  primeiro uso desse raio (documentado como "reservado pra card" desde a
+  Fase 0, nenhum componente usava ainda).
+- Slots: default (corpo, só renderiza `.ui-modal-body` quando o slot tem
+  conteúdo — evita um espaço vazio quando o consumidor usa só
+  `title`/`description`, como o `ConfirmDialog` faz) e `footer` (ações,
+  mesmo padrão condicional).
+- Prop `title` obrigatória (sempre vira `DialogTitle`, a11y). `description`
+  é opcional — sem ela, mesmo achado do `DrawerTitle`/`Description` do
+  `AppSidebar`: Reka UI ainda exige uma `DialogDescription` associada, daí
+  entra escondida via `VisuallyHidden` (`as-child`), nunca `display:none`
+  (que também a removeria da árvore de acessibilidade).
+- Fecha via `DialogClose` (ícone `X`, canto superior direito), clique no
+  overlay ou `Esc` — os 3 confirmados em browser real.
+- `DialogPortal` teletransporta pro fim do `<body>`, mesmo achado já
+  documentado pro Select/Tooltip — todas as classes usam `:global(...)`
+  com seletor "plano" (nunca `&` aninhado dentro do `:global()`, é o bug
+  real já corrigido no Select — ver seção Select acima).
+
+### ConfirmDialog (`shared/components/blocks/ConfirmDialog.vue`)
+
+Composição de `Modal.vue` + 2 `Button` — confirmação de ação (cancelar
+assinatura, excluir produto, desconectar marketplace...). Só emite
+`confirm`/`cancel`, nunca decide o que a ação faz de verdade (bloco nunca
+tem regra de negócio, seção 3.2 de `docs/infra/convencoes-frontend-infra.md`).
+
+- **Sem variante "destrutiva"/vermelha de propósito**: `Button.vue` não
+  tem `variant="danger"` (removido na reimplementação da Tier 0 — o Figma
+  não define essa variante) e o design system só permite `{colors.primary}`
+  como cor de ação (ver "Don't" abaixo). Reintroduzir vermelho aqui
+  contradiria as duas decisões já tomadas — o botão de confirmar é sempre
+  `variant="primary"`, o de cancelar sempre `variant="outline"`.
+- Props: `title`, `description?`, `confirmLabel` (default "Confirmar"),
+  `cancelLabel` (default "Cancelar"). `v-model:open` + eventos `confirm`/
+  `cancel` — ambos fecham o diálogo automaticamente depois de emitir.
+
+### Drawer (`shared/components/ui/Drawer.vue`)
+
+**Pedido direto do usuário em 2026-08-27** (variação do `Modal`, não do
+Figma): painel lateral encostado em `top: 0`/`right: 0`, `height: 100vh`,
+3 tamanhos (`sm`/`md`/`lg`), com o mesmo efeito de slide já usado no drawer
+mobile da sidebar (`core/layouts/AppSidebar.vue`). Construído com o mesmo
+primitivo `vaul-vue` de lá, só que `direction="right"` em vez de `"left"` —
+reaproveita a mecânica de arrasto/animação em vez de reimplementá-la.
+
+- **Larguras sem grounding no Figma** (mesmo caso do `max-width` do
+  `Modal`) — decisão nossa: `sm` 320px, `md` 480px, `lg` 640px. Revisar se
+  um frame real de painel lateral aparecer depois.
+- Estrutura igual ao `Modal` (`title` obrigatório, `description?` com
+  fallback `VisuallyHidden`, slots `default`/`footer` só renderizam com
+  conteúdo, `DrawerClose` com ícone `X` no canto) — a diferença é só
+  geometria (`top`/`right`/altura total em vez de centralizado) e a
+  animação de slide/arrasto que o `vaul-vue` já resolve.
+- `vaul-vue` reexporta os primitivos `Dialog*` da Reka UI com nome
+  `Drawer*` (`DrawerTitle`/`DrawerDescription`/`DrawerPortal`/`DrawerClose`
+  são literalmente `Dialog*` por baixo) — `VisuallyHidden` não tem
+  reexport próprio no `vaul-vue`, importado direto de `reka-ui`.
+
+**Correção pedida pelo usuário em 2026-08-27, com referência visual de
+outro produto (não do Figma do design system)**: abaixo do breakpoint
+`md` (mesmo `64rem`/1024px já usado pra alternar `AppSidebar`/`AppHeader`
+entre mobile e desktop) o Drawer vira **bottom sheet** — desliza de baixo
+pra cima, sempre 100% de largura (os 3 tamanhos só valem no desktop),
+`DrawerHandle` (alça de arrastar) visível no topo. Acima do breakpoint
+continua painel lateral direito como antes.
+
+- **A troca de eixo é reativa via JS (`useMediaQuery` do `@vueuse/core`),
+  não só CSS**: o `direction` do `vaul-vue` (`'bottom'` no mobile,
+  `'right'` no desktop) controla a mecânica de arrasto/animação, então
+  puro CSS não bastaria — o componente precisa saber em qual eixo o
+  `vaul-vue` deve interpretar o gesto de arrastar pra fechar.
+- CSS mobile-first (sem media query = bottom sheet, `min-width: $breakpoint-md`
+  = painel lateral) — mesma convenção mobile-first já usada no resto do
+  projeto, nunca `max-width` como padrão.
+- `DrawerHandle` (primitivo próprio do `vaul-vue` pra bottom sheet)
+  estilizado como barra curta arredondada (`{colors.ink-20}`), escondida
+  via `display:none` acima do breakpoint — não existe equivalente no
+  painel lateral de desktop, que não tem gesto de arrasto vertical.
+- Confirmado em browser real nos dois viewports: mobile (390px) —
+  `bottom:0`/`left:0`/`right:0`, largura igual à da janela, handle visível;
+  desktop (1280px) — `top:0`/`right:0`, altura igual à da janela, largura
+  conforme `size`, handle escondido. Fecha com `Esc` nos dois casos.
+- **Achado real na verificação**: medir a posição (`getBoundingClientRect`)
+  logo após o clique que abre o painel ainda pega a animação de mola
+  (spring) do `vaul-vue` em andamento — `right`/`transform` só zeram de
+  vez depois dela estabilizar (~1s). Não é bug, é phys-based animation;
+  quem for testar isso de novo precisa esperar a animação terminar antes
+  de inspecionar posição/transform.
 
 ## Do's and Don'ts
 

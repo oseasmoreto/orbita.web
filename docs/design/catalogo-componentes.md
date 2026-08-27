@@ -75,11 +75,34 @@ dias) ou pedir pro usuário validar visualmente contra o arquivo original.
 | Date Picker | `DatePicker.vue` | Primitivo Reka UI (Popover + calendário) — o mais complexo do catálogo, variantes com hora/intervalo aumentam o escopo. Baixa prioridade — nenhuma tela do plano atual exige filtro de data ainda. |
 | Layout → `_Sidebar Item` + `Header-A` | `core/layouts/{AppLayout,AppSidebar,AppSidebarContent,AppSidebarNavItem,AppHeader}.vue` ✅ + `useAppShell.ts` ✅ | **Concluído em 2026-08-27** — não é um componente de UI solto, é infraestrutura de layout que faltava desde a Fase 0. `home` virou rota filha de um `AppLayout` pai no router (`meta.requiresAuth` propaga pros filhos automaticamente, sem repetir em cada rota). Sidebar/Header são componentes próprios (não inline no `AppLayout`) pra caber os grupos de nav e itens expansíveis do Sidebar do Figma (`_Sidebar Item` com seta revelando sub-itens) e a versão mobile — `AppSidebarNavItem.vue` é recursivo (`children` no tipo `NavItem`), `AppSidebar.vue` renderiza tanto a coluna estática (desktop) quanto um drawer (`vaul-vue`, mobile) reaproveitando o mesmo `AppSidebarContent.vue`. `core/layouts/useAppShell.ts` é o composable pedido — estado singleton em nível de módulo (menu mobile aberto/fechado, itens expandidos), testado em `tests/core/layouts/useAppShell.test.ts`. **Achado real, sistêmico**: `router/index.ts` foi o primeiro `.ts` do projeto a importar um `.vue` direto — faltava o shim `declare module '*.vue'` em `vite-env.d.ts` (o `vue-tsc` não precisa dele, mas o `tsc`/ESLint type-aware por baixo do `typescript-eslint` precisa), gerando falso-positivo `no-unsafe-assignment`. Corrigido, vale pra qualquer `.vue` importado de um `.ts` daqui pra frente. **2 achados reais adicionais** durante a extração do header/sidebar: (1) o botão hambúrguer ficava visível no desktop porque `.app-header__menu-button` (com o `display:none` do breakpoint) vinha *antes* de `.app-header__icon-button` (com `display:inline-flex` incondicional) no CSS — mesma especificidade, quem vem depois vence, então o `none` nunca tinha efeito; corrigido só reordenando os blocos. (2) o drawer mobile (`vaul-vue`, que usa Reka UI `Dialog` por baixo) avisava em runtime por falta de `DrawerTitle`/`DrawerDescription` (acessibilidade pra leitor de tela) — corrigido adicionando os dois, visualmente escondidos via padrão "sr-only" (não `display:none`, que também os removeria da árvore de acessibilidade). Os dois confirmados via browser real (computed style + console), não só lidos no código. |
 
-**Gap encontrado, não achado no Figma**: `Modal`/`Dialog`/`ConfirmDialog` já é
-exigido pela seção 3.1 do doc de convenções (primitivo Reka UI `Dialog`),
-mas não existe frame próprio nessa página do Figma — construir direto sobre
-o primitivo Reka UI + tokens do design system, sem referência visual do
-Figma pra essa rodada.
+**Gap encontrado, não achado no Figma** (resolvido em 2026-08-27):
+`Modal`/`Dialog`/`ConfirmDialog` já era exigido pela seção 3.1 do doc de
+convenções (primitivo Reka UI `Dialog`), mas não existe frame próprio nessa
+página do Figma — construído direto sobre o primitivo Reka UI + tokens do
+design system, sem referência visual do Figma. `Modal.vue`
+(`shared/components/ui/`) é o primitivo (título obrigatório, descrição
+opcional com fallback `VisuallyHidden`, slots default/footer condicionais,
+fecha via `X`/overlay/`Esc`); `ConfirmDialog.vue`
+(`shared/components/blocks/`) compõe `Modal` + 2 `Button` pra confirmação
+de ação, sem variante destrutiva/vermelha de propósito (`Button` não tem
+`variant="danger"`, decisão já tomada na Tier 0). Detalhe completo em
+design-system.md, seções Components → Modal / ConfirmDialog.
+
+**Pedido direto do usuário, fora do plano original do tier**: `Drawer.vue`
+(`shared/components/ui/`) — variação do `Modal` que abre como painel
+lateral (`top:0`/`right:0`, `height:100vh`) em 3 tamanhos (`sm` 320px/`md`
+480px/`lg` 640px), com o mesmo efeito de slide do drawer mobile da sidebar
+(`core/layouts/AppSidebar.vue`) — reaproveita o mesmo `vaul-vue`, só
+`direction="right"` em vez de `"left"`. Mesma estrutura do `Modal`
+(título/descrição/slots condicionais/`DrawerClose`), tamanhos sem
+grounding no Figma (decisão nossa, mesmo caso do `max-width` do `Modal`).
+**Correção pedida em seguida (mesmo dia), com referência visual de outro
+produto**: abaixo do breakpoint `md` vira bottom sheet (slide de baixo pra
+cima, `DrawerHandle` visível, sempre 100% de largura — os 3 tamanhos só
+valem no desktop) — `direction` do `vaul-vue` trocado reativamente
+(`useMediaQuery` do `@vueuse/core`), não só CSS, porque a mecânica de
+arrasto depende do eixo. Detalhe completo em design-system.md, seção
+Components → Drawer.
 
 ---
 
@@ -110,7 +133,7 @@ fase precisa — não uma ordem nova e desconectada.
 | 2 | `AppLayout` ✅ (sidebar + header, componentizados + `useAppShell.ts`) | **Concluído em 2026-08-27.** Nav list só com "Dashboard" por enquanto — mais itens/grupos entram junto com a rota real de cada fase, nunca link morto, mas a estrutura já suporta grupo com título e item com `children` (expansível) desde já. Header **não** replica tema claro/escuro, histórico ou painel lateral direito do Header-A do Figma (decisão explícita: nenhuma dessas features está documentada no roadmap do Orbita) — só título da página, sino de notificação e avatar (placeholder até `Avatar.vue`, Tier 3), mais um botão hambúrguer (só mobile) que abre o drawer da sidebar. |
 | 3 | `Badge` ✅, `Avatar` ✅, `Tooltip` ✅, `Spinner` ✅ | **Concluído em 2026-08-27.** Átomos de apoio usados transversalmente (perfil no header, status em qualquer lista, loading de qualquer chamada assíncrona). **Achado real, sistêmico**: `createIcon.ts` tinha `inheritAttrs: false` (bloqueando de propósito o `stroke-width` que `Icon.vue` sempre manda, só relevante pro `@lucide/vue`) — efeito colateral não percebido até `Spinner.vue` precisar de uma classe de animação: `class`/`style` também ficavam bloqueados, sem erro/warning nenhum, então nenhum consumidor de ícone gerado conseguia aplicar classe/estilo via `<Icon class="..." .../>` até agora. Corrigido com `useAttrs()` repassando `class`/`style` manualmente, mantendo o bloqueio do resto. Detalhe completo em `docs/design/design-system.md`, seção Components → Spinner. |
 | 4 | `FormGroup` ✅, `Search` ✅ | **Concluído em 2026-08-27.** Fecham a experiência de formulário completa — Fase 1 (`AccountView`) e Fase 3 (`ProductForm`). `Search` virou componente próprio (não variante de `Input.vue`, ver linha da seção 2) depois de examinar o frame real do Figma. |
-| 5 | `Modal`/`ConfirmDialog` | Necessário a partir da Fase 2 (cancelar assinatura) e reusado em praticamente toda fase depois (excluir produto, desconectar marketplace...). |
+| 5 | `Modal` ✅/`ConfirmDialog` ✅/`Drawer` ✅ | **Concluído em 2026-08-27.** Necessário a partir da Fase 2 (cancelar assinatura) e reusado em praticamente toda fase depois (excluir produto, desconectar marketplace...). Sem frame no Figma — construído sobre `Dialog*` da Reka UI, ver "Gap encontrado" na seção 3. `Drawer` foi pedido direto pelo usuário (não estava no plano original do tier): painel lateral `top:0`/`right:0`/`height:100vh` em 3 tamanhos (`sm`/`md`/`lg`), reaproveitando a mesma mecânica `vaul-vue` já usada no drawer mobile da sidebar (`direction="right"` em vez de `"left"`). |
 | 6 | `DataTable` | Bloco mais pesado do catálogo, mas é o que a Fase 3 (lista de produtos) e Fase 4 (marketplaces conectados) mais precisam. |
 | 7 | `Select`/`Dropdown` como menu de ação de linha | Reaproveita o átomo do Tier 1 — só faz sentido depois do `DataTable` existir. |
 | 8 | `Breadcrumb`, `Tab`/`TabBar` | Navegação secundária — ganha valor a partir da Fase 4/6, quando existem sub-seções (ex.: admin de marketplace com abas). |

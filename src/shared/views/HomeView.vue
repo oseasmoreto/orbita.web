@@ -13,12 +13,15 @@ import {
   Star,
   Trash,
 } from '@/shared/components/icons/regular.generated'
+import ConfirmDialog from '@/shared/components/blocks/ConfirmDialog.vue'
 import FormGroup from '@/shared/components/blocks/FormGroup.vue'
 import Avatar from '@/shared/components/ui/Avatar.vue'
 import Badge from '@/shared/components/ui/Badge.vue'
 import Button from '@/shared/components/ui/Button.vue'
 import Checkbox from '@/shared/components/ui/Checkbox.vue'
+import Drawer from '@/shared/components/ui/Drawer.vue'
 import Input from '@/shared/components/ui/Input.vue'
+import Modal from '@/shared/components/ui/Modal.vue'
 import Search from '@/shared/components/ui/Search.vue'
 import Select from '@/shared/components/ui/Select.vue'
 import Spinner from '@/shared/components/ui/Spinner.vue'
@@ -48,6 +51,14 @@ const searchEmpty = ref('')
 const searchFilled = ref('produto azul')
 
 const formGroupValue = ref('')
+
+const modalOpen = ref(false)
+const confirmDialogOpen = ref(false)
+const confirmDialogResult = ref('')
+
+const drawerSmOpen = ref(false)
+const drawerMdOpen = ref(false)
+const drawerLgOpen = ref(false)
 </script>
 
 <template>
@@ -172,6 +183,60 @@ const formGroupValue = ref('')
           <Select :options="marketplaceOptions" placeholder="Marketplace" />
         </FormGroup>
       </div>
+    </section>
+
+    <section class="showcase__section">
+      <h2>Modal / ConfirmDialog</h2>
+      <div class="showcase__row">
+        <Button variant="secondary" @click="modalOpen = true">Abrir Modal</Button>
+        <Button variant="outline" @click="confirmDialogOpen = true">Abrir ConfirmDialog</Button>
+        <span v-if="confirmDialogResult">Resultado: {{ confirmDialogResult }}</span>
+      </div>
+
+      <Modal
+        v-model="modalOpen"
+        description="Conteúdo livre no corpo, ações no footer."
+        title="Editar produto"
+      >
+        <Input label="Nome do produto" model-value="Camiseta azul" />
+        <template #footer>
+          <Button variant="outline" @click="modalOpen = false">Cancelar</Button>
+          <Button variant="primary" @click="modalOpen = false">Salvar</Button>
+        </template>
+      </Modal>
+
+      <ConfirmDialog
+        v-model="confirmDialogOpen"
+        cancel-label="Voltar"
+        confirm-label="Excluir"
+        description="Essa ação não pode ser desfeita."
+        title="Excluir produto?"
+        @cancel="confirmDialogResult = 'cancelado'"
+        @confirm="confirmDialogResult = 'confirmado'"
+      />
+    </section>
+
+    <section class="showcase__section">
+      <h2>Drawer</h2>
+      <div class="showcase__row">
+        <Button variant="secondary" @click="drawerSmOpen = true">Abrir sm</Button>
+        <Button variant="secondary" @click="drawerMdOpen = true">Abrir md</Button>
+        <Button variant="secondary" @click="drawerLgOpen = true">Abrir lg</Button>
+      </div>
+
+      <Drawer v-model="drawerSmOpen" size="sm" title="Painel pequeno">
+        <p>Conteúdo do painel (320px).</p>
+      </Drawer>
+      <Drawer v-model="drawerMdOpen" size="md" title="Painel médio">
+        <p>Conteúdo do painel (480px).</p>
+        <template #footer>
+          <Button variant="outline" @click="drawerMdOpen = false">Cancelar</Button>
+          <Button variant="primary" @click="drawerMdOpen = false">Salvar</Button>
+        </template>
+      </Drawer>
+      <Drawer v-model="drawerLgOpen" size="lg" title="Painel grande">
+        <p>Conteúdo do painel (640px).</p>
+      </Drawer>
     </section>
 
     <section class="showcase__section">
