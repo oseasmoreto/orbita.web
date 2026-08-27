@@ -240,6 +240,14 @@ components:
     backgroundColor: "{colors.bg-2}"
     rounded: "{rounded.8}"
     padding: "8px"
+  dropdown-menu-content:
+    backgroundColor: "{colors.bg-1}"
+    rounded: "{rounded.8}"
+    padding: "8px"
+  dropdown-menu-item:
+    textColor: "{colors.ink}"
+    typography: "{typography.body}"
+    rounded: "{rounded.8}"
 ---
 
 ## Overview
@@ -960,6 +968,40 @@ Title/Assigned to/Time Spend/Status) **não exigiu nenhuma mudança de
 código** — já é coberta pela API genérica do `DataTable` (`selectable`
 omitido, colunas sem `sortable`), confirmado renderizando o mesmo
 componente com esse conjunto de colunas.
+
+### DropdownMenu (`shared/components/ui/DropdownMenu.vue`)
+
+**Correção sobre a decisão original da Tier 1**: a linha "Form →
+`Type=Select-A/B`, Dropdown" tratava "Dropdown" como sinônimo do combobox
+`Select.vue` — escrita sem examinar o frame "Dropdown" de verdade do
+Figma (`COMPONENT_SET #4113:42552`). Ele não tem valor selecionado nem
+trigger de formulário: é um menu de ação (`_Dropdown Item` = ícone +
+texto, separador entre grupos), estrutura da família `DropdownMenu*` da
+Reka UI, não de `Select*`. Mesma classe de correção já feita pro
+`Search.vue` (Tier 4) — grounding contra o Figma real, não contra a
+primeira impressão da lista de componentes.
+
+- **Só a variante "Fewer Items" foi implementada** — o Figma também tem
+  "More Items" (busca dentro do menu, submenu com seta, item com toggle,
+  item com `Badge-Tag` de valor), mas esse conjunto é pensado pra um menu
+  de gerenciamento de coluna de planilha (Type/Sort/Filter/Hide/Wrap
+  Column/Delete Property), fora do que o Tier 7 pede (menu de ação de
+  linha do `DataTable`: Editar/Baixar/Excluir). Escopo revisitável se um
+  caso de uso real pedir submenu/busca dentro do menu.
+- Item: `{spacing.8}` de padding/gap, `{radius.8}`, hover/highlighted em
+  `{colors.ink-4}` (Figma usa "Black/5%", mesma aproximação já usada em
+  outros componentes). Ícone 16px (mesmo tamanho de "ícone de apoio" já
+  padronizado no Select). Separador: `1px` em `{colors.ink-4}`.
+- `backdrop-filter: blur(8px)` no container — aproximação do efeito "BG
+  blur 40" do Figma, mesmo critério já usado no Modal/Tooltip (não existe
+  token de blur na escala trazida).
+- `DropdownMenuPortal` teletransporta pro fim do `<body>`, mesmo achado
+  já documentado pro Select/Tooltip/Modal — todas as classes usam
+  `:global(...)` com seletor "plano" (nunca `&` aninhado, é o bug real já
+  corrigido no Select).
+- Verificado em browser real: menu abre com os 3 itens na ordem certa,
+  separador antes de "Excluir", clique emite `select` com a `key` do
+  item e fecha o menu.
 
 ## Do's and Don'ts
 

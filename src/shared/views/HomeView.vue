@@ -8,7 +8,9 @@ import {
   ArrowRight,
   Bell,
   Check,
+  DotsThreeOutlineVertical,
   Download,
+  PencilSimpleLine,
   Plus,
   Star,
   Trash,
@@ -22,6 +24,7 @@ import Avatar from '@/shared/components/ui/Avatar.vue'
 import Badge from '@/shared/components/ui/Badge.vue'
 import Button from '@/shared/components/ui/Button.vue'
 import Checkbox from '@/shared/components/ui/Checkbox.vue'
+import DropdownMenu from '@/shared/components/ui/DropdownMenu.vue'
 import Drawer from '@/shared/components/ui/Drawer.vue'
 import Input from '@/shared/components/ui/Input.vue'
 import Modal from '@/shared/components/ui/Modal.vue'
@@ -34,6 +37,7 @@ import type {
   DataTableColumn,
   DataTableSortDirection,
 } from '@/shared/components/ui/types/dataTable.type'
+import type { DropdownMenuOption } from '@/shared/components/ui/types/dropdownMenu.type'
 
 const checkboxUnchecked = ref(false)
 const checkboxChecked = ref(true)
@@ -82,6 +86,13 @@ const productColumns: DataTableColumn[] = [
   { key: 'margin', title: 'Margem' },
   { key: 'marketplace', title: 'Marketplace' },
   { key: 'createdAt', sortable: true, title: 'Cadastrado em' },
+  { key: 'operations', title: '' },
+]
+
+const rowActions: DropdownMenuOption[] = [
+  { icon: PencilSimpleLine, key: 'edit', label: 'Editar' },
+  { icon: Download, key: 'download', label: 'Baixar' },
+  { icon: Trash, key: 'delete', label: 'Excluir', separatorBefore: true },
 ]
 
 const productRows: ProductRow[] = [
@@ -113,6 +124,11 @@ const productRows: ProductRow[] = [
 
 const selectedProductIds = ref<string[]>([])
 const lastSortEvent = ref('nenhuma')
+const lastRowAction = ref('nenhuma')
+
+function handleRowAction(productName: string, actionKey: string): void {
+  lastRowAction.value = `${actionKey} (${productName})`
+}
 
 function handleSort(key: string, direction: DataTableSortDirection): void {
   lastSortEvent.value = direction ? `${key} (${direction})` : 'nenhuma'
@@ -340,7 +356,8 @@ const taskRows: TaskRow[] = [
       <h2>DataTable</h2>
       <p>
         Selecionados: {{ selectedProductIds.length }} · Última ordenação: {{ lastSortEvent }} ·
-        Última ação da toolbar: {{ lastToolbarAction }}
+        Última ação da toolbar: {{ lastToolbarAction }} · Última ação de linha:
+        {{ lastRowAction }}
       </p>
       <ListToolbar
         v-model:search="toolbarSearch"
@@ -367,6 +384,11 @@ const taskRows: TaskRow[] = [
             <Avatar :name="row.marketplace" :size="20" />
             <span>{{ row.marketplace }}</span>
           </div>
+        </template>
+        <template #cell-operations="{ row }">
+          <DropdownMenu :options="rowActions" @select="(key) => handleRowAction(row.name, key)">
+            <Button aria-label="Ações" :icon-before="DotsThreeOutlineVertical" variant="ghost" />
+          </DropdownMenu>
         </template>
       </DataTable>
       <PaginationNav v-model:current-page="currentPage" :total-pages="5" />
