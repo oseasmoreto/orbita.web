@@ -562,6 +562,24 @@ Mesmo tratamento visual do Input (fundo `{colors.bg-1}`, borda
   regras em `:global(...)` — técnica documentada do próprio Vue pra esse
   cenário exato (portal/teleport + scoped style). Confirmado inspecionando
   o DOM real antes e depois da correção, não só inferido.
+- **Achado real, reportado pelo usuário em 2026-08-27**: toda opção do
+  dropdown aparecia com a cor "apagada" de disabled (`{colors.ink-40}`),
+  mas continuava clicável/selecionável normalmente — a aparência e o
+  comportamento divergiam. Causa: dentro do bloco `:global(.ui-select-item)`,
+  as regras aninhadas com `&` (`&:focus-visible`, `&[data-highlighted]`,
+  `&[data-disabled]`) perdem a referência ao seletor-pai quando compiladas
+  — o CSS final virava só `.ui-select-item { color: ... }` **sem** o
+  atributo (`[data-disabled]` desaparecia por completo, não ficava só sem
+  o escopo), então a regra de "disabled" se aplicava a toda opção,
+  habilitada ou não. Confirmado inspecionando `document.styleSheets` direto
+  (a regra compilada realmente não tinha o atributo). **Corrigido**
+  reescrevendo como seletores "planos" — `:global(.ui-select-item[data-disabled])`
+  em vez de `&[data-disabled]` aninhado dentro de `:global(.ui-select-item)`
+  — sem depender do `&` do Sass dentro de um bloco `:global()`. Reconfirmado
+  depois: cor da opção habilitada volta a `rgb(0,0,0)` (`{colors.ink}`).
+  Vale como regra geral daqui pra frente: **nunca aninhar `&[attr]`/`&:pseudo`
+  dentro de um `:global(...)` do Vue** — sempre escrever o seletor completo
+  dentro do próprio `:global(...)`.
 
 ### Badge (`shared/components/ui/Badge.vue`)
 

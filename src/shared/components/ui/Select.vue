@@ -165,6 +165,14 @@ const triggerId = useId()
   color: $color-ink-40;
 }
 
+// Acompanhado por baixo com regras "planas" (`:global(.foo[attr])`), não
+// aninhadas (`&[attr]` dentro do bloco `:global(...)`) — achado real: o
+// `&` do Sass dentro de um `:global()` do Vue perde o seletor-pai no CSS
+// compilado, viram `.ui-select-item` sozinho (sem o atributo), então TODA
+// opção herdava o estilo de disabled/highlighted, mesmo a habilitada.
+// Confirmado inspecionando `document.styleSheets` — a regra compilada
+// aparecia como `.ui-select-item { color: ... }`, sem `[data-disabled]`
+// nenhum. Selector "plano" evita o `&` por completo.
 :global(.ui-select-item) {
   display: flex;
   align-items: center;
@@ -175,17 +183,17 @@ const triggerId = useId()
   color: $color-ink;
   cursor: pointer;
   border-radius: $radius-4;
+}
 
-  &:focus-visible,
-  &[data-highlighted] {
-    outline: none;
-    background-color: $color-ink-4;
-  }
+:global(.ui-select-item:focus-visible),
+:global(.ui-select-item[data-highlighted]) {
+  outline: none;
+  background-color: $color-ink-4;
+}
 
-  &[data-disabled] {
-    cursor: not-allowed;
-    color: $color-ink-40;
-  }
+:global(.ui-select-item[data-disabled]) {
+  cursor: not-allowed;
+  color: $color-ink-40;
 }
 
 :global(.ui-select-item-indicator) {
