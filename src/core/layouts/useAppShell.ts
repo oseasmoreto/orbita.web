@@ -10,6 +10,8 @@ import { ref } from 'vue'
  */
 const isMobileNavOpen = ref(false)
 const expandedItemIds = ref(new Set<string>())
+const isNotificationPanelOpen = ref(false)
+const hasUnreadNotifications = ref(false)
 
 export function useAppShell() {
   function openMobileNav(): void {
@@ -22,6 +24,28 @@ export function useAppShell() {
 
   function toggleMobileNav(): void {
     isMobileNavOpen.value = !isMobileNavOpen.value
+  }
+
+  function openNotificationPanel(): void {
+    isNotificationPanelOpen.value = true
+  }
+
+  function closeNotificationPanel(): void {
+    isNotificationPanelOpen.value = false
+  }
+
+  function toggleNotificationPanel(): void {
+    isNotificationPanelOpen.value = !isNotificationPanelOpen.value
+  }
+
+  /**
+   * O `AppHeader` (core) só exibe o indicador — quem decide se há
+   * notificação não lida é o módulo Platform (`NotificationPanel`), que
+   * conhece os dados de verdade. Nunca mutar `hasUnreadNotifications`
+   * direto de fora, sempre por aqui (mesmo padrão das outras flags).
+   */
+  function setHasUnreadNotifications(value: boolean): void {
+    hasUnreadNotifications.value = value
   }
 
   function isItemExpanded(id: string): boolean {
@@ -42,10 +66,16 @@ export function useAppShell() {
 
   return {
     closeMobileNav,
+    closeNotificationPanel,
+    hasUnreadNotifications,
     isItemExpanded,
     isMobileNavOpen,
+    isNotificationPanelOpen,
     openMobileNav,
+    openNotificationPanel,
+    setHasUnreadNotifications,
     toggleItem,
     toggleMobileNav,
+    toggleNotificationPanel,
   }
 }

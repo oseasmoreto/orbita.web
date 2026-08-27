@@ -5,7 +5,7 @@ import Icon from '@/shared/components/ui/Icon.vue'
 import { useAppShell } from './useAppShell'
 
 const route = useRoute()
-const { toggleMobileNav } = useAppShell()
+const { hasUnreadNotifications, toggleMobileNav, toggleNotificationPanel } = useAppShell()
 </script>
 
 <template>
@@ -23,8 +23,19 @@ const { toggleMobileNav } = useAppShell()
     </div>
 
     <div class="app-header__actions">
-      <button aria-label="Notificações" class="app-header__icon-button" type="button">
+      <button
+        aria-label="Notificações"
+        class="app-header__icon-button app-header__notification-button"
+        type="button"
+        @click="toggleNotificationPanel"
+      >
         <Icon :icon="Bell" :size="20" />
+        <span
+          v-if="hasUnreadNotifications"
+          aria-label="Há notificações não lidas"
+          class="app-header__unread-dot"
+          role="status"
+        />
       </button>
       <!-- Placeholder até Avatar.vue existir (Tier 3, ver catalogo-componentes.md) -->
       <button aria-label="Conta" class="app-header__icon-button" type="button">
@@ -80,6 +91,26 @@ const { toggleMobileNav } = useAppShell()
   &:focus-visible {
     @include focus-ring;
   }
+}
+
+// Grounded no padrão "Badge-Dot" do Figma (dot sobreposto a ícone de
+// botão, ex.: sino de notificação) — cor exata do "Dot" do Figma não foi
+// resolvível no dump em cache (rate limit), `{colors.accent-red}` é uma
+// aproximação razoável e documentada (mesmo critério do
+// `notification-item__unread-dot`, ver design-system.md).
+.app-header__notification-button {
+  position: relative;
+}
+
+.app-header__unread-dot {
+  position: absolute;
+  top: $spacing-4;
+  right: $spacing-4;
+  width: $spacing-8;
+  height: $spacing-8;
+  background-color: $color-accent-red;
+  border: 1px solid $color-bg-1;
+  border-radius: $radius-80;
 }
 
 // Depois de `.app-header__icon-button` de propósito: as duas classes têm

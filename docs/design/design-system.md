@@ -1055,6 +1055,95 @@ sobre `TabsRoot`/`TabsList`/`TabsTrigger` da Reka UI.
   (`data-state="active"` no `TabsContent` correto) e o sublinhado
   acompanha a aba clicada.
 
+### NotificationItem (`modules/platform/components/NotificationItem.vue`)
+
+**Correção sobre a decisão original da Tier 9**: o catálogo citava
+`State=Failure/Successful`, `Size=Big/Small` como referência do Figma —
+esse é o `COMPONENT_SET "Notification"` (`#4113:42509`), mas examinando o
+frame de verdade ele é um **toast flutuante** (fundo `Black/80%` + blur,
+mesma linguagem visual do Tooltip/DropdownMenu), não o item de lista real.
+`vue-sonner` já cobre toast avulso (decisão já registrada), então esse
+componente nunca deveria ter sido implementado como item de lista. O item
+real usado dentro do painel "Notifications" do `RightBar` é a instância
+"Avatar-Name-Text" (`#4113:42432`) — ícone num tile colorido + título +
+timestamp, sem fundo escuro nem blur. Mesma classe de correção já feita
+pro `Search.vue`/`DropdownMenu.vue` — grounding contra o frame certo, não
+contra o nome mais parecido.
+
+- Tile do ícone: `{size.24}`, `{radius.8}`. **Primeiro uso real dos tokens
+  `{colors.tint-1}`/`{colors.tint-2}`** (documentados desde a Fase 0 como
+  "reservados, sem papel definido ainda") — aproximação dos 2 tons claros
+  do Figma ("Primary/Blue" `#E3F5FF`, "Primary/Purple" `#E5ECF6`), não são
+  valores exatos mas mesma família de cor/matiz.
+- Título `{typography.body}` em `{colors.ink}`, timestamp
+  `{typography.label}` em `{colors.ink-40}` — já formatado
+  ("Just now", "12 hours ago"...) como vem do Figma; formatação de data
+  real (`dayjs`) é responsabilidade do composable do módulo quando o
+  backend existir (Fase 5), não deste componente de apresentação.
+- Hover `{colors.ink-4}` — não está no Figma estático, mas é o mesmo
+  affordance já usado em outras linhas clicáveis do design system
+  (`AppSidebarNavItem`, item de `DropdownMenu`).
+
+**Estado "não lida", pedido direto do usuário em 2026-08-27**: prop
+`notification.read` espelha `USER_NOTIFICATION.read`
+(`docs/negocio/contexto-plataforma-precificacao.md` seção 2.5) — "lida"/
+"não lida" mora na entrega, nunca na notificação em si, mesma regra do
+domínio. Quando `read: false`:
+
+- Título ganha `{typography.body-strong}` (salto de peso 400→600, nunca
+  cor/tamanho sozinho — mesma regra do "Do's and Don'ts" abaixo).
+- Um ponto de `{spacing.8}` (sem token de tamanho abaixo de `{size.12}`,
+  usa o token de espaçamento em vez de inventar um valor de pixel) em
+  `{colors.accent-red}` aparece ao lado do conteúdo — grounded no padrão
+  "Badge-Dot" visto no Figma sobreposto a ícone de botão (não há frame
+  isolado desse dot dentro de uma linha de lista, adaptação nossa do
+  mesmo padrão pro contexto de lista). Cor exata do "Dot" do Figma não foi
+  resolvível no dump em cache (rate limit já em curso) —
+  `{colors.accent-red}` é aproximação documentada, mesma convenção comum
+  de "precisa de atenção".
+
+### NotificationPanel (`modules/platform/components/NotificationPanel.vue`)
+
+Grounded na seção "Notifications" do `RightBar` do Figma (`#4113:42432`)
+— decisão já registrada em `docs/design/catalogo-componentes.md`: só essa
+seção vira painel de verdade, "Activities" (admin-only) e "Contacts"
+(Orbita não tem conceito de time) ficam fora.
+
+- **Reaproveita `Drawer.vue`** (tamanho `sm`, 320px) em vez de construir
+  um painel novo — o `RightBar` do Figma é uma coluna fixa de 280px,
+  aproximada pelo tamanho já existente mais próximo.
+- **Aberto pelo sino do `AppHeader`** via `useAppShell` — o composable
+  ganhou `isNotificationPanelOpen`/`openNotificationPanel`/
+  `closeNotificationPanel`/`toggleNotificationPanel`, mesmo padrão
+  singleton já usado pro menu mobile, com teste primeiro (TDD) em
+  `tests/core/layouts/useAppShell.test.ts` — o sino era só chrome visual
+  sem função até aqui (achado já registrado na Tier 2).
+- **Montado uma vez em `App.vue`**, mesmo padrão do `<Toaster />` do
+  `vue-sonner` — não é uma view roteada, é um overlay global do shell.
+- **Dados são placeholder** — não existe endpoint de notificação ainda
+  (Fase 5). Quando existir, vira um composable (`useNotifications`)
+  buscando de verdade; a lista fixa atual é só pra validação visual, mesmo
+  espírito das demais seções da vitrine (`HomeView.vue`).
+- Verificado em browser real: sino abre o painel com os 4 itens de
+  exemplo renderizados corretamente (tile colorido, título, timestamp),
+  fecha com `Esc`.
+
+**Indicador de não lida no sino do `AppHeader`** (`core/layouts/AppHeader.vue`),
+mesmo pedido: `useAppShell` ganhou `hasUnreadNotifications` (leitura) +
+`setHasUnreadNotifications` (escrita, só o módulo Platform chama — o
+`AppHeader`, sendo `core/`, nunca importa de `modules/platform/`
+diretamente, mesma regra de fronteira de módulo aplicada aqui pro sentido
+inverso). `NotificationPanel.vue` calcula `hasUnread` via `computed` sobre
+a lista e reporta pra `useAppShell` via `watchEffect` (não uma chamada
+única — quando a lista virar reativa de verdade na Fase 5, continua
+correto sem mudar nada). TDD: teste primeiro em
+`tests/core/layouts/useAppShell.test.ts`, depois a implementação. Mesmo
+ponto vermelho (`{colors.accent-red}`, `{spacing.8}`) do item de lista,
+posicionado como overlay absoluto no canto do botão do sino — grounded no
+mesmo padrão "Badge-Dot" do Figma, mas usado aqui como o Figma realmente
+mostra (sobreposto a ícone de botão). Verificado em browser real: ponto
+aparece quando há notificação não lida na lista placeholder.
+
 ## Do's and Don'ts
 
 ### Do
@@ -1122,9 +1211,11 @@ Media queries sempre `min-width` (mobile-first) — sem exceção.
   inclui nenhum grupo de shadow — qualquer necessidade futura de elevação
   de verdade (modal, dropdown flutuante) exige uma decisão nova, não uma
   extensão silenciosa das regras acima.
-- **Uso de `{colors.tint-1}`/`{colors.tint-2}`/`{colors.logo-1}`/`{colors.logo-2}`
-  ainda indefinido**: trazidos pra não se perderem do export original, mas
-  nenhum componente os consome hoje.
+- **Uso de `{colors.logo-1}`/`{colors.logo-2}` ainda indefinido**: trazidos
+  pra não se perderem do export original, mas nenhum componente os
+  consome hoje. `{colors.tint-1}`/`{colors.tint-2}` já têm um primeiro
+  papel real desde 2026-08-27 (tile de ícone do `NotificationItem`, seção
+  Components acima) — aproximação, não valor exato do Figma.
 - **Escala tipográfica não foi validada em tela de verdade**: os nomes de
   papel (`lead`, `title`, `display-sm`...) são um mapeamento razoável dos 8
   tamanhos do token `paragraph/Paragraph.tokens.json` pros papéis comuns de
