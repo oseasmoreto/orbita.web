@@ -248,6 +248,18 @@ components:
     textColor: "{colors.ink}"
     typography: "{typography.body}"
     rounded: "{rounded.8}"
+  breadcrumb-link:
+    textColor: "{colors.ink-40}"
+    typography: "{typography.body}"
+  breadcrumb-current:
+    textColor: "{colors.ink}"
+    typography: "{typography.body}"
+  tab-bar-trigger-active:
+    textColor: "{colors.primary}"
+    typography: "{typography.body}"
+  tab-bar-trigger-inactive:
+    textColor: "{colors.ink-40}"
+    typography: "{typography.body}"
 ---
 
 ## Overview
@@ -1002,6 +1014,46 @@ primeira impressão da lista de componentes.
 - Verificado em browser real: menu abre com os 3 itens na ordem certa,
   separador antes de "Excluir", clique emite `select` com a `key` do
   item e fecha o menu.
+
+### Breadcrumb (`shared/components/ui/Breadcrumb.vue`)
+
+Grounded no componente "Breadcrumb" do Figma (`#4113:41858`) — item
+ancestral é um link apagado (`{colors.ink-40}`, hover `{colors.ink-4}` de
+fundo), o último item (página atual) é texto cheio (`{colors.ink}`) sem
+link nem hover, separados por `"/"` em `{colors.ink-20}`.
+
+- **Não reaproveita `Button.vue`** — o padding do botão do Figma
+  (`4px 8px`) bate com o `variant="ghost"` medium, mas a cor de texto
+  varia por posição no breadcrumb (apagado vs cheio), o que não é uma
+  variante genérica de Button (seria uma prop nomeada por caso de uso,
+  proibido pra átomos — seção 3.1). O item é markup próprio aqui.
+- Prop `items: BreadcrumbItem[]` — item sem `to` vira o texto da página
+  atual (`aria-current="page"`, sem link); todo item anterior precisa de
+  `to` (`RouteLocationRaw`).
+
+### TabBar (`shared/components/ui/TabBar.vue`)
+
+Grounded no padrão "TopTab" do frame "Tabs" do Figma — trigger
+`{spacing.4} {spacing.8}`, inativo `14 Regular` em `{colors.ink-40}`,
+ativo `14 Semibold` em `{colors.primary}` com sublinhado de 2px na mesma
+cor (`[data-state='active']`, sem `TabsIndicator` deslizante — o Figma
+mostra sublinhado estático por aba, não um indicador animado). Construído
+sobre `TabsRoot`/`TabsList`/`TabsTrigger` da Reka UI.
+
+- **`TabsContent` não é envolvido pelo componente** — o consumidor
+  importa direto de `reka-ui` e usa dentro do slot default do `TabBar`,
+  já que o conteúdo de cada aba é sempre específico da tela (mesma régua
+  de "block/átomo nunca decide o que a ação faz de verdade").
+- **Fora de escopo, de propósito**: o padrão "BlockTab" do mesmo frame
+  (rótulos tipo "Total Users"/"Total Projects" misturados com `Badge-Tag`
+  de filtro de data "Current Week"/"Previous Week") não é navegação de
+  verdade — é um seletor de estatística combinado com filtro, sem nenhum
+  caso de uso no roadmap do Orbita hoje. Só o padrão de navegação por
+  abas (`TopTab`) foi implementado; revisitar se um caso de uso real
+  pedir o padrão `BlockTab`.
+- Verificado em browser real: clique na aba troca o painel visível
+  (`data-state="active"` no `TabsContent` correto) e o sublinhado
+  acompanha a aba clicada.
 
 ## Do's and Don'ts
 

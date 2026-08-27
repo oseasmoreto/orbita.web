@@ -3,6 +3,7 @@
 // (docs/design/catalogo-componentes.md) — existe só pra validação visual
 // enquanto o dashboard de precificação real (módulo Pricing) não é
 // implementado. Some daqui assim que a Fase 4 tiver conteúdo de verdade.
+import { TabsContent } from 'reka-ui'
 import { ref } from 'vue'
 import {
   ArrowRight,
@@ -22,6 +23,7 @@ import ListToolbar from '@/shared/components/blocks/ListToolbar.vue'
 import PaginationNav from '@/shared/components/blocks/PaginationNav.vue'
 import Avatar from '@/shared/components/ui/Avatar.vue'
 import Badge from '@/shared/components/ui/Badge.vue'
+import Breadcrumb from '@/shared/components/ui/Breadcrumb.vue'
 import Button from '@/shared/components/ui/Button.vue'
 import Checkbox from '@/shared/components/ui/Checkbox.vue'
 import DropdownMenu from '@/shared/components/ui/DropdownMenu.vue'
@@ -31,13 +33,16 @@ import Modal from '@/shared/components/ui/Modal.vue'
 import Search from '@/shared/components/ui/Search.vue'
 import Select from '@/shared/components/ui/Select.vue'
 import Spinner from '@/shared/components/ui/Spinner.vue'
+import TabBar from '@/shared/components/ui/TabBar.vue'
 import Toggle from '@/shared/components/ui/Toggle.vue'
 import Tooltip from '@/shared/components/ui/Tooltip.vue'
+import type { BreadcrumbItem } from '@/shared/components/ui/types/breadcrumb.type'
 import type {
   DataTableColumn,
   DataTableSortDirection,
 } from '@/shared/components/ui/types/dataTable.type'
 import type { DropdownMenuOption } from '@/shared/components/ui/types/dropdownMenu.type'
+import type { TabBarOption } from '@/shared/components/ui/types/tabBar.type'
 
 const checkboxUnchecked = ref(false)
 const checkboxChecked = ref(true)
@@ -172,6 +177,19 @@ const taskRows: TaskRow[] = [
     title: 'App de desenvolvimento',
   },
 ]
+
+const breadcrumbItems: BreadcrumbItem[] = [
+  { label: 'Dashboards', to: { name: 'home' } },
+  { label: 'Marketplaces', to: { name: 'home' } },
+  { label: 'Shopee' },
+]
+
+const tabs: TabBarOption[] = [
+  { key: 'overview', label: 'Visão geral' },
+  { key: 'products', label: 'Produtos' },
+  { key: 'settings', label: 'Configurações' },
+]
+const activeTab = ref('overview')
 </script>
 
 <template>
@@ -413,6 +431,20 @@ const taskRows: TaskRow[] = [
           </Badge>
         </template>
       </DataTable>
+    </section>
+
+    <section class="showcase__section">
+      <h2>Breadcrumb</h2>
+      <Breadcrumb :items="breadcrumbItems" />
+    </section>
+
+    <section class="showcase__section">
+      <h2>TabBar</h2>
+      <TabBar v-model="activeTab" :tabs="tabs">
+        <TabsContent value="overview">Conteúdo de "Visão geral".</TabsContent>
+        <TabsContent value="products">Conteúdo de "Produtos".</TabsContent>
+        <TabsContent value="settings">Conteúdo de "Configurações".</TabsContent>
+      </TabBar>
     </section>
 
     <section class="showcase__section">
