@@ -1,4 +1,4 @@
-import { useAppShell } from '@/core/layouts/useAppShell'
+import { useAppShell } from '@/core/layouts/composables/useAppShell'
 
 describe('useAppShell', () => {
   it('starts with the mobile nav closed', () => {

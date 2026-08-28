@@ -2,7 +2,7 @@
 import { Toaster } from 'vue-sonner'
 import { Check, Info, Warning, WarningCircle } from '@/shared/components/icons/regular.generated'
 import Icon from '@/shared/components/ui/Icon.vue'
-import { useAppUpdatePrompt } from './core/pwa/useAppUpdatePrompt'
+import { useAppUpdatePrompt } from './core/pwa/composables/useAppUpdatePrompt'
 import NotificationPanel from './modules/platform/components/NotificationPanel.vue'
 
 useAppUpdatePrompt()
@@ -20,7 +20,7 @@ useAppUpdatePrompt()
     mostrava o triângulo pro caso "Operation Failed"/erro; um triângulo
     idêntico só trocando de cor pro "warning" dificultaria diferenciar os
     dois por daltonismo/leitura rápida. `default` (`toast()` sem sufixo,
-    já usado em `core/pwa/useAppUpdatePrompt.ts`) fica sem ícone — não
+    já usado em `core/pwa/composables/useAppUpdatePrompt.ts`) fica sem ícone — não
     tem slot próprio, é o caso mais neutro.
 
     **Achado real**: a prop `icons` do `<Toaster>` (`ToasterProps.icons`)

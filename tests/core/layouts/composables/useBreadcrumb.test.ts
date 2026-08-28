@@ -1,5 +1,5 @@
+import { resolveBreadcrumbItems } from '@/core/layouts/composables/useBreadcrumb'
 import type { NavGroup } from '@/core/layouts/types/navigation.type'
-import { resolveBreadcrumbItems } from '@/core/layouts/useBreadcrumb'
 
 const groups: NavGroup[] = [
   {

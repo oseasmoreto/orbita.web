@@ -19,7 +19,7 @@ import { ref } from 'vue'
 import { useAuthStore } from '@/core/store/useAuthStore'
 import Avatar from '@/shared/components/ui/Avatar.vue'
 import AppSidebarNavItem from './AppSidebarNavItem.vue'
-import { favoriteItems, navGroups } from './navigation'
+import { favoriteItems, navGroups } from './config/navigation'
 
 const authStore = useAuthStore()
 const activeFavoritesTab = ref<'favorites' | 'recently'>('favorites')

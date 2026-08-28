@@ -9,7 +9,7 @@ import {
   UsersThree,
   Wallet,
 } from '@/shared/components/icons/regular.generated'
-import type { NavGroup, NavItem } from './types/navigation.type'
+import type { NavGroup, NavItem } from '../types/navigation.type'
 
 /**
  * Grounded na captura real do usuário (2026-08-28, sidebar com grupos e

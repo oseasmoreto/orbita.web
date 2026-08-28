@@ -26,8 +26,8 @@ import {
 import Breadcrumb from '@/shared/components/ui/Breadcrumb.vue'
 import Icon from '@/shared/components/ui/Icon.vue'
 import { useTheme } from '@/shared/composables/useTheme'
-import { useAppShell } from './useAppShell'
-import { useBreadcrumb } from './useBreadcrumb'
+import { useAppShell } from './composables/useAppShell'
+import { useBreadcrumb } from './composables/useBreadcrumb'
 
 const router = useRouter()
 const { items: breadcrumbItems } = useBreadcrumb()

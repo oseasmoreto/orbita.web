@@ -1251,7 +1251,7 @@ extrapolados na mesma linguagem visual da captura. `useToast()` é um
 wrapper fino sobre `vue-sonner` (decisão de stack já fixada, seção 15.3
 de `docs/infra/convencoes-frontend-infra.md`) — `error`/`info`/`warning`/
 `success`/`message` (este último cobre o tipo "default" do pacote,
-`toast()` sem sufixo, já usado em `core/pwa/useAppUpdatePrompt.ts`), cada
+`toast()` sem sufixo, já usado em `core/pwa/composables/useAppUpdatePrompt.ts`), cada
 um um repasse 1:1 pro `toast.*` correspondente. Sem lógica de decisão —
 não é candidato a test-first (mesma régua de "services/utils puros" só
 vale quando há ramificação real pra testar).
@@ -1395,7 +1395,7 @@ seção vira painel de verdade, "Activities" (admin-only) e "Contacts"
   ganhou `isNotificationPanelOpen`/`openNotificationPanel`/
   `closeNotificationPanel`/`toggleNotificationPanel`, mesmo padrão
   singleton já usado pro menu mobile, com teste primeiro (TDD) em
-  `tests/core/layouts/useAppShell.test.ts` — o sino era só chrome visual
+  `tests/core/layouts/composables/useAppShell.test.ts` — o sino era só chrome visual
   sem função até aqui (achado já registrado na Tier 2).
 - **Montado uma vez em `App.vue`**, mesmo padrão do `<Toaster />` do
   `vue-sonner` — não é uma view roteada, é um overlay global do shell.
@@ -1416,7 +1416,7 @@ inverso). `NotificationPanel.vue` calcula `hasUnread` via `computed` sobre
 a lista e reporta pra `useAppShell` via `watchEffect` (não uma chamada
 única — quando a lista virar reativa de verdade na Fase 5, continua
 correto sem mudar nada). TDD: teste primeiro em
-`tests/core/layouts/useAppShell.test.ts`, depois a implementação. Mesmo
+`tests/core/layouts/composables/useAppShell.test.ts`, depois a implementação. Mesmo
 ponto vermelho (`{colors.accent-red}`, `{spacing.8}`) do item de lista,
 posicionado como overlay absoluto no canto do botão do sino — grounded no
 mesmo padrão "Badge-Dot" do Figma, mas usado aqui como o Figma realmente
@@ -2085,7 +2085,7 @@ pelo usuário com captura de uma sidebar completa (grupos "Dashboards"/
   Profile` tem o comportamento de verdade (dropdown), que era o pedido
   explícito ("exemplo de dropdown").
 - **`NavItem.defaultExpanded`** (prop nova) + **`useAppShell().expandItem`**
-  (função nova, TDD em `tests/core/layouts/useAppShell.test.ts`) — "User
+  (função nova, TDD em `tests/core/layouts/composables/useAppShell.test.ts`) — "User
   Profile" começa expandido, mas `expandItem` é **idempotente** (nunca
   fecha), diferente de `toggleItem`: como `expandedItemIds` é singleton
   em nível de módulo (sobrevive à remontagem do componente), um
@@ -2238,7 +2238,7 @@ aqui seria redundante.
   visualmente, pronto pra ganhar lógica quando o caso de uso aparecer.
 - **Breadcrumb** — troca o antigo `<h1>{{ route.meta.title }}</h1>` por
   `Breadcrumb.vue` (já existente, Tier 9), alimentado por um composable
-  novo, `core/layouts/useBreadcrumb.ts`. A trilha é calculada em cima da
+  novo, `core/layouts/composables/useBreadcrumb.ts`. A trilha é calculada em cima da
   MESMA árvore `navGroups` que já alimenta a sidebar (`navigation.ts`) —
   não é um `meta` novo duplicando essa informação nem uma trilha digitada
   à mão: acha a rota ativa por `to.name` dentro dos grupos (e dos

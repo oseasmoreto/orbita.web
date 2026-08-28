@@ -55,6 +55,12 @@ src/
     store/                 # Pinia root (auth, notifications) — seção 5
     i18n/                  # setup do vue-i18n + catálogo de mensagens (pt-BR) — seção 6.3
     styles/                # SCSS global — seção 7
+    layouts/               # AppLayout, AppHeader, AppSidebar... (componentes soltos aqui são OK, é a pasta certa pra layout)
+      composables/          # useAppShell.ts, useBreadcrumb.ts — NUNCA soltos direto em layouts/, ver regra abaixo
+      config/               # navigation.ts (dado estático da navegação, não é composable nem type)
+      types/                 # navigation.type.ts, footer.type.ts
+    pwa/
+      composables/          # useAppUpdatePrompt.ts — mesma regra, mesmo só tendo esse 1 arquivo
 
   App.vue
   main.ts
@@ -63,6 +69,10 @@ src/
 **Regra de fronteira** (já valia, reforçada aqui): um módulo pode importar de `shared/` e `core/`, mas **nunca** de outro módulo diretamente. Se dois módulos precisam do mesmo componente/composable/service, ele sobe pra `shared/`.
 
 **Critério de promoção pra `shared/`** (mesma régua do DRY, tornada explícita): um componente/composable/service nasce dentro do módulo. Só sobe pra `shared/` quando um **segundo** módulo precisar dele de verdade — nunca antecipado "porque parece genérico".
+
+**Regra explícita, 2026-08-28 — nenhum arquivo solto por tipo, nem em `core/`, nem com um arquivo só**: composable, service, store, schema, type ou "qualquer outro tipo de arquivo `.ts`" nunca fica direto dentro de uma pasta de componente/feature — sempre dentro da subpasta com o nome do seu papel (`composables/`, `services/`, `types/`...), a mesma régua que `modules/<contexto>/` já seguia desde o início, agora explícita pra `core/` também. Isso vale **mesmo quando a pasta só vai ter um arquivo daquele tipo** — não é motivo pra pular a subpasta "porque é só um". Único caso que NÃO se encaixa aqui: uma pasta cujo nome inteiro já É o papel do arquivo (`core/api/client.ts`, `core/store/useAuthStore.ts`, `core/router/index.ts`) — aí o arquivo já está dentro da "subpasta certa", só que ela é a pasta-mãe em vez de uma pasta-filha; não vira `core/store/store/useAuthStore.ts`. Componente `.vue` dentro da pasta do seu domínio/feature (`core/layouts/AppHeader.vue`, `modules/<contexto>/components/PricingRuleForm.vue`) também não se encaixa — componente já está na pasta certa por convenção própria (seção 3), essa regra é só pra composable/service/store/schema/type.
+
+**Achado real, reportado pelo usuário em 2026-08-28**: `core/layouts/` tinha crescido ad hoc (não estava no diagrama original desta seção) misturando componentes de layout (`AppHeader.vue` etc., corretos ali) com `useAppShell.ts`/`useBreadcrumb.ts` (composables) e `navigation.ts` (dado estático) soltos direto na raiz da pasta — só `types/` já tinha subpasta própria. `core/pwa/useAppUpdatePrompt.ts` tinha o mesmo problema, um composable sozinho sem `composables/`. Corrigido: `useAppShell.ts`/`useBreadcrumb.ts` → `core/layouts/composables/`, `navigation.ts` → `core/layouts/config/` (não é composable nem type — é dado estático de navegação, papel próprio, pasta própria), `useAppUpdatePrompt.ts` → `core/pwa/composables/` mesmo sendo o único arquivo ali.
 
 ---
 
@@ -294,7 +304,7 @@ HEALTHCHECK CMD wget -qO- http://localhost/healthz || exit 1
 ### 13.5 PWA (offline-first)
 
 - **Decisão 2026-08-26 — estratégia `injectManifest`, não `generateSW`**: o service worker é um arquivo próprio versionado no repo (`src/sw.ts`, `workbox-precaching` chamado explicitamente), não gerado 100% às cegas pelo plugin — dá controle sobre o que entra no precache e sobre a lógica de update (abaixo), ao custo de ter um arquivo a mais pra manter. `vite-plugin-pwa` builda esse arquivo no mesmo `npm run build` do estágio 1 (seção 13.1) — não é um passo de deploy separado. Ícones/manifest gerados via `@vite-pwa/assets-generator` (`npm run generate:pwa-assets`, config em `pwa-assets.config.ts`) a partir de uma imagem-fonte única (`public/favicon.svg`) — evita manter cada tamanho de ícone manualmente; os PNGs gerados **são** commitados (não são build output, `dist/` continua sendo o único gitignored).
-- **Update é via prompt, não automático** (`registerType: 'prompt'` + `injectRegister: false`): o composable `core/pwa/useAppUpdatePrompt.ts` chama `useRegisterSW()` (`virtual:pwa-register/vue`) e, quando `needRefresh` vira `true`, dispara um toast (`vue-sonner` — seção 15.3) com ação "Atualizar" chamando `updateServiceWorker(true)`. Vendedor no meio de um cadastro de produto não perde o formulário porque um deploy novo saiu — só atualiza quando confirma. `<Toaster />` do `vue-sonner` fica montado uma vez na raiz (`App.vue`).
+- **Update é via prompt, não automático** (`registerType: 'prompt'` + `injectRegister: false`): o composable `core/pwa/composables/useAppUpdatePrompt.ts` chama `useRegisterSW()` (`virtual:pwa-register/vue`) e, quando `needRefresh` vira `true`, dispara um toast (`vue-sonner` — seção 15.3) com ação "Atualizar" chamando `updateServiceWorker(true)`. Vendedor no meio de um cadastro de produto não perde o formulário porque um deploy novo saiu — só atualiza quando confirma. `<Toaster />` do `vue-sonner` fica montado uma vez na raiz (`App.vue`).
 - **Cache do service worker é versionado pelo hash do build do Vite** — cada deploy novo invalida o precache automaticamente (comportamento padrão do Workbox); não precisa de lógica manual de "limpar cache" no `nginx.conf` da seção 13.1, só garantir que `sw.js`/`manifest.webmanifest` **não** entrem no cache agressivo de asset com hash (esses dois arquivos precisam de `Cache-Control: no-cache` pro browser sempre checar se há versão nova).
 - Estratégia de cache runtime (o que fica cacheado pra uso offline) é decidida por rota/recurso conforme a feature evoluir — não cachear resposta de API que muda por sessão (preço sugerido, notificação) por padrão; cachear só estático (assets, shell da SPA).
 - `src/sw.ts` é excluído do `tsconfig.app.json` e coberto pelo `tsconfig.sw.json` próprio (`lib: ["ES2023", "WebWorker"]`, seção 10) — o contexto de tipos de um Service Worker (`self`, `ServiceWorkerGlobalScope`) não é o mesmo de um módulo de app rodando no DOM.

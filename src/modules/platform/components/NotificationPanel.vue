@@ -18,7 +18,7 @@
  * lista fixa sai.
  */
 import { computed, watchEffect } from 'vue'
-import { useAppShell } from '@/core/layouts/useAppShell'
+import { useAppShell } from '@/core/layouts/composables/useAppShell'
 import { Bell, Broadcast, BugBeetle, User } from '@/shared/components/icons/regular.generated'
 import Drawer from '@/shared/components/ui/Drawer.vue'
 import Icon from '@/shared/components/ui/Icon.vue'

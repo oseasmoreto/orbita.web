@@ -29,6 +29,12 @@ Convenções de backend (`docs/infra/convencoes-backend-infra.md`, cópia neste 
 
 ---
 
+## Antes de editar um arquivo — `.ai/rules`
+
+Este repositório mantém regras específicas por caminho de arquivo em `.ai/rules` (decisões já fechadas, armadilhas não-óbvias, achados reais que já custaram tempo descobrindo a causa raiz uma vez — não vale a pena descobrir de novo). **Antes de planejar ou editar qualquer arquivo, abra `.ai/rules/index.md`** — ele mapeia glob de path pra arquivo de regra — **e leia todo arquivo cujo glob cubra o(s) caminho(s) em escopo**. Não é sugestão. Se `.ai/rules` não existir mais ou o arquivo em questão não bater com nenhum glob do índice, prossiga normalmente.
+
+---
+
 ## Regras não-negociáveis (resumo — detalhe completo nos arquivos acima)
 
 - **Test-first é obrigatório** para `composables` e `services`/utils com lógica de negócio (cálculo, validação, formatação que espelha regra de domínio) — não é exigido para todo componente visual indiscriminadamente. PR com composable/lógica nova sem teste correspondente é rejeitado — não é sugestão, é gate de review.

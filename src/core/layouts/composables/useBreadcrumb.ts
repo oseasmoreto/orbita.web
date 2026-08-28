@@ -1,8 +1,8 @@
 import { computed } from 'vue'
 import { useRoute } from 'vue-router'
 import type { BreadcrumbItem } from '@/shared/components/ui/types/breadcrumb.type'
-import { navGroups } from './navigation'
-import type { NavGroup, NavItem } from './types/navigation.type'
+import { navGroups } from '../config/navigation'
+import type { NavGroup, NavItem } from '../types/navigation.type'
 
 interface ActiveTrail {
   group: NavGroup

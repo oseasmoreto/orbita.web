@@ -2,8 +2,8 @@
 import { computed, onMounted } from 'vue'
 import { CaretRight } from '@/shared/components/icons/regular.generated'
 import Icon from '@/shared/components/ui/Icon.vue'
+import { useAppShell } from './composables/useAppShell'
 import type { NavItem } from './types/navigation.type'
-import { useAppShell } from './useAppShell'
 
 defineOptions({ name: 'AppSidebarNavItem' })
 

@@ -8,7 +8,7 @@ import {
   DrawerTitle,
 } from 'vaul-vue'
 import AppSidebarContent from './AppSidebarContent.vue'
-import { useAppShell } from './useAppShell'
+import { useAppShell } from './composables/useAppShell'
 
 const { closeMobileNav, isDesktopSidebarCollapsed, isMobileNavOpen } = useAppShell()
 </script>
