@@ -10,12 +10,15 @@ import {
 import AppSidebarContent from './AppSidebarContent.vue'
 import { useAppShell } from './useAppShell'
 
-const { closeMobileNav, isMobileNavOpen } = useAppShell()
+const { closeMobileNav, isDesktopSidebarCollapsed, isMobileNavOpen } = useAppShell()
 </script>
 
 <template>
-  <!-- Desktop: coluna fixa, escondida abaixo do breakpoint md via CSS. -->
-  <aside class="app-sidebar-desktop">
+  <!-- Desktop: coluna fixa, escondida abaixo do breakpoint md via CSS
+       (ou pelo botão de ocultar do AppHeader, via isDesktopSidebarCollapsed). -->
+  <aside
+    :class="['app-sidebar-desktop', { 'app-sidebar-desktop--collapsed': isDesktopSidebarCollapsed }]"
+  >
     <AppSidebarContent />
   </aside>
 
@@ -74,6 +77,15 @@ $sidebar-width: 260px;
     display: flex;
     flex-direction: column;
   }
+}
+
+// Botão "ocultar sidebar" do AppHeader (pedido direto do usuário,
+// 2026-08-28) — `!important` de propósito: precisa vencer a regra de
+// `display: flex` da media query acima, que tem a mesma especificidade
+// (mesmo seletor `.app-sidebar-desktop`) e viria depois no cascade se não
+// fosse forçado.
+.app-sidebar-desktop--collapsed {
+  display: none !important;
 }
 
 // `:global()` a partir daqui: DrawerPortal teletransporta esse conteúdo pra

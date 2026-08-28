@@ -304,9 +304,10 @@ nunca decorativo.
 
 ## Colors
 
-> Fonte: `docs/design/tokens/colors/SnowUI-Light.tokens.json` (modo padrão,
-> sem toggle de tema ainda) e `SnowUI-Dark.tokens.json` (tokens já
-> cabeados em `[data-theme='dark']`, sem UI de troca — ver Known Gaps).
+> Fonte: `docs/design/tokens/colors/SnowUI-Light.tokens.json` (modo padrão)
+> e `SnowUI-Dark.tokens.json` (tokens cabeados em `:root[data-theme='dark']`,
+> ligados via toggle real desde 2026-08-28 — `shared/composables/useTheme.ts`,
+> botão no `AppHeader`, ver seção Components → AppHeader e "Known Gaps").
 
 ### Ação
 - **Primary** (`{colors.primary}` — light `#000000` / dark
@@ -1405,14 +1406,17 @@ primeiro uso como fundo de CARD inteiro, não só tile de ícone),
   já registrada pro `CaretUpDown`/`ArrowLineUpDown` do Select); `TrendUp`/
   `TrendDown` são os ícones mais próximos disponíveis, com o par completo
   (Figma só mostrou o caso positivo).
-- **Achado real, descoberto simulando `data-theme="dark"` (sem toggle de
-  UI ainda)**: `{colors.tint-1}`/`{colors.tint-2}` não têm variante pro
-  tema escuro no export de origem — o fundo do card continua claro (é o
-  único valor que o token tem), mas `{colors.ink}` no texto vira branco
-  no tema escuro, resultando em texto branco sobre fundo claro. Sem
-  impacto hoje (nenhum toggle liga o tema escuro em produção ainda — ver
-  "Known Gaps"), mas documentado pra quem for construir o toggle não ser
-  pego de surpresa.
+- **Achado real, descoberto simulando `data-theme="dark"`**:
+  `{colors.tint-1}`/`{colors.tint-2}` não têm variante pro tema escuro no
+  export de origem — o fundo do card continua claro (é o único valor que
+  o token tem), mas `{colors.ink}` no texto vira branco no tema escuro,
+  resultando em texto branco sobre fundo claro. **Atualização
+  2026-08-28**: o toggle de tema real do `AppHeader` (seção Components →
+  AppHeader) agora existe — esse achado deixou de ser hipotético e passou
+  a ser um bug real e acionável (qualquer usuário pode ligar o tema
+  escuro e ver esse card ilegível). Não corrigido nesta rodada (fora do
+  escopo do pedido de header) — fica registrado aqui como pendência
+  concreta, não mais "documentado pra quando o toggle existir".
 
 **Revisão pixel-perfect em 2026-08-28, pedida direto pelo usuário com
 captura real do frame** — a primeira versão foi construída sem essa
@@ -1583,10 +1587,14 @@ limit em curso), documentado como tal, não pixel exato.
   `data-theme="dark"`: a sonda resolveu `{colors.primary}` pra
   `rgb(173, 173, 251)` (o hex real de `{colors.accent-indigo}`), não a
   string da variável.
-- **Cores só são lidas uma vez, no `onMounted`** — como não existe toggle
-  de tema em runtime ainda (ver "Known Gaps"), o gráfico não precisa
-  reagir a mudança de tema; quando o toggle existir, isso precisa virar
-  um `watch` no estado do tema, não só uma leitura única.
+- **Cores só são lidas uma vez, no `onMounted`** — decisão tomada quando
+  não existia toggle de tema em runtime. **Atualização 2026-08-28**: o
+  `AppHeader` ganhou um toggle real (`shared/composables/useTheme.ts`,
+  seção Components → AppHeader) — esta leitura única passou a ser uma
+  pendência concreta (um gráfico já renderizado não atualiza as cores se
+  o usuário trocar de tema depois, precisaria de um `watch` sobre
+  `useTheme().theme`), não corrigida nesta rodada (fora do escopo do
+  pedido de header).
 - Verificado em browser real contra os 3 screenshots de referência:
   barra com 6 cores + topo arredondado, donut com legenda e porcentagens
   corretas, linha dupla com preenchimento + tracejado + seletor de
@@ -2106,6 +2114,92 @@ pelo usuário com captura de uma sidebar completa (grupos "Dashboards"/
   Orbita sempre visível no rodapé mesmo com a lista de navegação maior
   que a viewport.
 
+### AppHeader (`core/layouts/AppHeader.vue`)
+
+**Reconstruído em 2026-08-28, pedido direto do usuário com captura real**
+(header claro e escuro lado a lado) — o header antigo (título de página +
+sino + botão de conta placeholder) vira: botão de ocultar sidebar,
+favorito, breadcrumb, tema, histórico de navegação, notificações. Sem
+busca (`search não precisa`, dito explicitamente) e sem o botão de conta
+(`UserCircle`) que existia antes — o usuário logado já mora no topo da
+sidebar (`AppSidebarContent.vue`, seção `AppSidebar` acima), duplicar
+aqui seria redundante.
+
+- **Botão de ocultar/exibir sidebar** (`SidebarSimple`) — um botão só,
+  comportamento por viewport via `useMediaQuery('(max-width: 1023px)')`
+  (mesmo breakpoint já usado pelo `Drawer.vue`): no mobile chama
+  `toggleMobileNav` (abre/fecha o drawer já existente), no desktop chama
+  `toggleDesktopSidebar` (novo). `useAppShell.ts` ganhou
+  `isDesktopSidebarCollapsed`/`toggleDesktopSidebar` (TDD, mesmo padrão
+  de `toggleMobileNav`) — `AppSidebar.vue` aplica
+  `.app-sidebar-desktop--collapsed { display: none !important; }`
+  (`!important` necessário pra vencer o `display: flex` da media query,
+  mesma especificidade, mesmo seletor).
+- **Favorito** (`Star`) — **casca pronta, sem dado real por trás** (mesmo
+  critério do `AppFooter`/`DatePicker`/`TagsInput` antes de uma tela
+  real existir): não há conceito de "favoritar página" no domínio do
+  Orbita hoje, então o botão não persiste nem alterna estado — só existe
+  visualmente, pronto pra ganhar lógica quando o caso de uso aparecer.
+- **Breadcrumb** — troca o antigo `<h1>{{ route.meta.title }}</h1>` por
+  `Breadcrumb.vue` (já existente, Tier 9), alimentado por um composable
+  novo, `core/layouts/useBreadcrumb.ts`. A trilha é calculada em cima da
+  MESMA árvore `navGroups` que já alimenta a sidebar (`navigation.ts`) —
+  não é um `meta` novo duplicando essa informação nem uma trilha digitada
+  à mão: acha a rota ativa por `to.name` dentro dos grupos (e dos
+  `children`, um nível), breadcrumb vira `[grupo, item]`. O grupo entra
+  como link (aponta pro primeiro item navegável dele — grupos não têm
+  rota própria) porque é isso que o `Breadcrumb.vue` já usa pra decidir
+  "ancestral apagado" (`{colors.ink-40}`, tem `to`) vs. "página atual"
+  (`{colors.ink}`, sem `to`, sempre o último) — sem essa regra, o
+  breadcrumb ficaria com os dois itens na mesma cor. Rota sem
+  correspondência em `navGroups` (vai acontecer bastante, a árvore de
+  exemplo só cobre "Default" com rota real) cai pro `route.meta.title`
+  sozinho, mesmo texto que o header mostrava antes desta mudança — nunca
+  quebra por falta de entrada na árvore. **Test-first**: a lógica de
+  achar a trilha (`resolveBreadcrumbItems`) foi extraída como função pura
+  (sem `useRoute()`) especificamente pra ser testável sem montar um
+  router de verdade — nenhum outro teste do projeto monta
+  `createRouter`/`createMemoryHistory` ainda, e não valia introduzir essa
+  infra só pra este caso; `useBreadcrumb()` em si é só o wrapper fino que
+  chama `useRoute()` por cima, mesmo critério de "wrapper fino não
+  precisa de teste próprio" já usado no `useToast.ts`.
+- **Tema** (`Sun`, ícone fixo — não alterna pra `Moon` no escuro, a
+  captura do usuário mostra o mesmo ícone nos dois exemplos) — primeira
+  implementação real de toggle de tema do projeto, resolvendo o gap
+  "Modo escuro sem toggle" registrado desde a Fase 0 (ver "Known Gaps").
+  Novo composable `shared/composables/useTheme.ts`: singleton em nível de
+  módulo (mesmo padrão de `useAppShell.ts`), persiste em
+  `localStorage` (`orbita-theme`) e aplica `data-theme` em
+  `document.documentElement` — sem preferência salva, o tema NÃO é
+  forçado (`_tokens.scss` já resolve sozinho via `prefers-color-scheme`);
+  só depois de um toggle a preferência explícita passa a sobrepor o SO.
+  Test-first: toggle + persistência + aplicação do atributo, mesmo rigor
+  do `useAppShell.test.ts`.
+- **Histórico de navegação** (`ClockCounterClockwise`) — literal: chama
+  `router.back()`. Não existe (nem existirá neste MVP) um "histórico de
+  navegação" com dado próprio — a aba "Recentes" da sidebar já documenta
+  isso como estado vazio honesto (seção `AppSidebar` acima) — então a
+  interpretação mais direta e correta do pedido é o histórico real do
+  navegador/router, não uma feature nova de tracking.
+- **Notificações** (`Bell`) — mantido tal como já existia
+  (`toggleNotificationPanel`, ponto de não-lida).
+- **4º ícone da captura não implementado** — a referência do usuário
+  tinha um ícone a mais à direita (tipo livro/painel dividido) não citado
+  no pedido em texto. Sem função definida no Orbita hoje (nenhuma feature
+  de "painel direito"/layout alternativo existe) — mesmo critério de não
+  inventar affordance sem propósito já usado no resto do design system;
+  revisitável se um pedido futuro esclarecer o que deveria fazer.
+- Verificado em browser real (Playwright, viewport 1280×800 e depois
+  390×844), luz e escuro: breadcrumb mostra "Dashboards / Default" pra
+  rota `home`; exatamente 5 botões no header, sem input de busca; toggle
+  de sidebar esconde/reexibe `.app-sidebar-desktop` no desktop e abre o
+  drawer mobile (`.app-sidebar-drawer`) no viewport pequeno, nunca os
+  dois ao mesmo tempo; toggle de tema aplica `data-theme` no
+  `documentElement`, muda o fundo do header pra `rgb(51, 51, 51)`
+  (`{colors.bg-2}` escuro) e persiste em `localStorage`; botão de
+  histórico navega de volta via `router.back()`; sino continua abrindo o
+  painel de notificações.
+
 ### AppFooter (`core/layouts/AppFooter.vue`)
 
 **Pedido direto pelo usuário em 2026-08-28, com captura real do Figma**
@@ -2298,19 +2392,21 @@ Media queries sempre `min-width` (mobile-first) — sem exceção.
 
 ## Known Gaps
 
-- **Modo escuro sem toggle**: os tokens `SnowUI-Dark` estão 100% cabeados
-  em `_tokens.scss` (`:root[data-theme='dark']`), mas nenhum composable
-  liga esse atributo ainda — não existe switch de tema na UI. Ativar isso
-  é uma feature nova (provavelmente `core/store`/
-  `shared/composables/useTheme.ts` futuramente), não implementá-la a
-  partir só desta doc. **Achado real, 2026-08-28**: o seletor não estava
-  ancorado em `:root` até essa data — corrigido depois de descobrir, via
-  integração do `vue-sonner`, que um atributo `data-theme="dark"` de
-  QUALQUER elemento da página (não só a raiz) ativava os tokens escuros
-  ali dentro, mesmo sem toggle nenhum ligado (ver seção Components →
-  Notifiers/Toast). Sem esse achado, o gap acima ("nenhum composable liga
-  esse atributo ainda") seria falso pela metade — o atributo podia vir de
-  fora do nosso próprio código.
+- **Modo escuro — RESOLVIDO em 2026-08-28**: `shared/composables/useTheme.ts`
+  agora liga/desliga `data-theme` em `document.documentElement` (botão de
+  tema do `AppHeader`, ver seção Components → AppHeader), persistido em
+  `localStorage`. Histórico do gap, mantido por contexto: os tokens
+  `SnowUI-Dark` já estavam 100% cabeados em `_tokens.scss`
+  (`:root[data-theme='dark']`) desde a Fase 0, só faltava um jeito de
+  ligar. **Achado real, mesmo dia, anterior a este composable**: o
+  seletor não estava ancorado em `:root` até então — corrigido depois de
+  descobrir, via integração do `vue-sonner`, que um atributo
+  `data-theme="dark"` de QUALQUER elemento da página (não só a raiz)
+  ativava os tokens escuros ali dentro, mesmo sem toggle nenhum ligado
+  (ver seção Components → Notifiers/Toast) — sem esse achado anterior, o
+  toggle novo teria herdado o mesmo bug (um `data-theme="dark"` de
+  qualquer lib de terceiro vazando pro app inteiro em vez de só afetar o
+  próprio componente).
 - **Sem token de elevação/sombra**: o export de `docs/design/tokens/` não
   inclui nenhum grupo de shadow — qualquer necessidade futura de elevação
   de verdade (modal, dropdown flutuante) exige uma decisão nova, não uma

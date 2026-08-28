@@ -1,28 +1,85 @@
 <script setup lang="ts">
-import { useRoute } from 'vue-router'
-import { Bell, List, UserCircle } from '@/shared/components/icons/regular.generated'
+/**
+ * Reconstruído em 2026-08-28, pedido direto do usuário com captura real
+ * (header claro + escuro lado a lado): botão de ocultar sidebar,
+ * favorito, breadcrumb, tema, histórico de navegação, notificações — sem
+ * busca (`search não precisa`, dito explicitamente) e sem o botão de
+ * conta (`UserCircle`) que existia antes — o usuário logado já mora no
+ * topo da sidebar (`AppSidebarContent.vue`), duplicar aqui seria
+ * redundante.
+ *
+ * A captura tinha um 4º ícone à direita (tipo livro/painel dividido) não
+ * mencionado no pedido em texto — não implementado: sem função definida
+ * no Orbita hoje (nenhuma feature de "painel direito"/layout alternativo
+ * existe), mesmo critério de não inventar affordance sem propósito já
+ * usado no resto do design system.
+ */
+import { useMediaQuery } from '@vueuse/core'
+import { useRouter } from 'vue-router'
+import {
+  Bell,
+  ClockCounterClockwise,
+  SidebarSimple,
+  Star,
+  Sun,
+} from '@/shared/components/icons/regular.generated'
+import Breadcrumb from '@/shared/components/ui/Breadcrumb.vue'
 import Icon from '@/shared/components/ui/Icon.vue'
+import { useTheme } from '@/shared/composables/useTheme'
 import { useAppShell } from './useAppShell'
+import { useBreadcrumb } from './useBreadcrumb'
 
-const route = useRoute()
-const { hasUnreadNotifications, toggleMobileNav, toggleNotificationPanel } = useAppShell()
+const router = useRouter()
+const { items: breadcrumbItems } = useBreadcrumb()
+const { toggleTheme } = useTheme()
+const { hasUnreadNotifications, toggleDesktopSidebar, toggleMobileNav, toggleNotificationPanel } =
+  useAppShell()
+
+// Mesmo breakpoint md (1023px/64rem) já usado pelo Drawer.vue — abaixo
+// dele a sidebar é um drawer (isMobileNavOpen), acima é a coluna estática
+// (isDesktopSidebarCollapsed). Um botão só, comportamento por viewport.
+const isMobileViewport = useMediaQuery('(max-width: 1023px)')
+
+function toggleSidebar(): void {
+  if (isMobileViewport.value) {
+    toggleMobileNav()
+  } else {
+    toggleDesktopSidebar()
+  }
+}
 </script>
 
 <template>
   <header class="app-header">
     <div class="app-header__left">
       <button
-        aria-label="Abrir menu"
-        class="app-header__icon-button app-header__menu-button"
+        aria-label="Ocultar/exibir menu"
+        class="app-header__icon-button"
         type="button"
-        @click="toggleMobileNav"
+        @click="toggleSidebar"
       >
-        <Icon :icon="List" :size="20" />
+        <Icon :icon="SidebarSimple" :size="20" />
       </button>
-      <h1 class="app-header__title">{{ route.meta.title ?? 'Orbita' }}</h1>
+      <!-- Sem dado real por trás ainda (não existe "favoritar página" no
+      domínio do Orbita) — casca pronta, mesmo critério do AppFooter. -->
+      <button aria-label="Favoritar" class="app-header__icon-button" type="button">
+        <Icon :icon="Star" :size="20" />
+      </button>
+      <Breadcrumb :items="breadcrumbItems" />
     </div>
 
     <div class="app-header__actions">
+      <button aria-label="Alternar tema" class="app-header__icon-button" type="button" @click="toggleTheme">
+        <Icon :icon="Sun" :size="20" />
+      </button>
+      <button
+        aria-label="Voltar"
+        class="app-header__icon-button"
+        type="button"
+        @click="router.back()"
+      >
+        <Icon :icon="ClockCounterClockwise" :size="20" />
+      </button>
       <button
         aria-label="Notificações"
         class="app-header__icon-button app-header__notification-button"
@@ -36,10 +93,6 @@ const { hasUnreadNotifications, toggleMobileNav, toggleNotificationPanel } = use
           class="app-header__unread-dot"
           role="status"
         />
-      </button>
-      <!-- Placeholder até Avatar.vue existir (Tier 3, ver catalogo-componentes.md) -->
-      <button aria-label="Conta" class="app-header__icon-button" type="button">
-        <Icon :icon="UserCircle" :size="20" />
       </button>
     </div>
   </header>
@@ -62,21 +115,18 @@ const { hasUnreadNotifications, toggleMobileNav, toggleNotificationPanel } = use
   display: flex;
   align-items: center;
   gap: $spacing-12;
-}
-
-.app-header__title {
-  font-size: $font-size-xl;
-  font-weight: $font-weight-semibold;
-  color: $color-ink;
+  min-width: 0;
 }
 
 .app-header__actions {
   display: flex;
+  flex-shrink: 0;
   gap: $spacing-8;
 }
 
 .app-header__icon-button {
   display: inline-flex;
+  flex-shrink: 0;
   align-items: center;
   justify-content: center;
   padding: $spacing-8;
@@ -111,17 +161,5 @@ const { hasUnreadNotifications, toggleMobileNav, toggleNotificationPanel } = use
   background-color: $color-accent-red;
   border: 1px solid $color-bg-1;
   border-radius: $radius-80;
-}
-
-// Depois de `.app-header__icon-button` de propósito: as duas classes têm
-// especificidade igual (uma classe cada) e ficam no mesmo botão — com
-// empate de especificidade, quem vem depois no CSS vence. Antes desta
-// reordenação, `display: inline-flex` de `.app-header__icon-button`
-// sempre ganhava de `display: none` daqui, e o hambúrguer nunca sumia no
-// desktop (achado real, confirmado via computed style em browser real).
-.app-header__menu-button {
-  @media (min-width: $breakpoint-md) {
-    display: none;
-  }
 }
 </style>

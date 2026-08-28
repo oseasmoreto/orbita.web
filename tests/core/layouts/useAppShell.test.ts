@@ -109,4 +109,19 @@ describe('useAppShell', () => {
     setHasUnreadNotifications(false)
     expect(hasUnreadNotifications.value).toBe(false)
   })
+
+  it('starts with the desktop sidebar expanded (not collapsed)', () => {
+    const { isDesktopSidebarCollapsed } = useAppShell()
+    expect(isDesktopSidebarCollapsed.value).toBe(false)
+  })
+
+  it('toggles the desktop sidebar collapsed state', () => {
+    const { isDesktopSidebarCollapsed, toggleDesktopSidebar } = useAppShell()
+
+    toggleDesktopSidebar()
+    expect(isDesktopSidebarCollapsed.value).toBe(true)
+
+    toggleDesktopSidebar()
+    expect(isDesktopSidebarCollapsed.value).toBe(false)
+  })
 })

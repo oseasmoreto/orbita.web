@@ -12,6 +12,7 @@ const isMobileNavOpen = ref(false)
 const expandedItemIds = ref(new Set<string>())
 const isNotificationPanelOpen = ref(false)
 const hasUnreadNotifications = ref(false)
+const isDesktopSidebarCollapsed = ref(false)
 
 export function useAppShell() {
   function openMobileNav(): void {
@@ -80,17 +81,30 @@ export function useAppShell() {
     expandedItemIds.value = new Set(expandedItemIds.value).add(id)
   }
 
+  /**
+   * Ocultar/exibir a coluna estática da sidebar no desktop — botão pedido
+   * no `AppHeader` (ícone `SidebarSimple`). Estado independente de
+   * `isMobileNavOpen`: no mobile a sidebar já é um drawer fechado por
+   * padrão, então "ocultar" não se aplica; o próprio `AppHeader` decide
+   * qual dos dois toggles chamar conforme o viewport (`useMediaQuery`).
+   */
+  function toggleDesktopSidebar(): void {
+    isDesktopSidebarCollapsed.value = !isDesktopSidebarCollapsed.value
+  }
+
   return {
     closeMobileNav,
     closeNotificationPanel,
     expandItem,
     hasUnreadNotifications,
+    isDesktopSidebarCollapsed,
     isItemExpanded,
     isMobileNavOpen,
     isNotificationPanelOpen,
     openMobileNav,
     openNotificationPanel,
     setHasUnreadNotifications,
+    toggleDesktopSidebar,
     toggleItem,
     toggleMobileNav,
     toggleNotificationPanel,
