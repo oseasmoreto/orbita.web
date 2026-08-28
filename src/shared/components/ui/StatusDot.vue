@@ -2,10 +2,12 @@
 /**
  * Resolve o gap "Label" do catálogo (`docs/design/catalogo-componentes.md`
  * seção 2) — em aberto desde a Tier 1 como "prop de Badge ou componente
- * próprio StatusBadge.vue, decidir na hora de implementar". A captura real
- * do usuário resolveu a dúvida: não é pill com fundo (não é variante de
- * `Badge.vue`) — é ponto colorido + texto na mesma cor, sem fundo nenhum.
- * Nome final `StatusDot` (não `StatusBadge`, que sugeriria pill).
+ * próprio StatusBadge.vue, decidir na hora de implementar". A primeira
+ * captura do usuário resolveu a dúvida pra variante `dot` (default): não
+ * é pill com fundo — é ponto colorido + texto na mesma cor, sem fundo
+ * nenhum. **2ª captura, 2026-08-28**: o Figma tinha as duas variantes
+ * lado a lado (ponto pulsante E pill com fundo) — adicionada a variante
+ * `pill` (prop `variant`), pulsante continua intocado.
  *
  * `color` é só uma paleta de acentos genérica — o átomo não sabe o que
  * "In Progress"/"Approved"/"Rejected" significam, quem decide o mapeamento
@@ -25,16 +27,19 @@ withDefaults(
       | 'orange'
       | 'red'
       | 'gray'
+    /** `dot` (default) = ponto pulsante sem fundo; `pill` = cápsula com fundo tingido. */
+    variant?: 'dot' | 'pill'
   }>(),
   {
     color: 'gray',
+    variant: 'dot',
   },
 )
 </script>
 
 <template>
-  <span :class="['ui-status-dot', `ui-status-dot--${color}`]">
-    <span class="ui-status-dot__marker" />
+  <span :class="['ui-status-dot', `ui-status-dot--${color}`, `ui-status-dot--${variant}`]">
+    <span v-if="variant === 'dot'" class="ui-status-dot__marker" />
     <slot />
   </span>
 </template>
@@ -87,6 +92,17 @@ withDefaults(
     opacity: 0;
     transform: scale(2.5);
   }
+}
+
+// Fundo tingido derivado da própria `currentColor` da variante de cor
+// (`color-mix`, não um segundo token por acento) — reaproveita a mesma
+// declaração de cor já usada pro texto/ponto, sem precisar de 10 tokens
+// novos de "acento claro" que não existem na escala de origem.
+.ui-status-dot--pill {
+  padding: $spacing-4 $spacing-12;
+  font-weight: $font-weight-semibold;
+  background-color: color-mix(in srgb, currentColor 16%, transparent);
+  border-radius: $radius-80;
 }
 
 .ui-status-dot--purple {

@@ -13,6 +13,7 @@ import {
   Clipboard,
   DotsThreeOutlineVertical,
   Download,
+  Eye,
   PencilSimpleLine,
   Plus,
   Star,
@@ -36,9 +37,11 @@ import DatePicker from '@/shared/components/ui/DatePicker.vue'
 import DropdownMenu from '@/shared/components/ui/DropdownMenu.vue'
 import Drawer from '@/shared/components/ui/Drawer.vue'
 import Icon from '@/shared/components/ui/Icon.vue'
+import IconText from '@/shared/components/ui/IconText.vue'
 import IconTile from '@/shared/components/ui/IconTile.vue'
 import Input from '@/shared/components/ui/Input.vue'
 import Modal from '@/shared/components/ui/Modal.vue'
+import ProgressBar from '@/shared/components/ui/ProgressBar.vue'
 import Search from '@/shared/components/ui/Search.vue'
 import Select from '@/shared/components/ui/Select.vue'
 import Spinner from '@/shared/components/ui/Spinner.vue'
@@ -521,10 +524,9 @@ const activeChartMetric = ref('price')
           </Badge>
         </template>
         <template #cell-marketplace="{ row }">
-          <div class="showcase__cell-marketplace">
+          <IconText :text="row.marketplace">
             <Avatar :name="row.marketplace" :size="20" />
-            <span>{{ row.marketplace }}</span>
-          </div>
+          </IconText>
         </template>
         <template #cell-operations="{ row }">
           <DropdownMenu :options="rowActions" @select="(key) => handleRowAction(row.name, key)">
@@ -539,10 +541,9 @@ const activeChartMetric = ref('price')
       <h2>DataTable (variante simples, sem seleção)</h2>
       <DataTable :columns="taskColumns" :rows="taskRows">
         <template #cell-assignedTo="{ row }">
-          <div class="showcase__cell-marketplace">
+          <IconText :text="row.assignedTo">
             <Avatar :name="row.assignedTo" :size="20" />
-            <span>{{ row.assignedTo }}</span>
-          </div>
+          </IconText>
         </template>
         <template #cell-status="{ row }">
           <Badge variant="ghost">
@@ -573,25 +574,22 @@ const activeChartMetric = ref('price')
           <span class="showcase__cell-title">{{ value }}</span>
         </template>
         <template #cell-textIcon="{ value }">
-          <div class="showcase__cell-marketplace">
+          <IconText :text="String(value)">
             <Icon :icon="Clipboard" :size="14" />
-            <span>{{ value }}</span>
-          </div>
+          </IconText>
         </template>
         <template #cell-user="{ row }">
-          <div class="showcase__cell-marketplace">
+          <IconText :text="row.user">
             <Avatar :name="row.user" :size="20" />
-            <span>{{ row.user }}</span>
-          </div>
+          </IconText>
         </template>
         <template #cell-users="{ row }">
           <AvatarGroup :max="2" :people="row.users" :size="24" />
         </template>
         <template #cell-date="{ value }">
-          <div class="showcase__cell-marketplace">
+          <IconText :text="String(value)">
             <Icon :icon="CalendarBlank" :size="14" />
-            <span>{{ value }}</span>
-          </div>
+          </IconText>
         </template>
         <template #cell-status="{ row }">
           <StatusDot :color="statusColor[row.status]">{{ statusLabel[row.status] }}</StatusDot>
@@ -605,10 +603,9 @@ const activeChartMetric = ref('price')
           />
         </template>
         <template #cell-activity="{ value }">
-          <div class="showcase__cell-marketplace">
+          <IconText :text="String(value)">
             <IconTile :icon="PencilSimpleLine" :icon-size="14" :size="24" tint="blue" />
-            <span>{{ value }}</span>
-          </div>
+          </IconText>
         </template>
       </DataTable>
     </section>
@@ -642,6 +639,10 @@ const activeChartMetric = ref('price')
         />
         <StatCard label="Marketplaces conectados" tint="purple" value="3" />
       </div>
+      <div class="showcase__row showcase__row--wrap">
+        <StatCard label="Views" :trend="{ direction: 'up', value: '+11.01%' }" value="753" />
+        <StatCard :icon="Eye" label="Views" value="753" />
+      </div>
       <div class="showcase__row showcase__row--charts">
         <ChartCard
           :labels="['Shopee', 'TikTok', 'Amazon', 'ML', 'Magalu', 'Outros']"
@@ -672,6 +673,31 @@ const activeChartMetric = ref('price')
     </section>
 
     <section class="showcase__section">
+      <h2>ProgressBar</h2>
+      <p>
+        Grounded no frame "Widget → Info" do Figma (<code>Status-1</code>/<code>Status-2</code>),
+        antes fora de escopo — implementado a pedido direto do usuário com captura real.
+      </p>
+      <div class="showcase__info-card">
+        <div class="showcase__info-row">
+          <p class="showcase__info-label">Total Tasks</p>
+          <p class="showcase__info-value">15 / 48</p>
+        </div>
+        <div class="showcase__info-row">
+          <p class="showcase__info-label">Status</p>
+          <div class="showcase__info-progress-row">
+            <ProgressBar label="In Progress" :value="51" />
+            <span class="showcase__info-percentage">51%</span>
+          </div>
+        </div>
+        <div class="showcase__info-row">
+          <p class="showcase__info-label">Profile Completion</p>
+          <ProgressBar show-percentage :value="51" />
+        </div>
+      </div>
+    </section>
+
+    <section class="showcase__section">
       <h2>Spinner</h2>
       <div class="showcase__row">
         <Spinner :size="16" />
@@ -688,6 +714,13 @@ const activeChartMetric = ref('price')
         <StatusDot color="cyan">Pending</StatusDot>
         <StatusDot color="yellow">Approved</StatusDot>
         <StatusDot color="gray">Rejected</StatusDot>
+      </div>
+      <div class="showcase__row">
+        <StatusDot color="indigo" variant="pill">In Progress</StatusDot>
+        <StatusDot color="green" variant="pill">Complete</StatusDot>
+        <StatusDot color="cyan" variant="pill">Pending</StatusDot>
+        <StatusDot color="yellow" variant="pill">Approved</StatusDot>
+        <StatusDot color="gray" variant="pill">Rejected</StatusDot>
       </div>
     </section>
   </main>
@@ -749,12 +782,6 @@ const activeChartMetric = ref('price')
   min-width: 220px;
 }
 
-.showcase__cell-marketplace {
-  display: flex;
-  align-items: center;
-  gap: $spacing-8;
-}
-
 // Célula "Title" da captura do usuário aparece em cinza apagado (estado
 // vazio/placeholder), diferente da célula "Text" ao lado (cor cheia) —
 // mesma cor de placeholder já usada em Input/Select (`{colors.ink-40}`).
@@ -775,5 +802,53 @@ const activeChartMetric = ref('price')
   display: flex;
   flex-direction: column;
   gap: $spacing-8;
+}
+
+// Reproduz o card "Info" da captura — sem componente próprio (o pedido
+// foi pelos componentes de progresso, não por um bloco de card novo),
+// então fica como composição local da vitrine, mesmo espírito de
+// `.showcase__cell-title`.
+.showcase__info-card {
+  display: flex;
+  flex-direction: column;
+  gap: $spacing-20;
+  max-width: 280px;
+  padding: $spacing-24;
+  background-color: $color-bg-1;
+  border: 1px solid $color-ink-10;
+  border-radius: $radius-16;
+}
+
+.showcase__info-row {
+  display: flex;
+  flex-direction: column;
+  gap: $spacing-8;
+}
+
+.showcase__info-label {
+  font-size: $font-size-sm;
+  color: $color-ink-40;
+}
+
+.showcase__info-value {
+  font-size: $font-size-xl;
+  font-weight: $font-weight-semibold;
+  color: $color-ink;
+}
+
+.showcase__info-progress-row {
+  display: flex;
+  align-items: center;
+  gap: $spacing-8;
+}
+
+.showcase__info-progress-row .ui-progress-bar {
+  flex: 1;
+}
+
+.showcase__info-percentage {
+  flex-shrink: 0;
+  font-size: $font-size-sm;
+  color: $color-ink-40;
 }
 </style>

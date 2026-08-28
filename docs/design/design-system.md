@@ -1025,6 +1025,36 @@ quando um **segundo** consumidor precisar de verdade", seção 2 de
   notificações reaberto, 5 tiles renderizando idênticos a antes da
   refatoração) — zero mudança visual, só remoção de duplicação.
 
+### IconText (`shared/components/ui/IconText.vue`)
+
+**Extraído de `HomeView.vue` a pedido do usuário em 2026-08-28** — a
+vitrine tinha uma classe `.showcase__cell-marketplace` (`display: flex;
+gap: 8px`) copiada em 6 slots de célula diferentes do `DataTable`
+(marketplace/assignedTo/textIcon/user/date/activity), cobrindo 3 dos
+tipos nomeados do `COMPONENT_SET "Table Components"` (User, Text-Icon/
+Date, Activity). O usuário notou a duplicação e perguntou se não devia
+virar componente — reuso real (6 usos, não hipotético), mesmo critério
+de promoção já usado no `IconTile`/`AvatarGroup`.
+
+- **Só organiza layout, não sabe o que é o elemento à esquerda** — recebe
+  `Avatar`/`Icon`/`IconTile`/qualquer coisa pelo slot default, e o texto
+  via prop `text`. Não é um componente "ícone + texto" de verdade (nome
+  herdado do tipo de célula "Text-Icon" do Figma, mas serve pros outros
+  2 tipos igual, já que os três têm exatamente o mesmo esqueleto visual).
+- **Prop `text: string`, não `unknown`** — os slots de célula do
+  `DataTable` expõem `value: unknown` (chave dinâmica, tipo não conhecido
+  em compile-time), então os 3 consumidores que passam o `value` do slot
+  direto (`textIcon`/`date`/`activity`) precisam de `String(value)` no
+  call site — não é responsabilidade do `IconText` fazer esse narrowing,
+  ele só aceita o tipo que já documenta (`string`).
+- **Não usado na célula "Title"** (texto apagado sozinho, sem elemento à
+  esquerda) nem na "Users" (já é `AvatarGroup`, elemento múltiplo, não
+  ícone+texto simples) — só entra onde o padrão "1 elemento à esquerda +
+  1 texto" realmente se repete.
+- Verificado em browser real: as 3 tabelas da vitrine (produtos,
+  variante simples, Table Components) renderizam pixel-idênticas a antes
+  da extração — só a duplicação de CSS saiu do arquivo.
+
 ### PaginationNav (`shared/components/blocks/PaginationNav.vue`)
 
 Grounded na instância "Pagination" do Figma (`#4113:42236`, ao lado do
@@ -1142,16 +1172,50 @@ sobre `TabsRoot`/`TabsList`/`TabsTrigger` da Reka UI.
   importa direto de `reka-ui` e usa dentro do slot default do `TabBar`,
   já que o conteúdo de cada aba é sempre específico da tela (mesma régua
   de "block/átomo nunca decide o que a ação faz de verdade").
-- **Fora de escopo, de propósito**: o padrão "BlockTab" do mesmo frame
-  (rótulos tipo "Total Users"/"Total Projects" misturados com `Badge-Tag`
-  de filtro de data "Current Week"/"Previous Week") não é navegação de
-  verdade — é um seletor de estatística combinado com filtro, sem nenhum
-  caso de uso no roadmap do Orbita hoje. Só o padrão de navegação por
-  abas (`TopTab`) foi implementado; revisitar se um caso de uso real
-  pedir o padrão `BlockTab`.
+- **"BlockTab" do mesmo frame (rótulos tipo "Total Users"/"Total
+  Projects" misturados com `Badge-Tag` de filtro de data) foi marcado
+  fora de escopo aqui** — não é navegação de verdade, é um seletor de
+  estatística combinado com filtro. **Decisão parcialmente revertida em
+  2026-08-28** (ver `BlockTab.vue`, seção própria abaixo): o padrão de
+  rótulo clicável sem sublinhado (sem o `Badge-Tag` de filtro, que
+  continua sem caso de uso) já tinha uso real dentro do `ChartCard.vue` e
+  virou átomo próprio.
 - Verificado em browser real: clique na aba troca o painel visível
   (`data-state="active"` no `TabsContent` correto) e o sublinhado
   acompanha a aba clicada.
+
+### BlockTab (`shared/components/ui/BlockTab.vue`)
+
+**Decisão de "fora de escopo" da Tier 8 parcialmente revertida em
+2026-08-28** — o usuário perguntou se eu tinha algo sobre "BlockTab" no
+que já foi explorado do Figma; a resposta (documentada acima, na seção
+`TabBar`) apontou que o próprio `ChartCard.vue` já usava exatamente esse
+padrão como seletor de métrica do cabeçalho (`metrics`), com markup/CSS
+duplicado dentro do arquivo do gráfico. O usuário pediu a extração.
+
+- **Rótulos clicáveis sem sublinhado, sem painel de conteúdo real** —
+  diferente do `TabBar.vue` (`TopTab`, navegação de verdade com
+  `TabsRoot` da Reka UI e `role=tab`), aqui não existe conteúdo
+  alternando via ARIA: é só "qual opção está ativa agora" (ex.: qual
+  métrica alimenta o mesmo gráfico). Por isso não usa nenhum primitivo
+  Reka UI — seria simular semântica de navegação que não existe, mesmo
+  raciocínio já registrado no `ChartCard.vue` antes da extração.
+- **`ChartCard.vue` migrado pra consumir o átomo** — `chart-card__metrics`/
+  `chart-card__metric`/`chart-card__metric--active` removidos do arquivo,
+  substituídos por `<BlockTab v-model="activeMetric" :options="metrics" />`.
+  Mesmos tokens (`{spacing.16}` de gap entre itens, inativo `14 Regular`
+  em `{colors.ink-40}`, ativo `14 Semibold` em `{colors.ink}`), zero
+  mudança visual — reconfirmado em browser real (seletor de métrica do
+  gráfico "Preço sugerido"/"Margem" clicando e trocando o item ativo).
+- **`Badge-Tag` de filtro de data do Figma continua fora de escopo** —
+  só o rótulo clicável foi extraído; o filtro combinado ("Current Week"/
+  "Previous Week") não tem pedido nem caso de uso ainda.
+- Tipo `BlockTabOption` (`{ key, label }`) em
+  `shared/components/ui/types/blockTab.type.ts` — mesma forma de
+  `ChartMetricOption` (`shared/components/blocks/types/chartCard.type.ts`),
+  não fundidos num tipo só porque moram em camadas diferentes (átomo
+  genérico vs. tipo específico de domínio do `ChartCard`), compatíveis
+  estruturalmente sem conversão.
 
 ### NotificationItem (`modules/platform/components/NotificationItem.vue`)
 
@@ -1257,12 +1321,11 @@ primeiro uso como fundo de CARD inteiro, não só tile de ícone),
   registrado (`PricingCalculator` nunca exposto em rota,
   `docs/planejamento/plano-implementacao.md`). Não decide nada de
   negócio: só recebe `label`/`value`/`trend` já calculados.
-- Prop `trend?: { direction: 'up' | 'down'; value: string }` reaproveita
-  `Badge.vue` — o Figma só mostra o caso positivo (`+11.01%` com ícone
-  "ArrowRise", que não existe no export gerado, mesma classe de gap já
-  registrada pro `CaretUpDown`/`ArrowLineUpDown` do Select); `TrendUp`/
+- Prop `trend?: { direction: 'up' | 'down'; value: string }` — ícone
+  "ArrowRise" do Figma não existe no export gerado (mesma classe de gap
+  já registrada pro `CaretUpDown`/`ArrowLineUpDown` do Select); `TrendUp`/
   `TrendDown` são os ícones mais próximos disponíveis, com o par completo
-  (Figma não mostrou o caso negativo).
+  (Figma só mostrou o caso positivo).
 - **Achado real, descoberto simulando `data-theme="dark"` (sem toggle de
   UI ainda)**: `{colors.tint-1}`/`{colors.tint-2}` não têm variante pro
   tema escuro no export de origem — o fundo do card continua claro (é o
@@ -1271,6 +1334,84 @@ primeiro uso como fundo de CARD inteiro, não só tile de ícone),
   impacto hoje (nenhum toggle liga o tema escuro em produção ainda — ver
   "Known Gaps"), mas documentado pra quem for construir o toggle não ser
   pego de surpresa.
+
+**Revisão pixel-perfect em 2026-08-28, pedida direto pelo usuário com
+captura real do frame** — a primeira versão foi construída sem essa
+captura, só com a régua geral "label + valor grande + badge de
+tendência" do catálogo. 3 achados reais, corrigidos:
+
+- **`Type=B` nunca tinha sido implementado de verdade** — o comentário
+  antigo do componente dizia "Type=A/Type=B" cobertos, mas só existia o
+  card com tendência (`Type=A`). A captura mostra `Type=B`: ícone no
+  canto superior direito (ao lado do label, mesma linha), sem tendência
+  nenhuma. Corrigido com uma prop nova, `icon?: Component` — renderiza
+  num header `justify-content: space-between` junto do label; sem
+  `icon`, o header só mostra o label sozinho (mesmo visual de antes,
+  compatível com as instâncias já existentes na vitrine).
+- **Ordem do ícone de tendência estava invertida** — a primeira versão
+  reaproveitava `Badge.vue` com `icon-before` (ícone antes do texto:
+  "↗ +11.01%"); a captura real mostra o ícone **depois** do texto
+  ("+11.01% ↗"). Motivo real de ter saído de `Badge.vue`: a segunda
+  diferença encontrada — a captura mostra o texto+ícone da tendência
+  **coloridos** (verde pra alta), e `Badge.vue` não tem prop de cor
+  própria pra oferecer (sempre `{colors.ink}`). Reescrito como markup
+  próprio do `StatCard` (`span` com `TrendUp`/`TrendDown` depois do
+  texto), com `color: {colors.accent-green}` pra alta e
+  `{colors.accent-red}` pra baixa (par completo — Figma só mostrou o
+  caso positivo).
+- **Peso do label e espaçamento estavam errados** — label usava
+  `{font-weight.semibold}` igual ao valor; a captura mostra "Views"
+  visivelmente mais fino que "753" — corrigido pra
+  `{font-weight.regular}`. Gap entre valor e tendência aumentado de
+  `{spacing.8}` pra `{spacing.16}` — a primeira versão ficava com o
+  indicador colado no número, a captura mostra bem mais respiro.
+- Reverificado em browser real contra a captura: os dois cards (`Views`
+  com tendência verde `+11.01%`/ícone depois do texto, `Views` com ícone
+  `Eye` no canto sem tendência) batem com o layout e agrupamento visual
+  da referência.
+
+### ProgressBar (`shared/components/ui/ProgressBar.vue`)
+
+**Decisão de "fora de escopo" revertida em 2026-08-28** — `Widget → Info`
+(`Status-1`/`Status-2`) tinha sido descartado junto com `Card`/instâncias
+soltas do mesmo frame, categorizado como "conteúdo de dashboard genérico
+sem caso de uso no domínio do Orbita" (mesmo critério do `BlockTab`/"More
+Items" do `DropdownMenu`). O usuário pediu implementação direta com
+captura real do frame ("Total Tasks: 15/48", barra "Status" com "In
+Progress"/"51%", barra "Profile Completion" com "51%" centralizado) — a
+régua de escopo original não se sustentou contra um pedido concreto com
+grounding real, revertida.
+
+- Construído sobre `ProgressRoot`/`ProgressIndicator` da Reka UI — o
+  primitivo não aplica nenhum estilo de preenchimento sozinho (só expõe
+  `data-state`/`data-value`/`data-max`), a largura do preenchimento
+  (`value / max`) é calculada no componente e aplicada via `:style`,
+  técnica padrão pra esse primitivo em qualquer biblioteca baseada nele.
+- **Duas variantes cobertas pela mesma prop `label`/`show-percentage`,
+  vistas na captura**: com `label` ("In Progress"), o texto fica dentro
+  do preenchimento colorido, alinhado à esquerda — a porcentagem "51%" ao
+  lado da barra (Status) é markup do consumidor, fora do átomo, porque é
+  assim que a captura mostra (texto+barra numa linha, porcentagem depois,
+  cor apagada `{colors.ink-40}` — diferente do "51%" da segunda barra).
+  Com `show-percentage`, a porcentagem fica centralizada na barra inteira
+  via `position: absolute` (independente da largura do preenchimento) —
+  padrão da barra "Profile Completion", onde a porcentagem é o único
+  conteúdo, então fica em destaque (`{colors.ink}`, semibold) dentro da
+  própria barra.
+- **Cor do preenchimento é `{colors.accent-indigo}`** — aproximação
+  visual da captura (tom lavanda claro), mesmo tom já usado pro status
+  "In Progress" do `StatusDot` nesta mesma sessão, reforçando a mesma
+  associação semântica em vez de escolher uma cor nova sem motivo.
+- **Sem componente de card próprio** — o card "Info" inteiro da captura
+  (Total Tasks + as 2 barras) é composição local da vitrine
+  (`.showcase__info-card` em `HomeView.vue`), não um bloco novo: o pedido
+  foi pelos componentes de progresso, não por um card dedicado, e nada
+  indica reuso real desse agrupamento específico ainda (mesma régua de
+  "sobe pra shared/ só com um segundo consumidor real").
+- Verificado em browser real contra a captura, incluindo a largura real
+  do preenchimento calculada (`51% de 198px` e `51% de 230px`,
+  conferidas via `getComputedStyle`, não só inspeção visual): layout,
+  cores e posicionamento de texto batem com a referência.
 
 ### ChartCard (`shared/components/blocks/ChartCard.vue`)
 
@@ -1335,11 +1476,13 @@ limit em curso), documentado como tal, não pixel exato.
   (`TabBar.vue`) tem aqui um uso real: alternar qual métrica alimenta o
   MESMO gráfico (ex.: "Preço sugerido" vs "Margem"), não navegação de
   página/rota. Por isso não reaproveita `TabBar.vue`/`TabsRoot` da Reka
-  UI — é só texto clicável emitindo `update:activeMetric`, sem painel de
-  conteúdo trocando via `role=tab`. **Nunca decide o que fazer com a
-  troca** — quem decide que dado alimenta `series` depois do clique é o
-  composable do módulo consumidor (mesma régua de bloco sem regra de
-  negócio).
+  UI — sem painel de conteúdo trocando via `role=tab`. **Extraído pra
+  `BlockTab.vue` em 2026-08-28** (seção própria acima) — o markup/CSS
+  vivia solto aqui até o usuário notar o reuso e pedir a extração; hoje é
+  `<BlockTab v-model="activeMetric" :options="metrics" />`. **Nunca
+  decide o que fazer com a troca** — quem decide que dado alimenta
+  `series` depois do clique é o composable do módulo consumidor (mesma
+  régua de bloco sem regra de negócio).
 - **Achado real, técnico, plugin `Filler` esquecido na primeira reescrita**:
   a primeira versão do preenchimento de área (`fill: true`) foi escrita
   sem registrar o plugin `Filler` do `chart.js` — resultado: warning no
@@ -1758,6 +1901,32 @@ de propósito pra não divergir do precedente já estabelecido sem pedido
 explícito. Verificado via `getComputedStyle(marker, '::before')`:
 `animationName`/`animationDuration: 1.8s`/`animationIterationCount:
 infinite` presentes nos 5 exemplos da vitrine.
+
+**Variante `pill`, pedida direto pelo usuário em 2026-08-28 com 2ª
+captura** — o Figma tinha as duas variantes lado a lado (a que já estava
+implementada, ponto pulsante sem fundo, E uma cápsula com fundo tingido),
+não vistas na primeira captura. Prop nova `variant: 'dot' | 'pill'`
+(default `'dot'`, pedido explícito de não mexer na pulsante):
+
+- **Fundo derivado da própria `currentColor` via `color-mix()`**
+  (`color-mix(in srgb, currentColor 16%, transparent)`), não um segundo
+  token de "acento claro" por cor — a escala de origem não tem 10 tons
+  pastel prontos (só `{colors.tint-1}`/`{colors.tint-2}`, já usados pra
+  outra coisa), e criar 10 tokens novos só pra isso seria inventar fora
+  da escala. Reaproveita a mesma declaração `color` que já pinta o texto
+  em cada variante `--purple`/`--indigo`/etc., então funciona pra
+  qualquer cor da paleta sem precisar de uma segunda regra CSS por cor.
+- Sem ponto/pulso na variante `pill` — todo o "indicador ao vivo" fica
+  só na variante `dot`, mesma decisão da captura (a cápsula é estática).
+- `color-mix()` é CSS moderno (Chrome 111+/Firefox 113+/Safari 16.2+) —
+  aceitável aqui pelo mesmo critério que já vale pro `:has()` usado em
+  todo o design system (Input/Select/DatePicker/TagsInput), sem guard de
+  fallback pra navegador antigo.
+- Verificado em browser real: `getComputedStyle` confirma o
+  `background-color` resolvido (`color(srgb ... / 0.16)` pro indigo,
+  proporcional a cada cor da paleta), as 5 cápsulas da vitrine
+  (indigo/green/cyan/yellow/gray) renderizam lado a lado com a lista de
+  pontos pulsantes já existente, sem nenhuma mudança na variante `dot`.
 
 ## Do's and Don'ts
 

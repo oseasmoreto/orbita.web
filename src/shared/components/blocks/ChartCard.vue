@@ -14,9 +14,10 @@
  *   métrica no cabeçalho (`metrics`) — o mesmo padrão "BlockTab" que a
  *   Tier 8 descartou como "não é navegação de verdade" na verdade tem
  *   um uso real aqui: seletor de métrica de gráfico, não navegação de
- *   página. Implementado como texto clicável simples (não o `TabsRoot`
- *   da Reka UI — não há painel de conteúdo real trocando via `role=tab`,
- *   é só qual métrica alimenta o mesmo gráfico).
+ *   página. **Extraído pra `BlockTab.vue` (`shared/components/ui/`) em
+ *   2026-08-28**, a pedido do usuário — o markup/CSS vivia solto aqui
+ *   dentro até então; agora é o mesmo átomo, reutilizável fora de
+ *   gráfico.
  *
  * Casca pronta pra Fase 4 — conteúdo real (preço sugerido ao longo do
  * tempo) segue bloqueado pelo mesmo gap de backend do `StatCard`
@@ -40,6 +41,7 @@ import {
 import type { ScriptableContext } from 'chart.js'
 import { computed, onMounted, ref } from 'vue'
 import { Bar, Doughnut, Line } from 'vue-chartjs'
+import BlockTab from '../ui/BlockTab.vue'
 import type { ChartMetricOption, ChartSeriesConfig } from './types/chartCard.type'
 
 ChartJS.register(
@@ -345,20 +347,7 @@ const chartOptions = computed(() => ({
 <template>
   <div class="chart-card">
     <div class="chart-card__header">
-      <div v-if="metrics && metrics.length > 0" class="chart-card__metrics">
-        <button
-          v-for="metric in metrics"
-          :key="metric.key"
-          :class="[
-            'chart-card__metric',
-            { 'chart-card__metric--active': metric.key === activeMetric },
-          ]"
-          type="button"
-          @click="activeMetric = metric.key"
-        >
-          {{ metric.label }}
-        </button>
-      </div>
+      <BlockTab v-if="metrics && metrics.length > 0" v-model="activeMetric" :options="metrics" />
       <p v-else class="chart-card__title">{{ title }}</p>
 
       <div v-if="showHeaderLegend" class="chart-card__legend chart-card__legend--inline">
@@ -416,26 +405,6 @@ const chartOptions = computed(() => ({
 
 .chart-card__title {
   font-size: $font-size-lg;
-  font-weight: $font-weight-semibold;
-  color: $color-ink;
-}
-
-.chart-card__metrics {
-  display: flex;
-  align-items: center;
-  gap: $spacing-16;
-}
-
-.chart-card__metric {
-  padding: 0;
-  font-size: $font-size-md;
-  color: $color-ink-40;
-  cursor: pointer;
-  background: none;
-  border: none;
-}
-
-.chart-card__metric--active {
   font-weight: $font-weight-semibold;
   color: $color-ink;
 }
