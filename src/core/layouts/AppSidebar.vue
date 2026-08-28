@@ -51,10 +51,22 @@ const { closeMobileNav, isMobileNavOpen } = useAppShell()
 // separado (scoped style não compartilha entre arquivos).
 $sidebar-width: 260px;
 
+// `height: 100vh` + `position: sticky` (pedido direto pelo usuário,
+// 2026-08-28) — sem isso, o `<aside>` só herdava a altura esticada da
+// linha flex de `.app-layout` (`min-height: 100vh`, não um teto real):
+// se o conteúdo da sidebar crescesse mais que a viewport, o `<aside>`
+// crescia junto, o `overflow-y: auto` interno de
+// `AppSidebarContent.vue` nunca entrava em ação, e o rodapé com a marca
+// Orbita saía da tela rolando junto com o resto da página. Com o teto
+// de 100vh + `sticky`, a sidebar inteira fica sempre do tamanho exato da
+// viewport (rolando internamente se precisar), o rodapé sempre visível.
 .app-sidebar-desktop {
+  position: sticky;
+  top: 0;
   display: none;
   flex-shrink: 0;
   width: $sidebar-width;
+  height: 100vh;
   background-color: $color-bg-2;
   border-right: 1px solid $color-ink-10;
 

@@ -42,6 +42,24 @@ describe('useAppShell', () => {
     toggleItem('catalog')
   })
 
+  it('expands an item idempotently, never collapsing it back (unlike toggleItem)', () => {
+    const { expandItem, isItemExpanded, toggleItem } = useAppShell()
+
+    expect(isItemExpanded('reports')).toBe(false)
+
+    expandItem('reports')
+    expect(isItemExpanded('reports')).toBe(true)
+
+    // chamar de novo não fecha (diferente de toggleItem) — precisa ser
+    // seguro remontar um componente que expande por padrão sem reverter
+    // uma expansão já em andamento.
+    expandItem('reports')
+    expect(isItemExpanded('reports')).toBe(true)
+
+    // limpa pra não vazar estado pro próximo teste (singleton em nível de módulo)
+    toggleItem('reports')
+  })
+
   it('shares state across independent calls (singleton em nível de módulo)', () => {
     const first = useAppShell()
     const second = useAppShell()

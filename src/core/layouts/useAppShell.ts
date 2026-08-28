@@ -64,9 +64,26 @@ export function useAppShell() {
     expandedItemIds.value = next
   }
 
+  /**
+   * Idempotente, nunca fecha — diferente de `toggleItem`. Usado por
+   * `AppSidebarNavItem.vue` pra expandir um item "por padrão"
+   * (`NavItem.defaultExpanded`) no mount: como `expandedItemIds` é
+   * singleton (sobrevive a remontagem do componente), um `toggleItem` no
+   * mount fecharia de novo um item que o usuário já tinha aberto e
+   * depois o componente remontou (ex.: abrir/fechar o drawer mobile).
+   */
+  function expandItem(id: string): void {
+    if (expandedItemIds.value.has(id)) {
+      return
+    }
+
+    expandedItemIds.value = new Set(expandedItemIds.value).add(id)
+  }
+
   return {
     closeMobileNav,
     closeNotificationPanel,
+    expandItem,
     hasUnreadNotifications,
     isItemExpanded,
     isMobileNavOpen,

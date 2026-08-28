@@ -2004,6 +2004,108 @@ despercebido até a captura chegar.
   boxed com 2 chips pré-carregados batendo com a captura do usuário,
   desabilitada) conferidos lado a lado com a referência.
 
+### AppSidebar (`core/layouts/{AppSidebar,AppSidebarContent,AppSidebarNavItem}.vue`)
+
+Infraestrutura desde a Fase 0 (grupos com título, itens expansíveis
+recursivos) — **populada com exemplo real em 2026-08-28**, pedido direto
+pelo usuário com captura de uma sidebar completa (grupos "Dashboards"/
+"Pages", item "User Profile" expandido revelando filhos, seção
+"Favorites/Recently" no topo).
+
+- **`navigation.ts` ganhou os grupos de exemplo da captura** — só
+  `Default` (era `Dashboard`) mantém `to: { name: 'home' }` de verdade, o
+  resto (`eCommerce`/`Projects`/`Online Courses`/`Account`/`Corporate`/
+  `Blog`/`Social`, e os 5 filhos de `User Profile`) fica **sem `to`**, de
+  propósito: um botão sem `to` e sem `children` não navega a lugar
+  nenhum quando clicado — não é a mesma coisa que um link apontando pra
+  uma rota que não existe (isso sim seria o "link morto" que o CLAUDE.md
+  raiz proíbe). Trocar por rotas reais é trabalho de cada fase de
+  `docs/planejamento/plano-implementacao.md` conforme a tela existir.
+- **Só `User Profile` ganhou filhos de verdade** (Overview/Projects/
+  Campaigns/Documents/Followers) — os outros itens de grupo
+  (`eCommerce`/`Projects`/`Online Courses`/`Account`/`Corporate`/`Blog`/
+  `Social`) **não têm seta/chevron**, diferente da captura (que mostra
+  `>` em quase todo item, a maioria provavelmente decorativa no mockup
+  original). Decisão: um chevron que não expande nada ao clicar é uma
+  affordance quebrada — pior que não ter chevron nenhum. Só `User
+  Profile` tem o comportamento de verdade (dropdown), que era o pedido
+  explícito ("exemplo de dropdown").
+- **`NavItem.defaultExpanded`** (prop nova) + **`useAppShell().expandItem`**
+  (função nova, TDD em `tests/core/layouts/useAppShell.test.ts`) — "User
+  Profile" começa expandido, mas `expandItem` é **idempotente** (nunca
+  fecha), diferente de `toggleItem`: como `expandedItemIds` é singleton
+  em nível de módulo (sobrevive à remontagem do componente), um
+  `toggleItem` no `onMounted` fecharia de novo um item que o usuário já
+  tinha aberto manualmente e depois o componente remontou (ex.: abrir/
+  fechar o drawer mobile) — `expandItem` evita esse bug por construção.
+- **Barra indicadora do item ativo** — `{colors.accent-indigo}`, 3px.
+  **Correção, reportada pelo usuário em 2026-08-28**: a primeira versão
+  sangrava até a borda real da sidebar via `left: -{spacing.16}` (offset
+  negativo cancelando o padding do ancestral `.app-sidebar-content`) —
+  na prática a barra ficava flutuando solta no espaço vazio à esquerda,
+  sem tocar a pill ativa, em vez de parecer um acento grudado nela.
+  Corrigido pra `left: 0`, grudada na borda do próprio item — sempre
+  visualmente conectada à pill ativa, sem depender do padding exato de
+  um ancestral pra calcular um offset que quebra se esse padding mudar.
+- **Achado real: chevron usava `CaretDown` girando 180°** — em repouso já
+  apontava pra baixo (errado, deveria apontar pra direita quando
+  fechado, indicando "expande pra baixo"), e ao "expandir" girava mais
+  180° ficando de cabeça pra cima. Corrigido pra `CaretRight` girando
+  90° (fechado: aponta direita; expandido: aponta baixo) — convenção
+  padrão de "seta de disclosure", confirmada contra a captura.
+- **Seção "Favorites/Recently" nova** (`AppSidebarContent.vue`) — 2 abas
+  de texto simples (sem pill/sublinhado, só peso/cor), lista de
+  favoritos com marcador de ponto (`background-color: currentColor`,
+  mesmo truque do `StatusDot`) em vez de ícone. "Recently" **não tem
+  nenhum dado real por trás** — o Orbita não rastreia histórico de
+  navegação ainda — em vez de inventar itens falsos, mostra um estado
+  vazio honesto ("Nenhum item visitado recentemente ainda").
+- **Rodapé com a marca Orbita, pedido em seguida (mesmo dia)** — a
+  captura mostrava um rodapé próprio (o "❄ snow" do kit Figma, atribuição
+  do template, não replicado como está — só a posição/papel de "marca no
+  rodapé" foi aproveitada). `AppSidebarContent.vue` virou uma coluna
+  (`display: flex; flex-direction: column; height: 100%`) com 2 partes:
+  `__scroll` (`flex: 1; min-height: 0; overflow-y: auto` — favoritos +
+  grupos de nav, tudo que pode crescer) e `__footer` (`flex-shrink: 0`,
+  fora do scroll, sempre visível). **Só funciona com um teto de altura
+  real no `<aside>`** — ver achado abaixo.
+- **Achado real: `.app-sidebar-desktop` não tinha teto de altura** — só
+  herdava a altura esticada da linha flex de `.app-layout`
+  (`min-height: 100vh`, não um teto). Se o conteúdo da sidebar crescesse
+  mais que a viewport, o `<aside>` crescia junto (sem limite), o
+  `overflow-y: auto` do `__scroll` nunca entrava em ação, e o rodapé com
+  a marca saía da tela rolando junto com o resto da página — exatamente
+  o problema que motivou o pedido ("a sidebar deve ter o máximo de
+  100vh... daí o logo fica sempre visível"). Corrigido com
+  `height: 100vh` + `position: sticky; top: 0;` em `.app-sidebar-desktop`
+  (`AppSidebar.vue`) — a sidebar inteira passa a ter sempre o tamanho
+  exato da viewport (rolando só internamente se precisar), o rodapé
+  nunca sai da tela. Confirmado num viewport de 500px de altura (bem
+  menor que o conteúdo real da sidebar): `sidebarHeight` trava em 500px
+  (nunca cresce), rolar a lista de navegação não move o rodapé, rolar a
+  página inteira não move a sidebar. Drawer mobile não precisou de
+  ajuste — já era `position: fixed; top: 0; bottom: 0;`, efetivamente já
+  travado na altura da viewport.
+- **Usuário logado no topo, pedido em seguida (mesma sessão, nova
+  captura)** — `Avatar.vue` (`{size.32}`, fallback de iniciais — `USER`
+  não tem campo de foto) + nome, dado real de `useAuthStore` (seção 5 de
+  `docs/infra/convencoes-frontend-infra.md`), primeiro consumidor da
+  store fora de `main.ts`. `v-if="authStore.user"` — sem usuário
+  logado (`user: null`), o bloco inteiro some, sem placeholder inventado
+  (confirmado em browser real: bloco ausente do DOM, sem erro). Fica
+  dentro de `__scroll` (rola com o resto do conteúdo, só o rodapé com a
+  marca é que fica fixo) — mesma posição da captura, que mostra o
+  usuário no topo da lista rolável, não fixo como o rodapé.
+- Verificado em browser real, claro e escuro (`data-theme="dark"`
+  simulado): grupos/dropdown renderizam batendo com a captura, barra
+  ativa visível em `Default`, expandir/colapsar `User Profile` funciona,
+  trocar pra aba "Recentes" mostra o estado vazio, tema escuro resolve
+  sozinho via os tokens já cabeados (nenhum código condicional novo),
+  usuário logado (nome real de um `AuthUser` mockado só pra
+  verificação, revertido depois) renderiza avatar + nome no topo, marca
+  Orbita sempre visível no rodapé mesmo com a lista de navegação maior
+  que a viewport.
+
 ### AppFooter (`core/layouts/AppFooter.vue`)
 
 **Pedido direto pelo usuário em 2026-08-28, com captura real do Figma**

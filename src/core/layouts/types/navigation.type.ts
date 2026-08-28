@@ -11,6 +11,8 @@ import type { RouteLocationRaw } from 'vue-router'
  */
 export interface NavItem {
   children?: NavItem[]
+  /** Começa expandido no mount (ex.: "User Profile" na captura do Figma) — só faz sentido com `children`. */
+  defaultExpanded?: boolean
   icon?: Component
   id: string
   label: string
