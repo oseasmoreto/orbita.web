@@ -48,7 +48,11 @@ withDefaults(
   flex-shrink: 0;
   align-items: center;
   justify-content: center;
-  color: $color-ink;
+  // $color-ink-fixed, não $color-ink: o fundo (tint-1/tint-2) não tem
+  // variante escura, e $color-ink vira branco no tema escuro — ícone
+  // branco sobre fundo claro fixo ficaria invisível (mesmo achado do
+  // StatCard.vue, mesmo dia).
+  color: $color-ink-fixed;
   border-radius: $radius-8;
 }
 

@@ -24,6 +24,16 @@
  * registrada pro `CaretUpDown`/`ArrowLineUpDown` do Select) — `TrendUp`/
  * `TrendDown` são os ícones mais próximos disponíveis, com o par completo
  * (o Figma só mostrou o caso positivo).
+ *
+ * **Fix de contraste em tema escuro, 2026-08-28** — reportado pelo
+ * usuário testando o toggle de tema recém-implementado (`AppHeader`):
+ * header/label/valor usavam `$color-ink`, que vira branco no tema
+ * escuro — mas o fundo (`{colors.tint-1}`/`{colors.tint-2}`) não tem
+ * variante escura, continua o mesmo pastel claro nos dois temas, então o
+ * texto sumia (branco sobre claro). Trocado por `$color-ink-fixed`,
+ * token novo em `_tokens.scss` que nunca flips com o tema (sempre
+ * `#000000`) — feito pra exatamente esse padrão, texto sobre um fundo
+ * tint que não acompanha o tema.
  */
 import type { Component } from 'vue'
 import { TrendDown, TrendUp } from '@/shared/components/icons/regular.generated'
@@ -91,7 +101,7 @@ withDefaults(
   display: flex;
   align-items: center;
   justify-content: space-between;
-  color: $color-ink;
+  color: $color-ink-fixed;
 }
 
 // Peso corrigido na revisão pixel-perfect: a captura real mostra "Views"
@@ -101,7 +111,7 @@ withDefaults(
 .stat-card__label {
   font-size: $font-size-md;
   font-weight: $font-weight-regular;
-  color: $color-ink;
+  color: $color-ink-fixed;
 }
 
 // Gap aumentado (8px → 16px) na revisão pixel-perfect — a captura real
@@ -116,7 +126,7 @@ withDefaults(
 .stat-card__value {
   font-size: $font-size-xl;
   font-weight: $font-weight-semibold;
-  color: $color-ink;
+  color: $color-ink-fixed;
 }
 
 // Reescrito na revisão pixel-perfect: a primeira versão reaproveitava

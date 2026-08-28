@@ -44,6 +44,23 @@
   --color-accent-red: #ff4747;
   --color-tint-1: #e6f1fd;
   --color-tint-2: #edeefc;
+  // Par fixo — NUNCA redefinido no bloco `[data-theme='dark']` abaixo, de
+  // propósito: sempre os valores de SnowUI-Light, independente do tema
+  // ativo. Existe pra qualquer elemento cuja superfície não acompanha o
+  // tema (continua com o mesmo valor fixo nos dois temas) — usar
+  // `--color-ink`/`--color-paper` normais ali quebra, porque ELES flippam
+  // mas a superfície embaixo não. Dois casos reais, achados testando o
+  // toggle de tema recém-implementado (2026-08-28): `StatCard.vue`/
+  // `IconTile.vue` desenhavam texto/ícone com `--color-ink` sobre
+  // `--color-tint-1`/`--color-tint-2` (que não têm variante escura,
+  // continuam claros) — viravam brancos sobre claro no tema escuro.
+  // `vue-sonner` (`main.scss`) usava `--color-ink`/`--color-paper` pro
+  // toast que é DELIBERADAMENTE sempre escuro (`theme="dark"` fixo no
+  // `<Toaster>`, ver comentário em `main.scss`) — no tema escuro do app,
+  // `--color-ink` virava branco e o toast (que deveria continuar
+  // sempre-escuro) virava um cartão branco.
+  --color-ink-fixed: #000000;
+  --color-paper-fixed: #ffffff;
   --color-logo-1: #4c98fd;
   --color-logo-2: #4f507f;
 

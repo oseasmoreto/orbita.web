@@ -13,6 +13,34 @@ body,
   height: 100%;
 }
 
+// Achado real, reportado pelo usuário no mobile: abrir o drawer da
+// sidebar "puxava" o conteúdo pra direita — causa raiz não era o
+// `DataTable` (seu wrapper já tem `overflow-x: auto` próprio, contido
+// corretamente), e sim o `<ol data-sonner-toaster>` do `vue-sonner`
+// (`App.vue`, sempre montado mesmo sem toast nenhum visível): a media
+// query própria do pacote pra mobile (`@media (max-width: 600px)`) seta
+// `left`/`right` (16px cada, via `--mobile-offset-*`) E `width: 100%` no
+// mesmo elemento `position: fixed` — sobre-restringido; por spec CSS
+// (`right` é ignorado quando `left`+`width` já fecham a conta), o
+// elemento fica 16px mais largo que a viewport. Um elemento
+// `position: fixed` que estoura a viewport CONTA pro `scrollWidth` da
+// página inteira (unica dependencia disso, mesmo sem nenhum toast
+// visível) — isso dava scroll horizontal em toda a página; ao rolar
+// mesmo que 1px pra direita e depois abrir o drawer (que trava
+// `overflow` do body mas não reseta `scrollLeft`), o header `sticky`
+// (que só é fixo no eixo vertical) ficava visualmente desalinhado do
+// drawer/overlay (`position: fixed`, sempre relativos à viewport,
+// nunca afetados por scroll horizontal), expondo uma fresta.
+// `overflow-x: hidden` aqui é a correção na raiz, não um remendo local
+// no `AppSidebar`/`AppHeader`: nenhum elemento (nosso ou de terceiro)
+// deveria conseguir esticar a página horizontalmente pra começo de
+// conversa — `overflow-x: auto` de containers próprios (`DataTable`)
+// continua funcionando normalmente, só o scroll da PÁGINA é bloqueado.
+html,
+body {
+  overflow-x: hidden;
+}
+
 body {
   margin: 0;
 }

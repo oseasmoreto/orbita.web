@@ -99,6 +99,19 @@ $sidebar-width: 260px;
   background-color: rgb(0 0 0 / 40%);
 }
 
+// `$color-bg-1`, não `$color-bg-2` — achado real, reportado pelo usuário
+// (fundo do drawer mobile aparecia transparente): `--color-bg-2` no tema
+// escuro é um branco a 4% de opacidade (valor real do token de origem,
+// pensado pra ser composto POR CIMA de uma superfície `bg-1` opaca dentro
+// da mesma pilha de camadas do Figma — não um fundo sólido isolado). O
+// drawer é `position: fixed` num portal, sem `bg-1` garantido logo atrás
+// dele na pilha de pintura (só o overlay semitransparente + o que estiver
+// por trás) — a composição fica "suja"/translúcida em vez de um cinza
+// escuro sólido. `$color-bg-1` é opaco nos dois temas (mesmo critério já
+// usado por `Modal.vue`/`Drawer.vue`, os outros dois componentes que
+// também são superfície isolada em portal) — a coluna estática do
+// desktop continua em `$color-bg-2` (funciona ali porque tem `bg-1`
+// sólido do body imediatamente atrás, mesma pilha de pintura).
 :global(.app-sidebar-drawer) {
   position: fixed;
   top: 0;
@@ -106,7 +119,7 @@ $sidebar-width: 260px;
   left: 0;
   z-index: 50;
   width: $sidebar-width;
-  background-color: $color-bg-2;
+  background-color: $color-bg-1;
 
   @media (min-width: $breakpoint-md) {
     display: none;

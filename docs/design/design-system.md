@@ -604,6 +604,23 @@ o cursor muda.
 - Tipo do model é `boolean | 'indeterminate'` — o mesmo tipo nativo do
   `CheckboxRoot`, sem prop bridging.
 - **Focus**: `focus-ring` no botão interno.
+- **Fix de contraste em tema escuro, 2026-08-28** — reportado pelo
+  usuário testando o toggle de tema recém-implementado (`AppHeader`):
+  `Checkbox3`/`Checkbox6` (indeterminado/marcado) vêm do Figma com o
+  traço interno em `fill="white"` LITERAL (não `currentColor`) — no
+  claro isso contrasta contra a caixa (que herda `currentColor` = ink =
+  preto), mas no escuro a caixa também vira branca (`currentColor` = ink
+  = branco) e o traço branco literal fica invisível contra ela (checkbox
+  "marcado" virava um quadrado branco sem check nenhum visível). Os SVGs
+  são gerados e o export de origem (`docs/icons-snow-ui/`) já foi
+  removido do disco depois de gerado — não dá pra corrigir na fonte.
+  Corrigido no consumidor: `.ui-checkbox :deep(svg path[fill='white']) {
+  fill: $color-paper; }` — CSS de stylesheet vence o atributo de
+  apresentação inline do SVG, e `$color-paper` já é o token certo pra
+  "texto/traço sobre uma área preenchida com ink" (ver seção Colors),
+  resolvendo nos dois temas sem tocar no arquivo gerado. Confirmado via
+  `getComputedStyle` no traço interno: `rgb(0, 0, 0)` no tema escuro
+  (antes: branco sobre branco).
 
 ### Toggle (`shared/components/ui/Toggle.vue`)
 
@@ -1025,6 +1042,12 @@ quando um **segundo** consumidor precisar de verdade", seção 2 de
   :tint="notification.tint" />`. Reconfirmado em browser real (painel de
   notificações reaberto, 5 tiles renderizando idênticos a antes da
   refatoração) — zero mudança visual, só remoção de duplicação.
+- **Fix de contraste em tema escuro, 2026-08-28** — mesmo achado do
+  `StatCard` (seção abaixo): o ícone usava `color: $color-ink`, que vira
+  branco no tema escuro, mas o fundo (`{colors.tint-1}`/`{colors.tint-2}`)
+  não tem variante escura — ícone branco sobre fundo claro fixo ficava
+  invisível. Trocado por `$color-ink-fixed` (token novo em `_tokens.scss`
+  que nunca flips com o tema).
 
 ### IconText (`shared/components/ui/IconText.vue`)
 
@@ -1296,6 +1319,20 @@ vale quando há ramificação real pra testar).
   batem pixel a pixel com a captura do usuário (fundo, raio, ícone,
   posição do ícone antes do texto); `warning`/`info`/`default` seguem a
   mesma linguagem visual com ícone/cor próprios.
+- **Achado real, 2026-08-28, depois do toggle de tema ficar de verdade em
+  `AppHeader.vue`**: o toast é DELIBERADAMENTE sempre escuro
+  (`theme="dark"` fixo no `<Toaster>`, independente do tema do app) —
+  mas `main.scss` fixava `--normal-bg`/`--normal-text` em
+  `$color-ink`/`$color-paper`, que FLIPPAM com `data-theme`. No tema
+  escuro do app, `$color-ink` virava branco e o toast (que devia
+  continuar com cartão escuro) virava um cartão branco — reportado pelo
+  usuário junto com o achado do `Checkbox`/`StatCard` da mesma rodada.
+  Trocado por `$color-ink-fixed`/`$color-paper-fixed` (tokens novos em
+  `_tokens.scss`, nunca redefinidos no bloco `[data-theme='dark']`),
+  preservando a intenção original de "sempre escuro" mesmo com o app em
+  modo escuro. Confirmado via `getComputedStyle` no card do toast:
+  `rgb(0, 0, 0)` de fundo com o app em `data-theme="dark"` (antes:
+  branco).
 
 ### NotificationItem (`modules/platform/components/NotificationItem.vue`)
 
@@ -1406,17 +1443,15 @@ primeiro uso como fundo de CARD inteiro, não só tile de ícone),
   já registrada pro `CaretUpDown`/`ArrowLineUpDown` do Select); `TrendUp`/
   `TrendDown` são os ícones mais próximos disponíveis, com o par completo
   (Figma só mostrou o caso positivo).
-- **Achado real, descoberto simulando `data-theme="dark"`**:
-  `{colors.tint-1}`/`{colors.tint-2}` não têm variante pro tema escuro no
-  export de origem — o fundo do card continua claro (é o único valor que
-  o token tem), mas `{colors.ink}` no texto vira branco no tema escuro,
-  resultando em texto branco sobre fundo claro. **Atualização
-  2026-08-28**: o toggle de tema real do `AppHeader` (seção Components →
-  AppHeader) agora existe — esse achado deixou de ser hipotético e passou
-  a ser um bug real e acionável (qualquer usuário pode ligar o tema
-  escuro e ver esse card ilegível). Não corrigido nesta rodada (fora do
-  escopo do pedido de header) — fica registrado aqui como pendência
-  concreta, não mais "documentado pra quando o toggle existir".
+- **Achado real, descoberto simulando `data-theme="dark"`, RESOLVIDO em
+  2026-08-28**: `{colors.tint-1}`/`{colors.tint-2}` não têm variante pro
+  tema escuro no export de origem — o fundo do card continua claro (é o
+  único valor que o token tem), mas `{colors.ink}` no texto vira branco
+  no tema escuro, resultando em texto branco sobre fundo claro. Ficou
+  hipotético até o toggle de tema real do `AppHeader` existir (mesmo dia)
+  — aí virou um bug real, reportado pelo usuário (junto com o mesmo
+  problema no `Checkbox` e no toast). Corrigido: ver bullet "Fix de
+  contraste em tema escuro" logo abaixo.
 
 **Revisão pixel-perfect em 2026-08-28, pedida direto pelo usuário com
 captura real do frame** — a primeira versão foi construída sem essa
@@ -1452,6 +1487,17 @@ tendência" do catálogo. 3 achados reais, corrigidos:
   com tendência verde `+11.01%`/ícone depois do texto, `Views` com ícone
   `Eye` no canto sem tendência) batem com o layout e agrupamento visual
   da referência.
+- **Fix de contraste em tema escuro, 2026-08-28** — `.stat-card__header`/
+  `__label`/`__value` usavam `$color-ink`, que vira branco no tema
+  escuro — mas o fundo (`{colors.tint-1}`/`{colors.tint-2}`) não tem
+  variante escura, continua o mesmo pastel claro nos dois temas, então o
+  texto sumia (branco sobre claro). Trocado por `$color-ink-fixed`, token
+  novo em `_tokens.scss` (`--color-ink-fixed`/`--color-paper-fixed`,
+  nunca redefinidos no bloco `[data-theme='dark']`, sempre os valores de
+  SnowUI-Light) — feito pra exatamente esse padrão, superfície que não
+  acompanha o tema. Mesmo fix aplicado em `IconTile.vue` (ícone sobre o
+  mesmo tipo de fundo) e no toast do `vue-sonner` (`main.scss`, que
+  também é deliberadamente sempre escuro — ver seção Notifiers/Toast).
 
 ### ProgressBar (`shared/components/ui/ProgressBar.vue`)
 
@@ -2113,6 +2159,56 @@ pelo usuário com captura de uma sidebar completa (grupos "Dashboards"/
   verificação, revertido depois) renderiza avatar + nome no topo, marca
   Orbita sempre visível no rodapé mesmo com a lista de navegação maior
   que a viewport.
+- **Achado real, reportado pelo usuário testando no mobile de verdade,
+  2026-08-28**: fundo do drawer mobile aparecia transparente (conteúdo da
+  página vazando através dele). Causa: `.app-sidebar-drawer` usava
+  `$color-bg-2`, cujo valor no tema escuro é branco a 4% de opacidade
+  (`rgb(255 255 255 / 4%)` — valor real do token de origem Figma, correto
+  como está: pensado pra ser composto POR CIMA de uma superfície `bg-1`
+  opaca dentro da mesma pilha de camadas, não um fundo sólido isolado). O
+  drawer é `position: fixed` num portal (`vaul-vue`/`DrawerPortal`), sem
+  `bg-1` garantido logo atrás dele na pilha de pintura — só o overlay
+  semitransparente e o que estiver por trás — então a composição ficava
+  translúcida em vez de um cinza escuro sólido. A coluna estática do
+  desktop (`.app-sidebar-desktop`) usa o mesmo `$color-bg-2` e continua
+  correta — ali tem `$color-bg-1` sólido do `body` imediatamente atrás na
+  mesma pilha, a composição resulta opaca por coincidência de contexto,
+  não por acaso do token estar "errado". Corrigido trocando só o drawer
+  pra `$color-bg-1` (opaco nos dois temas) — mesmo token que `Modal.vue`/
+  `Drawer.vue` (os outros dois componentes de superfície isolada em
+  portal) já usavam desde sempre; `AppSidebar.vue` era o único que tinha
+  copiado `$color-bg-2` da coluna estática sem considerar que o contexto
+  de pintura é diferente. Confirmado via `getComputedStyle`: fundo do
+  drawer resolve pra `rgb(255, 255, 255)` sólido no claro (era
+  translúcido antes), visualmente opaco no escuro também.
+- **Achado real, reportado pelo usuário no mobile de verdade, mesmo dia
+  — "conteúdo puxado pra direita" ao abrir o menu**: não era o
+  `AppSidebar` nem o `DataTable` (o próprio usuário desconfiou dos
+  gráficos/tabelas, mas o wrapper do `DataTable` já continha o overflow
+  corretamente, `overflow-x: auto` funcionando). Causa raiz: o
+  `<ol data-sonner-toaster>` do `vue-sonner` (`App.vue`, sempre montado,
+  mesmo sem nenhum toast visível) — a media query própria do pacote pra
+  mobile (`@media (max-width: 600px)`, `node_modules/vue-sonner/lib/index.css`)
+  seta `left`/`right` (16px cada) E `width: 100%` no MESMO elemento
+  `position: fixed`, sobre-restringido; por spec CSS, `right` é ignorado
+  quando `left`+`width` já fecham a conta sozinhos, deixando o elemento
+  16px mais largo que a viewport. Um `position: fixed` que estoura a
+  viewport conta pro `scrollWidth` da PÁGINA INTEIRA mesmo sem nenhum
+  toast visível — isso dava scroll horizontal em toda a página. Ao rolar
+  1px que fosse pra direita e depois abrir o drawer (que trava
+  `body { overflow: hidden }` mas não reseta `scrollLeft`), o `AppHeader`
+  `sticky` (fixo só no eixo vertical) ficava desalinhado do
+  drawer/overlay (`position: fixed`, sempre relativos à viewport, nunca
+  afetados por scroll horizontal), expondo a fresta que o usuário viu.
+  **Corrigido na raiz, não com remendo local**: `overflow-x: hidden` em
+  `html, body` (`core/styles/_reset.scss`) — nenhum elemento (nosso ou de
+  terceiro) deveria conseguir esticar a PÁGINA horizontalmente; containers
+  com `overflow-x: auto` próprio (`DataTable`) continuam funcionando
+  normalmente, só o scroll do documento é bloqueado. Confirmado via
+  Playwright: `window.scrollTo(50, 0)` não move mais `window.scrollX`
+  (fica em `0`), e `.ui-data-table-wrapper` continua aceitando
+  `scrollLeft` normalmente (`clientWidth: 294`, `scrollWidth: 627`, sem
+  regressão).
 
 ### AppHeader (`core/layouts/AppHeader.vue`)
 
@@ -2181,6 +2277,21 @@ aqui seria redundante.
   isso como estado vazio honesto (seção `AppSidebar` acima) — então a
   interpretação mais direta e correta do pedido é o histórico real do
   navegador/router, não uma feature nova de tracking.
+  **Achado real, reportado pelo usuário logo em seguida**: `router.back()`
+  chama `window.history.go(-1)` por baixo, que opera sobre o histórico de
+  browser INTEIRO, não só sobre a navegação da SPA — numa aba sem
+  navegação interna ainda (aba nova, ou depois de um reload), "voltar"
+  saía do próprio app pra qualquer entrada anterior do histórico real do
+  browser, inclusive uma origem/porta completamente diferente (caiu em
+  `localhost:5175`, sobra de uma aba que já tinha passado por outra
+  porta do Vite antes). Corrigido com uma guarda: `goBack()` só chama
+  `router.back()` quando `window.history.state?.back` existe — esse
+  campo é escrito pelo próprio Vue Router (`createWebHistory` grava
+  `{ back, current, forward, ... }` a cada navegação DA SPA), então é
+  `null` quando não há navegação interna real pra voltar, e o botão vira
+  um no-op nesse caso em vez de escapar pra fora do app. Confirmado com
+  Playwright numa aba nova (sem navegação prévia): clicar "Voltar"
+  mantém a mesma URL, não navega pra lugar nenhum.
 - **Notificações** (`Bell`) — mantido tal como já existia
   (`toggleNotificationPanel`, ponto de não-lida).
 - **4º ícone da captura não implementado** — a referência do usuário
@@ -2199,6 +2310,33 @@ aqui seria redundante.
   (`{colors.bg-2}` escuro) e persiste em `localStorage`; botão de
   histórico navega de volta via `router.back()`; sino continua abrindo o
   painel de notificações.
+- **2 achados reais, reportados pelo usuário testando no mobile de
+  verdade, mesmo dia**:
+  1. **Header "encavalado" no mobile** — ícone de ocultar sidebar,
+     favorito, breadcrumb e os 3 ícones de ação disputavam a mesma linha
+     estreita. Corrigido com uma "sub-bar": abaixo de `$breakpoint-md`, o
+     `Breadcrumb` (movido pra ser filho direto de `.app-header`, não mais
+     aninhado em `.app-header__left`) quebra pra própria linha via
+     `order: 2; flex-basis: 100%;` num `.app-header` com
+     `flex-wrap: wrap` — linha 1 fica só com os ícones
+     (`.app-header__left` + `.app-header__actions`, este com
+     `order: 1; margin-left: auto;` pra ficar no fim da linha 1), linha 2
+     é o breadcrumb sozinho, mesmo header (mesmo fundo/padding, não é
+     componente separado). No desktop (`min-width: $breakpoint-md`), os 3
+     resets (`order: 0` nos dois, `flex-basis: auto` no breadcrumb,
+     `flex-wrap: nowrap`) devolvem a ordem natural do DOM — visualmente
+     idêntico à versão de antes (esquerda+breadcrumb agrupados, ações no
+     fim da única linha).
+  2. **Header precisa ficar fixo no topo sempre** — não tinha
+     `position: sticky` nenhum, rolava junto com `.app-layout__content`
+     feito qualquer elemento normal do fluxo. Corrigido com
+     `position: sticky; top: 0; z-index: 20;` — o `z-index` fica acima do
+     conteúdo normal da página mas abaixo do overlay/drawer mobile
+     (40/50) e do `Modal` (100), pra sticky nunca competir com eles
+     quando abertos. Confirmado via Playwright: `getBoundingClientRect().top`
+     do header continua `0` depois de rolar a página 600px (mobile) e
+     1200px (desktop) — sem o fix, o valor ficaria negativo (header
+     rolado pra fora da viewport).
 
 ### AppFooter (`core/layouts/AppFooter.vue`)
 

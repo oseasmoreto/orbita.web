@@ -93,4 +93,23 @@ function handleLabelClick(): void {
     cursor: not-allowed;
   }
 }
+
+// Achado real, reportado pelo usuário testando o toggle de tema
+// (2026-08-28): os SVGs `Checkbox3`/`Checkbox6` (indeterminado/marcado)
+// vêm do Figma com o traço interno (dash/check) em `fill="white"`
+// literal, não `currentColor` — no claro isso contrasta contra a caixa
+// (que herda `currentColor` = ink = preto), mas no escuro a caixa também
+// vira branca (`currentColor` = ink = branco) e o traço branco fica
+// invisível contra ela. Os SVGs são gerados
+// (`shared/components/icons/snow-ui.generated.ts`) e o export de origem
+// já foi removido do disco depois de gerado — não dá pra regenerar com
+// uma correção na fonte, então a correção é aqui, no consumidor: `fill`
+// via CSS vence o atributo de apresentação inline do SVG (prioridade
+// mais baixa que uma regra de stylesheet de verdade), então sobrescrever
+// pra `$color-paper` — o mesmo token já pensado pra "texto sobre uma
+// área preenchida com ink" (ver design-system.md, seção Colors) —
+// resolve certo nos dois temas sem tocar no arquivo gerado.
+.ui-checkbox :deep(svg path[fill='white']) {
+  fill: $color-paper;
+}
 </style>

@@ -47,6 +47,25 @@ function toggleSidebar(): void {
     toggleDesktopSidebar()
   }
 }
+
+/**
+ * `router.back()` chama `window.history.go(-1)` por baixo — sem guarda,
+ * "voltar" com a SPA aberta numa aba nova (sem navegação interna ainda)
+ * sai do próprio app pra QUALQUER entrada anterior do histórico real do
+ * browser, incluindo uma origem/porta completamente diferente (achado
+ * real, reportado pelo usuário: caía em `localhost:5175`, sobra de uma
+ * aba que já tinha navegado por outra porta do Vite em algum momento).
+ * `history.state.back` é o próprio Vue Router quem escreve (`createWebHistory`
+ * grava `{ back, current, forward, ... }` a cada navegação da SPA) — só
+ * chama `router.back()` quando existe uma entrada de verdade dentro da
+ * navegação da SPA; sem isso, "Voltar" simplesmente não faz nada, nunca
+ * escapa pra fora do app.
+ */
+function goBack(): void {
+  if (window.history.state?.back) {
+    router.back()
+  }
+}
 </script>
 
 <template>
@@ -65,19 +84,17 @@ function toggleSidebar(): void {
       <button aria-label="Favoritar" class="app-header__icon-button" type="button">
         <Icon :icon="Star" :size="20" />
       </button>
-      <Breadcrumb :items="breadcrumbItems" />
     </div>
+
+    <!-- Sub-bar no mobile (abaixo de $breakpoint-md): quebra pra própria
+    linha, colada no mesmo header — ver CSS `.app-header__breadcrumb`. -->
+    <Breadcrumb class="app-header__breadcrumb" :items="breadcrumbItems" />
 
     <div class="app-header__actions">
       <button aria-label="Alternar tema" class="app-header__icon-button" type="button" @click="toggleTheme">
         <Icon :icon="Sun" :size="20" />
       </button>
-      <button
-        aria-label="Voltar"
-        class="app-header__icon-button"
-        type="button"
-        @click="router.back()"
-      >
+      <button aria-label="Voltar" class="app-header__icon-button" type="button" @click="goBack">
         <Icon :icon="ClockCounterClockwise" :size="20" />
       </button>
       <button
@@ -102,26 +119,73 @@ function toggleSidebar(): void {
 @use '@/core/styles/variables' as *;
 @use '@/core/styles/mixins' as *;
 
+// Sticky no topo (pedido direto do usuário, 2026-08-28) — sem isso o
+// header rolava junto com `.app-layout__content` feito qualquer elemento
+// normal do fluxo. `z-index` acima do conteúdo da página, mas abaixo do
+// overlay/drawer mobile (40/50) e do Modal (100) — sticky não deve
+// competir com eles quando abertos.
 .app-header {
+  position: sticky;
+  top: 0;
+  z-index: 20;
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  justify-content: space-between;
-  padding: $spacing-16 $spacing-24;
+  gap: $spacing-8 $spacing-12;
+  padding: $spacing-12 $spacing-16;
   background-color: $color-bg-1;
   border-bottom: 1px solid $color-ink-10;
+
+  @media (min-width: $breakpoint-md) {
+    flex-wrap: nowrap;
+    padding: $spacing-16 $spacing-24;
+  }
 }
 
 .app-header__left {
   display: flex;
+  flex-shrink: 0;
   align-items: center;
   gap: $spacing-12;
-  min-width: 0;
 }
 
 .app-header__actions {
   display: flex;
   flex-shrink: 0;
+  order: 1;
   gap: $spacing-8;
+  // Empurra o grupo de ações pro fim da linha em que estiver — no mobile
+  // é a linha 1 (junto de `__left`, antes do breadcrumb quebrar pra
+  // linha própria); no desktop é a única linha (depois do breadcrumb,
+  // que volta a ficar inline — ver `.app-header__breadcrumb` abaixo).
+  margin-left: auto;
+
+  @media (min-width: $breakpoint-md) {
+    // Volta pra ordem natural do DOM (depois do breadcrumb) — no desktop
+    // as 3 partes ficam numa linha só: esquerda, breadcrumb, ações.
+    order: 0;
+  }
+}
+
+// Achado real, reportado pelo usuário: no mobile a linha ficava
+// "encavalada" (ícones de ocultar sidebar/favoritar disputando espaço
+// com o breadcrumb E os ícones de ação, tudo na mesma linha estreita).
+// Abaixo de `$breakpoint-md`, o breadcrumb quebra pra própria linha —
+// `flex-basis: 100%` força o wrap (não cabe ao lado do que já ocupou a
+// linha 1) — colado embaixo da linha de ícones, mesmo `.app-header`
+// (mesmo fundo/padding, não é um componente separado), uma "sub-bar". No
+// desktop, os resets (`order`/`flex-basis` de volta ao padrão) devolvem o
+// breadcrumb pra posição original, inline ao lado dos ícones da esquerda.
+.app-header__breadcrumb {
+  order: 2;
+  flex-basis: 100%;
+  min-width: 0;
+  overflow: hidden;
+
+  @media (min-width: $breakpoint-md) {
+    order: 0;
+    flex-basis: auto;
+  }
 }
 
 .app-header__icon-button {

@@ -14,13 +14,24 @@ body {
 // Theming do `vue-sonner` (`shared/composables/useToast.ts`) — grounded
 // na captura real do usuário: fundo escuro sólido uniforme pros 5 tipos
 // (não o verde/vermelho/etc. do `rich-colors`, desligado em `App.vue`),
-// `{colors.paper}` de texto. `--normal-border` igual ao fundo (não
-// `transparent`, que deixaria a borda de 1px do vue-sonner sem cor
-// nenhuma pra resolver) — visualmente vira "sem borda visível", mesmo
-// resultado da referência sem brigar com a regra `border: 1px solid
-// var(--normal-border)` que o pacote já aplica sempre. `theme="dark"` no
-// `<Toaster>` cobre o resto (cor de `[data-description]`, que o CSS do
-// pacote só clareia sob `data-sonner-theme="dark"`).
+// texto claro. `--normal-border` igual ao fundo (não `transparent`, que
+// deixaria a borda de 1px do vue-sonner sem cor nenhuma pra resolver) —
+// visualmente vira "sem borda visível", mesmo resultado da referência sem
+// brigar com a regra `border: 1px solid var(--normal-border)` que o
+// pacote já aplica sempre. `theme="dark"` no `<Toaster>` cobre o resto
+// (cor de `[data-description]`, que o CSS do pacote só clareia sob
+// `data-sonner-theme="dark"`).
+//
+// **`$color-ink-fixed`/`$color-paper-fixed`, não `$color-ink`/`$color-paper`**
+// (achado real, 2026-08-28, depois do toggle de tema ficar de verdade em
+// `AppHeader.vue`): o toast é DELIBERADAMENTE sempre escuro, independente
+// do tema do app (`theme="dark"` fixo no `<Toaster>` acima, não segue
+// `useTheme()`) — mas `$color-ink`/`$color-paper` flippam com
+// `data-theme`, então no tema escuro do app `$color-ink` virava branco e
+// o toast (que devia continuar sempre com cartão escuro) virava um
+// cartão branco. Os tokens `-fixed` nunca flippam (sempre o valor de
+// SnowUI-Light), preservando a intenção original de "sempre escuro"
+// mesmo com o app em modo escuro.
 //
 // **Achado real**: `!important` em todas as declarações, não só
 // `font-family` — o próprio pacote define
@@ -33,9 +44,9 @@ body {
 // `transparent`, `border-radius` pra `0px`, nenhum dos dois herdando os
 // valores daqui) antes da correção.
 [data-sonner-toaster] {
-  --normal-bg: #{$color-ink} !important;
-  --normal-border: #{$color-ink} !important;
-  --normal-text: #{$color-paper} !important;
+  --normal-bg: #{$color-ink-fixed} !important;
+  --normal-border: #{$color-ink-fixed} !important;
+  --normal-text: #{$color-paper-fixed} !important;
   --border-radius: #{$radius-8} !important;
 
   font-family: $font-family-base !important;
