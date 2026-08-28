@@ -314,7 +314,7 @@ const toast = useToast()
 <template>
   <main class="showcase">
     <header class="showcase__intro">
-      <h1>Vitrine de componentes</h1>
+      <h1>{{ $t('showcase.title') }}</h1>
       <p>
         Galeria de referência — reúne tudo que já foi implementado contra a spec real do
         Figma (ver <code>docs/design/catalogo-componentes.md</code>). Rota interna, fora do

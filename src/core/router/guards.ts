@@ -1,4 +1,5 @@
 import type { Router } from 'vue-router'
+import { i18n } from '@/core/i18n'
 import type { UserRole } from '@/core/store/types/auth.type'
 import { useAuthStore } from '@/core/store/useAuthStore'
 
@@ -8,7 +9,13 @@ declare module 'vue-router' {
     requiresAuth?: boolean
     /** Restringe a rota a `USER.role` específicos — sem granularidade além disso no MVP. */
     roles?: UserRole[]
-    /** Título exibido no header do `AppLayout` e na aba do browser. */
+    /**
+     * CHAVE de `core/i18n/messages/pt-BR.ts` (ex.: `'catalog.products.title'`),
+     * nunca texto resolvido — título é texto de UI, regra não-negociável de
+     * i18n (`.ai/rules/i18n.md`) vale pra `.ts` igual a `.vue`. Resolvida via
+     * `i18n.global.t()` aqui (fora de componente, sem `useI18n()`) e via
+     * `useI18n().t()` em `useBreadcrumb.ts`.
+     */
     title?: string
   }
 }
@@ -35,6 +42,6 @@ export function setupRouterGuards(router: Router): void {
   })
 
   router.afterEach((to) => {
-    document.title = to.meta.title ? `${to.meta.title} · Orbita` : 'Orbita'
+    document.title = to.meta.title ? `${i18n.global.t(to.meta.title)} · Orbita` : 'Orbita'
   })
 }

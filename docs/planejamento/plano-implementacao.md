@@ -246,22 +246,91 @@ transações + status da assinatura).
 
 Cadastro de produto — primeira tela "de trabalho" do vendedor.
 
-**Rotas:** `/products`, `/products/new`, `/products/:id/edit`,
-`/products/:id/launches`.
+**Parcialmente concluída, fora de ordem, 2026-08-28** — pedido direto do
+usuário ("vamos montar o CRUD", segunda página de exemplo depois do
+dashboard da Fase 0.5/Home), grounded numa captura de referência de uma
+listagem genérica ("Order List"). Implementado **antes** das Fases 1/2
+(Identity/Billing) por decisão explícita do usuário — a rota `/products`
+já existe e funciona de ponta a ponta contra o backend real, mas ainda
+sem guard de autenticação de verdade (`meta.requiresAuth: false` no
+`AppLayout` pai, Fase 1 gap já registrado) e sem `usePlanLimit`/checagem
+de `max_products` (depende de Billing, Fase 2, não implementada ainda).
 
-**Services:** `catalogApi.ts` — CRUD de `Product` + `ProductLaunch`
-(paginado, `sort`/`filter` conforme `Http/Support/QueryFilters` do backend).
+**Entregue:**
+- `modules/catalog/services/catalogApi.ts` — `listProducts`/
+  `createProduct`/`updateProduct`/`deleteProduct`, chamando
+  `GET/POST/PATCH/DELETE /products` de verdade (`core/api/schema.d.ts`
+  já tinha `ProductResource`/`CreateProductRequest`/`UpdateProductRequest`
+  reais, gerados do backend — Catalog já estava 100% implementado lá,
+  só nunca consumido pelo frontend). **Não é placeholder** como o
+  dashboard da Home — é o primeiro consumo real de API do projeto.
+- `modules/catalog/types/product.type.ts` — `Product` (camelCase, em
+  cima do `ProductResource` gerado, seção 6.1) + `toProduct()`.
+- `modules/catalog/schemas/productFormSchema.ts` — `createProductFormSchema(t)`
+  (fábrica, não schema pronto — mensagem de validação é texto de UI, regra
+  de i18n não-negociável exige `t()`, que só existe dentro de um
+  composable/componente, nunca no top-level do módulo). "Preço de venda ≥
+  preço de compra" via `.refine()`, exatamente o exemplo canônico citado
+  nesta seção. Test-first.
+- `modules/catalog/composables/useProductList.ts` — usa o motor genérico
+  novo `shared/composables/useResourceList.ts` (ver "Padrão de CRUD"
+  abaixo); busca é por SKU exato (`filter[sku]`), não nome — a API real
+  só tem esse filtro pra produto hoje, `Search` do toolbar reflete isso
+  (`searchPlaceholder: "Buscar por SKU"`, não "Buscar produto"). Ordenação
+  só nas 3 colunas que a API aceita (`name`/`full_sale_price`/`created_at`
+  — `buildProductSortParam`, testado).
+- `modules/catalog/composables/useProductForm.ts` — valida com o schema
+  acima antes de chamar `catalogApi`, popula `errors` com o que vier do
+  422 também (nunca só confia no cliente).
+- `modules/catalog/components/ProductForm.vue` — formulário único de
+  criação E edição (pedido explícito do usuário), renderizado dentro de
+  `Drawer.vue` lateral direito por `ProductsView.vue`.
+- `modules/catalog/views/ProductsView.vue` — header (breadcrumb + título)
+  → `ListToolbar` (botão "Novo produto" com texto explícito, busca) →
+  `DataTable` (ações "Editar"/"Excluir" com ÍCONE + TEXTO visível na
+  própria linha, não escondidas atrás de um menu — pedido explícito do
+  usuário: "temos que colocar o texto dos botões para ficar explícito")
+  → `PaginationNav`. Banner de erro (`role="alert"`) quando `list.error`
+  existe — nunca confunde "sem produto cadastrado" com "falha ao carregar".
+  `AppFooter` deixou de ser page-local nesta mesma rodada (2026-08-28) —
+  movido pra `AppLayout.vue`, montado uma vez como chrome persistente do
+  shell (`position: sticky; bottom: 0`, espelhando o `AppHeader`), não
+  mais algo que cada view precisa lembrar de incluir.
+- `core/layouts/config/navigation.ts` ganhou o primeiro grupo/item de
+  navegação REAL (`catalogGroup`, "Catálogo → Produtos") — todo o resto
+  de `navGroups` continua sendo o exemplo de estrutura do Figma.
 
-**Composables:**
-- `useProductForm` — Zod (`schemas/productFormSchema.ts`) espelhando o
-  `FormRequest` real (preço de venda ≥ preço de compra é o exemplo canônico
-  de regra replicável no cliente — seção 6.2). Test-first.
-- `useProductList` — paginação + filtro, usa `@vueuse/core` onde couber
-  (debounce de busca) antes de escrever algo próprio.
-- `usePlanLimit` — checa `max_products` do plano atual contra a contagem
-  real antes de submeter o form de criação, mostra aviso de upgrade em vez
-  de esperar o 422 do backend. Test-first (mesmo critério de
-  `useSuggestedPrice` citado nas convenções).
+**Padrão de CRUD reutilizável, pedido explícito do usuário** ("vamos já
+criar um padrão pra reutilizarmos nos cruds, tudo abstraído, todos os
+composables envolvidos") — 3 composables genéricos novos em
+`shared/composables/`, nenhum sabe de `Product`/domínio nenhum, todos
+test-first:
+- `useResourceList<T>` — paginação/busca/ordenação/loading/erro, recebe
+  só uma função `fetchPage`. Sem debounce embutido de propósito (fica no
+  composable específico, ex.: `useProductList`, via `refDebounced` do
+  `@vueuse/core`).
+- `useCrudDrawer<T>` — `isOpen`/`mode` (`create`/`edit`)/`editingRecord`,
+  pro par Drawer+Form de qualquer CRUD.
+- `useConfirmAction<T>` — `isOpen`/`target`, pro par
+  `ConfirmDialog`+"excluir X" de qualquer CRUD; `confirm()` propaga erro
+  do handler sem fechar o diálogo (permite tentar de novo).
+
+Um CRUD novo (`Marketplaces conectados`, Fase 4) repete exatamente a
+forma de `ProductsView.vue`, só troca `service`/`type`/`schema`/
+`colunas`/`form` — ver `.ai/rules/crud-pattern.md`.
+
+**Pendências reais desta fase** (não implementadas ainda, fora do escopo
+do pedido "montar o CRUD de exemplo"):
+- Rotas `/products/new`/`/products/:id/edit` dedicadas — o form atual só
+  existe dentro do Drawer, nunca como página própria (decisão explícita
+  do usuário: "renderizarão no modal lateral direito").
+- `/products/:id/launches` (histórico de `PRODUCT_LAUNCH`) — não
+  mencionado no pedido, não implementado.
+- `usePlanLimit` — depende de `SUBSCRIPTION`/`PLAN` (Fase 2, Billing),
+  que ainda não existe no frontend.
+- Guard de rota real (`requiresAuth`) — depende da Fase 1 (Identity)
+  terminar; hoje qualquer um acessa `/products` sem estar logado (só não
+  CONSEGUE fazer nada porque a API real devolve 401 sem sessão).
 
 ---
 

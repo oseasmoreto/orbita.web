@@ -1,5 +1,6 @@
 import { createRouter, createWebHistory, type RouteRecordRaw } from 'vue-router'
 import AppLayout from '@/core/layouts/AppLayout.vue'
+import { catalogRoutes } from '@/modules/catalog/routes'
 import { identityRoutes } from '@/modules/identity/routes'
 import { setupRouterGuards } from './guards'
 
@@ -8,16 +9,17 @@ const routes: RouteRecordRaw[] = [
     children: [
       {
         component: () => import('@/shared/views/HomeView.vue'),
-        meta: { title: 'Dashboard' },
+        meta: { title: 'dashboard.title' },
         name: 'home',
         path: '',
       },
       {
         component: () => import('@/shared/views/ShowcaseView.vue'),
-        meta: { title: 'Vitrine de componentes' },
+        meta: { title: 'showcase.title' },
         name: 'showcase',
         path: 'showcase',
       },
+      ...catalogRoutes,
     ],
     component: AppLayout,
     meta: { requiresAuth: false },

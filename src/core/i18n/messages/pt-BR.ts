@@ -25,12 +25,69 @@
  * mesmo texto.
  */
 export default {
+  catalog: {
+    products: {
+      columns: {
+        createdAt: 'Cadastrado em',
+        fullSalePrice: 'Preço de venda',
+        name: 'Nome',
+        sku: 'SKU',
+        targetMargin: 'Margem alvo',
+      },
+      createButton: 'Novo produto',
+      deleteConfirm: {
+        description: 'Essa ação não pode ser desfeita.',
+        title: 'Excluir produto?',
+      },
+      deleteSuccess: 'Produto excluído com sucesso.',
+      empty: 'Nenhum produto cadastrado ainda.',
+      form: {
+        createSuccess: 'Produto criado com sucesso.',
+        createTitle: 'Novo produto',
+        editTitle: 'Editar produto',
+        errors: {
+          eanRequired: 'EAN é obrigatório.',
+          fullSalePriceBelowPurchase: 'Preço de venda deve ser maior ou igual ao preço de compra.',
+          fullSalePricePositive: 'Preço de venda deve ser maior que zero.',
+          nameRequired: 'Nome é obrigatório.',
+          ncmRequired: 'NCM é obrigatório.',
+          purchasePricePositive: 'Preço de compra deve ser maior que zero.',
+          skuRequired: 'SKU é obrigatório.',
+          targetMarginMax: 'Margem não pode passar de 100%.',
+          targetMarginMin: 'Margem não pode ser negativa.',
+        },
+        fields: {
+          ean: 'EAN',
+          fullSalePrice: 'Preço de venda',
+          height: 'Altura (cm)',
+          length: 'Comprimento (cm)',
+          name: 'Nome',
+          ncm: 'NCM',
+          purchasePrice: 'Preço de compra',
+          sku: 'SKU',
+          targetMargin: 'Margem alvo (%)',
+          weight: 'Peso (kg)',
+          width: 'Largura (cm)',
+        },
+        submitCreate: 'Criar produto',
+        submitEdit: 'Salvar alterações',
+        updateSuccess: 'Produto atualizado com sucesso.',
+      },
+      searchPlaceholder: 'Buscar por SKU',
+      title: 'Produtos',
+    },
+  },
   common: {
     actions: {
       actions: 'Ações',
+      add: 'Adicionar',
+      cancel: 'Cancelar',
       delete: 'Excluir',
       download: 'Baixar',
       edit: 'Editar',
+      filter: 'Filtrar',
+      save: 'Salvar',
+      sort: 'Ordenar',
       view: 'Visualizar',
     },
     marketplaces: {
@@ -40,6 +97,9 @@ export default {
       other: 'Outros',
       shopee: 'Shopee',
       tiktok: 'TikTok',
+    },
+    search: {
+      placeholder: 'Buscar',
     },
   },
   dashboard: {
@@ -76,8 +136,12 @@ export default {
       outOfMargin: 'Fora da margem',
       productsRegistered: 'Produtos cadastrados',
     },
+    title: 'Dashboard',
   },
   errors: {
     unknown: 'Ocorreu um erro inesperado. Tente novamente.',
+  },
+  showcase: {
+    title: 'Vitrine de componentes',
   },
 } as const

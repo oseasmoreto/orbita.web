@@ -1,4 +1,5 @@
 import { computed } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { useRoute } from 'vue-router'
 import type { BreadcrumbItem } from '@/shared/components/ui/types/breadcrumb.type'
 import { navGroups } from '../config/navigation'
@@ -81,12 +82,23 @@ export function resolveBreadcrumbItems(
   return breadcrumb
 }
 
-/** Breadcrumb do `AppHeader` (pedido direto do usuário, 2026-08-28, captura "Dashboards / Default"). */
+/**
+ * Breadcrumb do `AppHeader` (pedido direto do usuário, 2026-08-28, captura
+ * "Dashboards / Default"). `route.meta.title` é uma CHAVE i18n (ver
+ * `guards.ts`), resolvida aqui via `t()` antes de virar o fallback —
+ * `resolveBreadcrumbItems` continua puro/testável, só recebe texto já
+ * resolvido, nunca a chave crua.
+ */
 export function useBreadcrumb() {
   const route = useRoute()
+  const { t } = useI18n()
 
   const items = computed<BreadcrumbItem[]>(() =>
-    resolveBreadcrumbItems(navGroups, route.name, route.meta.title ?? 'Orbita'),
+    resolveBreadcrumbItems(
+      navGroups,
+      route.name,
+      route.meta.title ? t(route.meta.title) : 'Orbita',
+    ),
   )
 
   return { items }

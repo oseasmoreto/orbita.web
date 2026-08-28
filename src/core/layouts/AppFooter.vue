@@ -14,10 +14,14 @@
  * novo — não foi criado um `variant="dark"` de propósito, pra não competir
  * com o token semântico que já faz o mesmo trabalho.
  *
- * Não montado em `AppLayout.vue` ainda — nenhuma tela do plano atual
- * define o conteúdo real de "Support"/"Contact Us" (nem se existem como
- * rota), mesmo critério de "casca pronta" já usado no `DatePicker`/
- * `TagsInput` (Tier 11/12 do catálogo).
+ * Montado uma vez em `AppLayout.vue` (2026-08-28, pedido direto do
+ * usuário: "footer fixo no bottom", espelhando o `AppHeader` — sticky,
+ * sempre visível, inclusive por cima do conteúdo ao rolar) — não mais
+ * page-local. `links` continua `[]` por padrão: nenhuma tela do plano
+ * atual define o conteúdo real de "Support"/"Contact Us" (nem se existem
+ * como rota), mesmo critério de "casca pronta" já usado no `DatePicker`/
+ * `TagsInput` (Tier 11/12 do catálogo) — só o comportamento de
+ * posicionamento mudou, o conteúdo real dos links continua em aberto.
  */
 import dayjs from 'dayjs'
 import type { FooterLink } from './types/footer.type'
@@ -48,11 +52,31 @@ withDefaults(
 <style scoped lang="scss">
 @use '@/core/styles/variables' as *;
 
+// Espelha `.app-header` (`AppHeader.vue`): `position: sticky` sem um
+// ancestral com `overflow` próprio gruda no viewport de verdade, não só
+// no fim do fluxo — decisão explícita do usuário (opção "sempre visível",
+// mesmo por cima da tabela ao rolar, contra a alternativa de só aparecer
+// no fim da página). Mesmo `z-index: 20` do header — os dois são chrome
+// persistente do shell, não overlay (drawer/modal ficam acima, 40/50/100).
+// `min-height: 54px` pedido direto do usuário, 2026-08-28: "deixa da
+// mesma altura q o footer da sidebar" — `.app-sidebar-content__footer`
+// (`AppSidebarContent.vue`) mede 54px de altura renderizada (medido via
+// Playwright, não estimado por token de padding/line-height — a primeira
+// tentativa via `padding: $spacing-8` no `__copyright` chutou o box model
+// do lado da sidebar e passou de 54px pra 64px, "ficou maior"). Valor fixo
+// em px, fora da escala de espaçamento de propósito — mesma categoria de
+// exceção já documentada no design system pra Badge (padding vertical de
+// 1px) e Search (padding horizontal de 6px): não é um valor de design,
+// é um pixel-match contra a altura real de outro elemento do shell.
 .app-footer {
+  position: sticky;
+  bottom: 0;
+  z-index: 20;
   display: flex;
+  min-height: 54px;
   align-items: center;
   justify-content: space-between;
-  padding: $spacing-16 $spacing-24;
+  padding: 0 $spacing-24;
   background-color: $color-bg-2;
   border-top: 1px solid $color-ink-10;
 }

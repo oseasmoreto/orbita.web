@@ -5,6 +5,7 @@ import {
   ChatCircle,
   FolderSimple,
   IdentificationCard,
+  Package,
   ShoppingCart,
   UsersThree,
   Wallet,
@@ -29,7 +30,19 @@ export const favoriteItems: NavItem[] = [
   { id: 'favorite-projects', label: 'Projects' },
 ]
 
+/**
+ * Único grupo com item(ns) de verdade — o resto de `navGroups` continua
+ * sendo o exemplo de estrutura descrito acima. "Produtos" aponta pra
+ * `ProductsView.vue` (`modules/catalog`), primeiro CRUD real do Orbita,
+ * 2026-08-28.
+ */
+export const catalogGroup: NavGroup = {
+  items: [{ icon: Package, id: 'catalog-products', label: 'Produtos', to: { name: 'products' } }],
+  title: 'Catálogo',
+}
+
 export const navGroups: NavGroup[] = [
+  catalogGroup,
   {
     items: [
       { icon: ChartPieSlice, id: 'dashboard-default', label: 'Default', to: { name: 'home' } },
