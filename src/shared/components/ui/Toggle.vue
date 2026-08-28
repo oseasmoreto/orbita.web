@@ -4,11 +4,23 @@ import { SwitchRoot, SwitchThumb } from 'reka-ui'
 const props = withDefaults(
   defineProps<{
     disabled?: boolean
+    /** Texto clicável ao lado do switch (ex.: "Allowed") — mesmo papel do `label` de `Checkbox.vue`. */
     label?: string
+    /**
+     * Legenda acima, dentro da mesma caixa com borda — variante "boxed" do
+     * switch, mesmo padrão do Input-B/Select-B/DatePicker rotulado. Nome
+     * diferente de `label` de propósito: `label` já é o texto ao lado do
+     * switch (papel equivalente ao `Checkbox.vue`), então reaproveitar o
+     * mesmo nome pra dois conceitos diferentes no mesmo componente
+     * confundiria os dois. Combinável com `label` (ex.: "Title" em cima,
+     * "Allowed" ao lado do switch, ambos na mesma caixa).
+     */
+    title?: string
   }>(),
   {
     disabled: false,
     label: undefined,
+    title: undefined,
   },
 )
 
@@ -21,11 +33,14 @@ function handleLabelClick(): void {
 </script>
 
 <template>
-  <div :class="['ui-toggle', { 'ui-toggle--disabled': disabled }]">
-    <SwitchRoot v-model="model" class="ui-toggle__root" :disabled="disabled">
-      <SwitchThumb class="ui-toggle__thumb" />
-    </SwitchRoot>
-    <span v-if="label" class="ui-toggle__label" @click="handleLabelClick">{{ label }}</span>
+  <div :class="['ui-toggle-wrapper', { 'ui-toggle-wrapper--boxed': title }]">
+    <span v-if="title" class="ui-toggle-label">{{ title }}</span>
+    <div :class="['ui-toggle', { 'ui-toggle--disabled': disabled }]">
+      <SwitchRoot v-model="model" class="ui-toggle__root" :disabled="disabled">
+        <SwitchThumb class="ui-toggle__thumb" />
+      </SwitchRoot>
+      <span v-if="label" class="ui-toggle__label" @click="handleLabelClick">{{ label }}</span>
+    </div>
   </div>
 </template>
 
@@ -38,6 +53,29 @@ function handleLabelClick(): void {
 // com folga de 2px em cada lado), construído sobre a escala de tamanho
 // já existente ($size-40/$size-20/$size-16), não valores inventados fora
 // dela. Revisar quando o Figma voltar a responder.
+// Sem `title`, o wrapper é transparente (sem padding/borda) — visualmente
+// idêntico ao switch solto de antes. Mesmo padrão de "boxed" do
+// Input-B/Select-B/DatePicker rotulado (`bg-1` + borda `ink-10` + padding
+// `16/20`), só que aplicado em cima do switch em vez de um campo de texto.
+.ui-toggle-wrapper {
+  display: inline-flex;
+
+  &--boxed {
+    flex-direction: column;
+    gap: $spacing-4;
+    width: 100%;
+    padding: $spacing-16 $spacing-20;
+    background-color: $color-bg-1;
+    border: 1px solid $color-ink-10;
+    border-radius: $radius-8;
+  }
+}
+
+.ui-toggle-label {
+  font-size: $font-size-sm;
+  color: $color-ink-40;
+}
+
 .ui-toggle {
   display: inline-flex;
   align-items: center;

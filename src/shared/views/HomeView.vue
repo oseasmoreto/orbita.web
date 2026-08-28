@@ -37,6 +37,7 @@ import Search from '@/shared/components/ui/Search.vue'
 import Select from '@/shared/components/ui/Select.vue'
 import Spinner from '@/shared/components/ui/Spinner.vue'
 import TabBar from '@/shared/components/ui/TabBar.vue'
+import TagsInput from '@/shared/components/ui/TagsInput.vue'
 import Toggle from '@/shared/components/ui/Toggle.vue'
 import Tooltip from '@/shared/components/ui/Tooltip.vue'
 import type { BreadcrumbItem } from '@/shared/components/ui/types/breadcrumb.type'
@@ -56,6 +57,7 @@ const checkboxDisabled = ref(false)
 const toggleOff = ref(false)
 const toggleOn = ref(true)
 const toggleDisabled = ref(false)
+const toggleBoxed = ref(true)
 
 const selectValue = ref('')
 const selectLabeledValue = ref('shopee')
@@ -72,6 +74,10 @@ const searchFilled = ref('produto azul')
 
 const datePickerEmpty = ref('')
 const datePickerFilled = ref('2026-08-27')
+
+const tagsInputEmpty = ref<string[]>([])
+const tagsInputBoxed = ref<string[]>(['Tag', 'Tag'])
+const tagsInputDisabled = ref<string[]>([])
 
 const formGroupValue = ref('')
 
@@ -260,6 +266,9 @@ const activeChartMetric = ref('price')
         <Toggle v-model="toggleOn" />
         <Toggle v-model="toggleDisabled" disabled />
       </div>
+      <div class="showcase__row showcase__row--wrap">
+        <Toggle v-model="toggleBoxed" label="Allowed" title="Title" />
+      </div>
     </section>
 
     <section class="showcase__section">
@@ -280,6 +289,15 @@ const activeChartMetric = ref('price')
         <DatePicker v-model="datePickerEmpty" placeholder="Selecione uma data" />
         <DatePicker v-model="datePickerFilled" label="Data de lançamento" />
         <DatePicker disabled placeholder="Desabilitado" />
+      </div>
+    </section>
+
+    <section class="showcase__section">
+      <h2>TagsInput</h2>
+      <div class="showcase__row showcase__row--wrap">
+        <TagsInput v-model="tagsInputEmpty" placeholder="Adicionar tag" />
+        <TagsInput v-model="tagsInputBoxed" label="Title" />
+        <TagsInput v-model="tagsInputDisabled" disabled placeholder="Desabilitado" />
       </div>
     </section>
 

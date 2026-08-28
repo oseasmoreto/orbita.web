@@ -625,6 +625,25 @@ renderizados diretamente.
   existente, proporção comum de toggle. Revisar quando o Figma voltar a
   responder (ver `docs/design/catalogo-componentes.md`).
 
+**Variante "boxed" (`title`), pedida direto pelo usuário em 2026-08-28
+com captura real do Figma** — faltava a variante do switch dentro da
+mesma caixa com borda usada por Input-B/Select-B/DatePicker rotulado
+(legenda em cima, `{colors.ink-40}`, `{typography.label}`; caixa
+`{colors.bg-1}` + borda `{colors.ink-10}` + `{radius.8}` + padding
+`{spacing.16} {spacing.20}`, mesmos tokens dos outros campos do frame
+"Form"). Implementada como um novo prop `title` (não `label`) de
+propósito: `label` já é o texto clicável ao lado do switch (mesmo papel
+do `label` de `Checkbox.vue`, ex.: "Allowed" na captura do usuário) —
+reaproveitar o mesmo nome pra dois conceitos diferentes no mesmo
+componente (a legenda de cima vs. o texto do lado) confundiria os dois.
+Os dois props são combináveis: `title="Title"` + `label="Allowed"`
+reproduz exatamente a captura enviada. Sem `title`, o wrapper novo
+(`.ui-toggle-wrapper`) fica transparente (sem padding/borda) — o switch
+solto de antes continua pixel-idêntico, nenhuma das 3 instâncias
+existentes na vitrine precisou mudar. Verificado em browser real: caixa
+renderiza igual à captura, clicar no texto "Allowed" (ou no próprio
+switch) continua alternando o estado normalmente.
+
 ### Select (`shared/components/ui/Select.vue`)
 
 Construído sobre a família `Select*` da Reka UI (`SelectRoot`,
@@ -1521,6 +1540,50 @@ override próprio). Corrigido:
 - Reverificado em browser real contra a captura do usuário: os três
   estados do trigger (vazio, preenchido com label, desabilitado) batem
   com a mesma composição ícone-texto-ícone da referência.
+
+### TagsInput (`shared/components/ui/TagsInput.vue`)
+
+**Pedido direto pelo usuário em 2026-08-28, com captura real do frame
+"Form → Type=Tags" do Figma** — gap real do catálogo original: "Select,
+Date, Switch, Tags" já eram citados como irmãos do mesmo frame "Form"
+desde a Tier 1 (`docs/infra/convencoes-frontend-infra.md` e este
+documento, seção Input), mas "Tags" nunca ganhou uma linha própria em
+`docs/design/catalogo-componentes.md` nem foi implementado — passou
+despercebido até a captura chegar.
+
+- Construído sobre a família `TagsInput*` da Reka UI (`TagsInputRoot`/
+  `TagsInputItem`/`TagsInputItemText`/`TagsInputItemDelete`/
+  `TagsInputInput`) — mesmo caminho de "não reinventar primitivo
+  acessível do zero" já usado em todo o resto do design system
+  (navegação por teclado entre chips, Backspace apaga o último chip com
+  input vazio, Enter/vírgula adiciona um novo, tudo resolvido pelo
+  primitivo).
+- **Mesma variante A/B do resto da família "Form"** (`label` prop):
+  sem `label`, é a caixa "solta" (padding `{spacing.8} {spacing.16}`,
+  mesmo padrão do Input-A); com `label`, vira a caixa "boxed" da captura
+  do usuário (legenda `{colors.ink-40}`/`{typography.label}` em cima,
+  padding `{spacing.16} {spacing.20}`).
+- **Chip reaproveita os tokens do `Badge.vue` variante `gray`**
+  (`{colors.ink-4}` de fundo, `{radius.4}`, padding `1px {spacing.4}`) —
+  mesmo visual já validado nessa combinação em outro componente, não um
+  valor novo inventado. `TagsInputItemDelete` (o "×" do chip) não tem
+  fallback de conteúdo no primitivo — precisa do ícone `X` (12px, mesmo
+  tamanho fixo do `icon-before`/`icon-after` do `Badge`) passado
+  manualmente no slot default.
+- **Ícone `CaretUpDown` à direita é só decorativo** — mantém a mesma
+  linguagem visual dos outros campos "boxed" da família Form
+  (Select/DatePicker), mas este componente não abre popover nenhum,
+  digitação e chip acontecem direto na própria caixa. Documentado assim
+  de propósito no comentário do template, pra não alguém achar que é
+  affordance de abrir algo e tentar conectar comportamento que não existe.
+- Model público é `string[]` (`defineModel<string[]>({ default: () =>
+  [] })`) — tipo primitivo direto, sem VO/objeto intermediário, já que
+  tag aqui é sempre texto livre.
+- Verificado em browser real: digitar um texto e apertar Enter adiciona
+  um chip novo, clicar no "×" de um chip remove só aquele, estado
+  `disabled` bloqueia toda interação — os três estados (solta vazia,
+  boxed com 2 chips pré-carregados batendo com a captura do usuário,
+  desabilitada) conferidos lado a lado com a referência.
 
 ## Do's and Don'ts
 
