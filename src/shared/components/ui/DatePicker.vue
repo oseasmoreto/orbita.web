@@ -36,7 +36,7 @@ import {
   CalendarBlank,
   CaretLeft,
   CaretRight,
-  XCircles,
+  CaretUpDown,
 } from '@/shared/components/icons/regular.generated'
 import Icon from './Icon.vue'
 
@@ -84,10 +84,6 @@ const calendarValue = computed<DateValue | undefined>({
 })
 
 const displayValue = computed(() => (model.value ? dayjs(model.value).format('DD/MM/YYYY') : ''))
-
-function clear(): void {
-  model.value = ''
-}
 </script>
 
 <template>
@@ -100,19 +96,11 @@ function clear(): void {
     >
       <label v-if="label" :for="triggerId" class="ui-date-picker-label">{{ label }}</label>
       <PopoverTrigger :id="label ? triggerId : undefined" class="ui-date-picker-trigger" :disabled="disabled">
+        <Icon class="ui-date-picker-leading-icon" :icon="CalendarBlank" :size="16" />
         <span :class="['ui-date-picker-value', { 'ui-date-picker-value--placeholder': !model }]">
           {{ displayValue || placeholder }}
         </span>
-        <button
-          v-if="model"
-          type="button"
-          class="ui-date-picker-clear"
-          aria-label="Limpar data"
-          @click.stop="clear"
-        >
-          <Icon :icon="XCircles" :size="16" />
-        </button>
-        <Icon v-else :icon="CalendarBlank" :size="16" />
+        <Icon :icon="CaretUpDown" :size="16" />
       </PopoverTrigger>
     </div>
 
@@ -202,7 +190,6 @@ function clear(): void {
   display: flex;
   flex: 1;
   align-items: center;
-  justify-content: space-between;
   gap: $spacing-8;
   font-size: $font-size-md;
   color: $color-ink;
@@ -214,29 +201,28 @@ function clear(): void {
   }
 }
 
+// Ícone à esquerda é só um marcador semântico ("isto é um campo de
+// data"), fica sempre apagado (`ink-40`) — diferente do chevron à
+// direita, que reflete o mesmo estado "clicável" do `CaretUpDown` do
+// `Select.vue` e por isso herda `$color-ink` (não tem override próprio).
+.ui-date-picker-leading-icon {
+  flex-shrink: 0;
+  color: $color-ink-40;
+}
+
+// `flex: 1` no texto empurra o chevron pro fim do trigger — mesmo efeito
+// de um `justify-content: space-between`, mas sem distribuir espaço
+// também entre o ícone à esquerda e o texto (que precisam ficar colados,
+// só um `gap` pequeno entre eles, ver captura do Figma).
 .ui-date-picker-value {
+  flex: 1;
+  min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 
   &--placeholder {
     color: $color-ink-40;
-  }
-}
-
-.ui-date-picker-clear {
-  display: inline-flex;
-  flex-shrink: 0;
-  align-items: center;
-  justify-content: center;
-  padding: 0;
-  color: $color-ink-40;
-  cursor: pointer;
-  background: none;
-  border: none;
-
-  &:hover {
-    color: $color-ink;
   }
 }
 

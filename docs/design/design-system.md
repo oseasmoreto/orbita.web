@@ -1457,10 +1457,14 @@ design system, sem referência visual do Figma.
   dependência já estava no `package.json` desde a Fase 0, seção 15.2 de
   `docs/infra/convencoes-frontend-infra.md`, mas nenhum componente tinha
   usado ainda).
-- **Botão de limpar reaproveita o mesmo padrão já estabelecido no
-  `Search.vue`** (Tier 4): ícone `XCircles` substitui o ícone `CalendarBlank`
-  do trigger quando há valor selecionado, `@click.stop` pra não abrir o
-  popover ao limpar.
+- **Sem botão de limpar dedicado no trigger** — limpar a data é feito
+  reabrindo o popover e clicando de novo no dia já selecionado, que
+  desmarca (`CalendarRoot.preventDeselect` é `false` por padrão na Reka
+  UI, nativo, sem código nosso). Ver "Correção" abaixo — a primeira
+  versão tinha um ícone de limpar (`XCircles`) substituindo o ícone do
+  trigger, reaproveitando o padrão do `Search.vue`; removido por não ter
+  grounding nenhum no Figma real depois que o usuário mandou a captura de
+  referência.
 - **Locale fixo em `'pt-BR'`** no `CalendarRoot` — mesmo critério de
   "produto é pt-BR only no MVP" já usado no `vue-i18n` (seção 6.3 de
   `docs/infra/convencoes-frontend-infra.md`). `weekStartsOn` não foi
@@ -1484,8 +1488,39 @@ design system, sem referência visual do Figma.
   ("agosto de 2026"), seleção de um dia atualiza o trigger e fecha
   ("28/08/2026"), reabrir mantém o dia destacado, navegação de mês
   (anterior/próximo) funciona e não carrega nenhum destaque de dia
-  selecionado de outro mês, botão de limpar remove o valor e volta ao
-  placeholder, trigger `disabled` bloqueia o clique.
+  selecionado de outro mês, reclicar no dia já selecionado desmarca e
+  volta ao placeholder, trigger `disabled` bloqueia o clique.
+
+**Correção, reportada pelo usuário em 2026-08-28, com captura de
+referência real do Figma** (frame de "Date" isolado, não visto antes por
+causa do rate limit já registrado) — a primeira versão do trigger tinha
+uma estrutura diferente do componente real: texto + botão de
+limpar/ícone `CalendarBlank` alternados à direita, nada à esquerda. A
+referência mostra um padrão bem mais parecido com `Select.vue`: **ícone
+`CalendarBlank` fixo à esquerda** (marcador semântico, sempre apagado em
+`{colors.ink-40}`, nunca troca de conteúdo) **+ texto** (placeholder ou
+data formatada) **+ ícone `CaretUpDown` fixo à direita** (mesmo ícone de
+"abre/fecha" já usado no trigger do `Select`, cor `{colors.ink}`, sem
+override próprio). Corrigido:
+
+- Layout do trigger reescrito pra 3 elementos fixos (`Icon` leading +
+  `span` de valor + `Icon` trailing), removendo a lógica condicional que
+  trocava o ícone da direita por um botão de limpar.
+- CSS: `.ui-date-picker-value` ganhou `flex: 1` (empurra o ícone final
+  pro fim do trigger, mesmo efeito de um `justify-content: space-between`
+  sem separar o ícone inicial do texto — que precisam ficar colados, só
+  um `gap` pequeno, como na referência) e `min-width: 0` (necessário pra
+  `text-overflow: ellipsis` funcionar dentro de um item flex que também
+  tem `flex: 1`). `.ui-date-picker-leading-icon` fixa `color: $color-ink-40`
+  — diferente do ícone final, que não tem cor própria e por isso herda
+  `$color-ink` do trigger (igual ao `CaretUpDown` do `Select.vue`).
+- Função de limpar removida — sem grounding no Figma pra um botão
+  dedicado, e a Reka UI já resolve o caso via deseleção nativa (reclicar
+  no dia marcado), então não era um recurso perdido, só uma UI inventada
+  sem necessidade.
+- Reverificado em browser real contra a captura do usuário: os três
+  estados do trigger (vazio, preenchido com label, desabilitado) batem
+  com a mesma composição ícone-texto-ícone da referência.
 
 ## Do's and Don'ts
 
