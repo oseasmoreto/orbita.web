@@ -1585,6 +1585,114 @@ despercebido até a captura chegar.
   boxed com 2 chips pré-carregados batendo com a captura do usuário,
   desabilitada) conferidos lado a lado com a referência.
 
+### AppFooter (`core/layouts/AppFooter.vue`)
+
+**Pedido direto pelo usuário em 2026-08-28, com captura real do Figma**
+— frame "Footer" nunca tinha sido examinado até então (só o frame
+"Brand", já descartado como rodapé de marketing com logo/redes sociais,
+fora de escopo — `docs/design/catalogo-componentes.md`, seção 4). O
+frame real é bem mais simples: copyright à esquerda, links de navegação
+à direita, numa barra horizontal.
+
+- **Mesma barra de `AppHeader.vue`, invertida** — mesmo padding
+  (`{spacing.16} {spacing.24}`), mas `border-top` em vez de
+  `border-bottom` (a barra fica embaixo, não em cima) e fundo
+  `{colors.bg-2}` em vez de `{colors.bg-1}` (leve diferenciação do fundo
+  da página, mesmo tom "quase branco" já usado em outras seções).
+- **Link reaproveita o tratamento exato do `Breadcrumb.vue`**
+  (`{colors.ink-40}` apagado, hover `{colors.ink}` + fundo
+  `{colors.ink-4}`, `{radius.8}`) — mesmo componente de navegação
+  secundária, mesma linguagem visual, sem inventar um estilo de link novo.
+- **A captura do usuário mostrava fundo claro e fundo quase preto lado a
+  lado — não viraram um prop `variant`.** Interpretado (e confirmado
+  visualmente) como o mesmo componente renderizado sob tema claro e tema
+  escuro, não dois estilos fixos independentes: `{colors.bg-2}` já
+  resolve sozinho pro cinza escuro (`#333333`, o único valor de
+  "Background 1" que existe no token de origem pro modo escuro) sob
+  `[data-theme='dark']`, sem nenhum código condicional novo (mesmo
+  princípio já em toda a seção Iteration Guide). Cogitado e descartado
+  usar `{colors.ink}`/`{colors.paper}` pra imitar o preto quase puro da
+  captura — a seção "Don't" deste documento já proíbe exatamente esse uso
+  (tratar `ink`/`paper` como fixos, quando eles trocam de valor no modo
+  escuro) porque um fundo de rodapé "escuro" viraria branco sob o tema
+  escuro do próprio app, o oposto da intenção. Sem token de fundo mais
+  escuro que `#333333` na escala de origem — a aproximação fica
+  documentada aqui, não inventada por cima.
+- Props: `copyright?` (default `"© {ano atual} Orbita"`, via
+  `dayjs().year()` — nunca hardcoded feito o "© 2025 Snow" da captura,
+  que é o placeholder de marca do próprio kit SnowUI) e `links?:
+  FooterLink[]` (`{ label, to: RouteLocationRaw }`, mesma forma de
+  `BreadcrumbItem`) — default `[]`, sem link fixo pra rota que não existe
+  (mesma disciplina de "nunca link morto" já usada no `AppSidebar`).
+- **Não montado em `AppLayout.vue`** — nenhuma tela do plano atual define
+  o conteúdo real de "Support"/"Contact Us" (nem se essas rotas existem),
+  mesmo critério de "casca pronta" do `DatePicker`/`TagsInput` (Tier
+  11/12). Consumidor real decide o `links` de verdade quando a rota
+  existir.
+- Verificado em browser real: copyright + 3 links renderizam como na
+  captura no tema claro, hover de link muda cor/fundo corretamente,
+  `data-theme="dark"` simulado (sem toggle de UI ainda) confirma o fundo
+  virando `#333333` sem nenhuma mudança de código.
+
+### StatusDot (`shared/components/ui/StatusDot.vue`)
+
+**Resolve o gap "Label" do catálogo** (`docs/design/catalogo-componentes.md`,
+seção 2) — em aberto desde a Tier 1 como "avaliar se é prop de `Badge`
+(`variant=\"status\"`) ou componente próprio `StatusBadge.vue`, decidir na
+hora de implementar". Pedido direto pelo usuário em 2026-08-28 com
+captura real do frame — a captura resolveu a dúvida sozinha: **não é pill
+com fundo**, então não é variante de `Badge.vue`; é ponto colorido + texto
+na mesma cor, sem fundo nenhum. Nome final `StatusDot`, não `StatusBadge`
+(que sugeriria pill inexistente).
+
+- **Ponto e texto compartilham a mesma cor** — detalhe fácil de perder
+  numa primeira olhada (a maioria dos padrões de "status dot" por aí usa
+  texto neutro + só o ponto colorido), mas a captura do usuário mostra os
+  dois tingidos igual ("In Progress" em texto arroxeado, não preto).
+  Implementado com uma prop CSS só: o marcador usa `background-color:
+  currentColor`, herdando a cor do texto do elemento pai — uma declaração
+  de cor por variante cobre ponto+texto ao mesmo tempo, sem duplicar.
+- **`color` é uma paleta genérica de 10 opções** (os 9 acentos de
+  `{colors.accent-*}` + `gray`, mapeado pra `{colors.ink-40}` já que não
+  existe acento neutro na escala) — **o componente não sabe o que
+  "In Progress"/"Approved"/"Rejected" significam**, só recebe a cor já
+  escolhida via prop e o texto via slot. Mapeamento status→cor é decisão
+  do consumidor (mesma régua de "componente nunca tem regra de negócio",
+  seção 3 de `docs/infra/convencoes-frontend-infra.md`) — não existe um
+  enum interno tipo `variant="in-progress"` fixando semântica que pode
+  variar por contexto de uso (status de assinatura, de transação, de
+  margem...).
+- **"Rejected" é cinza, não vermelho, na captura real** — resistida a
+  tentação de "corrigir" pra `{colors.accent-red}` por semântica
+  assumida (rejeitado = erro = vermelho); a captura manda, não a
+  convenção mais comum de outros produtos. O consumidor real que quiser
+  vermelho pra um estado de rejeição específico pode escolher
+  `color="red"` — a paleta cobre esse caso, só não é o default do exemplo.
+- Marcador: `{spacing.8}` de diâmetro, `{radius.80}` (círculo) — mesmo
+  token de tamanho já usado no ponto de "não lida" do
+  `NotificationItem`/sino do `AppHeader`.
+- Verificado em browser real contra a captura: as 5 cores do exemplo
+  (`indigo`/`green`/`cyan`/`yellow`/`gray`) renderizam com ponto e texto
+  na mesma cor, lista vertical compacta batendo com o layout da captura.
+
+**Pulsante, pedido direto pelo usuário em 2026-08-28** — o marcador
+ganhou um efeito "ping" (indicador ao vivo): o ponto sólido fica parado,
+um `::before` absoluto do mesmo tamanho herdando `currentColor` expande
+(`scale(1)` → `scale(2.5)`) e desaparece (`opacity: 0.6` → `0`) em loop
+infinito de 1.8s por baixo dele — resolvido com pseudo-elemento, sem
+precisar de um segundo `<span>` no template. **Sempre ligado, sem prop
+pra desativar** — o pedido foi incondicional ("deixe as bolinhas
+pulsantes"), sem menção a precisar de uma variante estática; adicionar
+esse controle sem necessidade real seria abstração antecipada (mesmo
+critério de "não abstraia pra caso um dia precise" já citado no doc de
+convenções). **Sem tratamento de `prefers-reduced-motion`** — mesmo
+padrão já usado no `Spinner.vue` (única outra animação em loop infinito
+do design system), que também não tem esse guard; não introduzido aqui
+de propósito pra não divergir do precedente já estabelecido sem pedido
+explícito. Verificado via `getComputedStyle(marker, '::before')`:
+`animationName`/`animationDuration: 1.8s`/`animationIterationCount:
+infinite` presentes nos 5 exemplos da vitrine.
+
 ## Do's and Don'ts
 
 ### Do

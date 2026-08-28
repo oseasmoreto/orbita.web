@@ -18,6 +18,7 @@ import {
 } from '@/shared/components/icons/regular.generated'
 import ChartCard from '@/shared/components/blocks/ChartCard.vue'
 import ConfirmDialog from '@/shared/components/blocks/ConfirmDialog.vue'
+import AppFooter from '@/core/layouts/AppFooter.vue'
 import DataTable from '@/shared/components/blocks/DataTable.vue'
 import FormGroup from '@/shared/components/blocks/FormGroup.vue'
 import ListToolbar from '@/shared/components/blocks/ListToolbar.vue'
@@ -36,6 +37,7 @@ import Modal from '@/shared/components/ui/Modal.vue'
 import Search from '@/shared/components/ui/Search.vue'
 import Select from '@/shared/components/ui/Select.vue'
 import Spinner from '@/shared/components/ui/Spinner.vue'
+import StatusDot from '@/shared/components/ui/StatusDot.vue'
 import TabBar from '@/shared/components/ui/TabBar.vue'
 import TagsInput from '@/shared/components/ui/TagsInput.vue'
 import Toggle from '@/shared/components/ui/Toggle.vue'
@@ -46,6 +48,7 @@ import type {
   DataTableSortDirection,
 } from '@/shared/components/ui/types/dataTable.type'
 import type { DropdownMenuOption } from '@/shared/components/ui/types/dropdownMenu.type'
+import type { FooterLink } from '@/core/layouts/types/footer.type'
 import type { TabBarOption } from '@/shared/components/ui/types/tabBar.type'
 import type { ChartMetricOption } from '@/shared/components/blocks/types/chartCard.type'
 
@@ -189,6 +192,12 @@ const taskRows: TaskRow[] = [
     timeSpent: '78h 5min',
     title: 'App de desenvolvimento',
   },
+]
+
+const footerLinks: FooterLink[] = [
+  { label: 'About', to: { name: 'home' } },
+  { label: 'Support', to: { name: 'home' } },
+  { label: 'Contact Us', to: { name: 'home' } },
 ]
 
 const breadcrumbItems: BreadcrumbItem[] = [
@@ -539,7 +548,20 @@ const activeChartMetric = ref('price')
         <Spinner :size="32" />
       </div>
     </section>
+
+    <section class="showcase__section">
+      <h2>StatusDot</h2>
+      <div class="showcase__status-list">
+        <StatusDot color="indigo">In Progress</StatusDot>
+        <StatusDot color="green">Complete</StatusDot>
+        <StatusDot color="cyan">Pending</StatusDot>
+        <StatusDot color="yellow">Approved</StatusDot>
+        <StatusDot color="gray">Rejected</StatusDot>
+      </div>
+    </section>
   </main>
+
+  <AppFooter :links="footerLinks" />
 </template>
 
 <style scoped lang="scss">
@@ -609,5 +631,11 @@ const activeChartMetric = ref('price')
 .showcase__row--charts > * {
   flex: 1 1 320px;
   max-width: 480px;
+}
+
+.showcase__status-list {
+  display: flex;
+  flex-direction: column;
+  gap: $spacing-8;
 }
 </style>
