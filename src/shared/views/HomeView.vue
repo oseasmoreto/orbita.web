@@ -28,6 +28,7 @@ import Badge from '@/shared/components/ui/Badge.vue'
 import Breadcrumb from '@/shared/components/ui/Breadcrumb.vue'
 import Button from '@/shared/components/ui/Button.vue'
 import Checkbox from '@/shared/components/ui/Checkbox.vue'
+import DatePicker from '@/shared/components/ui/DatePicker.vue'
 import DropdownMenu from '@/shared/components/ui/DropdownMenu.vue'
 import Drawer from '@/shared/components/ui/Drawer.vue'
 import Input from '@/shared/components/ui/Input.vue'
@@ -68,6 +69,9 @@ const marketplaceOptions = [
 
 const searchEmpty = ref('')
 const searchFilled = ref('produto azul')
+
+const datePickerEmpty = ref('')
+const datePickerFilled = ref('2026-08-27')
 
 const formGroupValue = ref('')
 
@@ -267,6 +271,15 @@ const activeChartMetric = ref('price')
           placeholder="Selecione um marketplace"
         />
         <Select v-model="selectLabeledValue" label="Marketplace" :options="marketplaceOptions" />
+      </div>
+    </section>
+
+    <section class="showcase__section">
+      <h2>DatePicker</h2>
+      <div class="showcase__row showcase__row--wrap">
+        <DatePicker v-model="datePickerEmpty" placeholder="Selecione uma data" />
+        <DatePicker v-model="datePickerFilled" label="Data de lançamento" />
+        <DatePicker disabled placeholder="Desabilitado" />
       </div>
     </section>
 

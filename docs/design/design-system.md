@@ -1407,6 +1407,86 @@ específico. Achados reais desta rodada:
   legenda aparecem pretos e pequenos, e não há mais nenhuma linha de
   grade atrás do gráfico de linha.
 
+**5ª rodada pixel-perfect, mesmo dia (2026-08-27)** — usuário pediu
+explicitamente pra remover "as linhas do eixo x e y". Achado real: a 4ª
+rodada já tinha zerado `grid` (as linhas de referência internas), mas o
+`chart.js` desenha a **linha do próprio eixo** (em y=0/x=0) através de uma
+opção **separada**, `scales.<eixo>.border`, não coberta por `grid` — essa
+linha continuava visível mesmo com `grid: { display: false }`. Corrigido
+com `border: { display: false }` nos dois eixos (`x` e `y`), mantendo só
+os `ticks` (labels). Reverificado em browser real: nenhuma linha aparece
+mais em nenhuma borda do gráfico, só os números/labels dos eixos.
+
+### DatePicker (`shared/components/ui/DatePicker.vue`)
+
+Tier 11 do catálogo. **Sem grounding pixel-a-pixel no Figma** — a API do
+Figma estava sob rate limit (retry-after de dias, achado registrado na
+Tier 0) e nenhuma tela do plano atual exige filtro de data ainda, então
+não valia esperar o limite liberar. Mesmo caminho já usado pro
+`Modal`/`Drawer` (sem frame de origem): primitivo Reka UI + tokens do
+design system, sem referência visual do Figma.
+
+- **Primitivo escolhido: `Popover` + `Calendar` standalone, não a família
+  composta `DatePicker*` da Reka UI** — a Reka UI também exporta um grupo
+  `DatePickerRoot`/`DatePickerField`/`DatePickerCalendar`/... que embute
+  um campo de texto **segmentado** (dia/mês/ano editáveis separadamente,
+  como o input de data do macOS). Decisão: não usar essa família — o
+  Orbita não tem nenhuma tela que peça digitação direta de data, e o
+  trigger deste componente segue o mesmo padrão visual/interativo do
+  `Select.vue` (clica, abre popover, escolhe, fecha), não um campo de
+  texto. Usar as peças soltas (`PopoverRoot`/`PopoverTrigger`/
+  `PopoverContent` + `CalendarRoot`/`CalendarHeader`/`CalendarHeading`/
+  `CalendarPrev`/`CalendarNext`/`CalendarGrid`/`CalendarGridHead`/
+  `CalendarHeadCell`/`CalendarGridBody`/`CalendarGridRow`/`CalendarCell`/
+  `CalendarCellTrigger`) evita carregar a complexidade do campo segmentado
+  pra um caso de uso que não existe hoje — revisitável se uma tela
+  realmente pedir digitação direta.
+- **Model público é uma data ISO (`YYYY-MM-DD`), nunca o `DateValue` do
+  `@internationalized/date`** que a Reka UI usa por baixo — mesmo
+  raciocínio já usado em `Select.vue` (expõe `string`, não o tipo interno
+  da lib): o consumidor nunca precisa importar `@internationalized/date`
+  pra usar o componente, só serializa a string direto num payload de API
+  ou schema Zod. `@internationalized/date` entrou como dependência direta
+  do `package.json` (antes só transitiva via `reka-ui`) porque o
+  componente importa `parseDate`/`DateValue` dele explicitamente, não só
+  através da Reka UI. Conversão de volta pro model usa
+  `CalendarDate.toString()`, que já devolve ISO 8601 puro — sem
+  formatação manual.
+- **Exibição formatada com `dayjs`** (`DD/MM/YYYY`, convenção pt-BR do
+  produto) — primeiro uso real de `dayjs` no código do projeto (a
+  dependência já estava no `package.json` desde a Fase 0, seção 15.2 de
+  `docs/infra/convencoes-frontend-infra.md`, mas nenhum componente tinha
+  usado ainda).
+- **Botão de limpar reaproveita o mesmo padrão já estabelecido no
+  `Search.vue`** (Tier 4): ícone `XCircles` substitui o ícone `CalendarBlank`
+  do trigger quando há valor selecionado, `@click.stop` pra não abrir o
+  popover ao limpar.
+- **Locale fixo em `'pt-BR'`** no `CalendarRoot` — mesmo critério de
+  "produto é pt-BR only no MVP" já usado no `vue-i18n` (seção 6.3 de
+  `docs/infra/convencoes-frontend-infra.md`). `weekStartsOn` não foi
+  sobrescrito — o padrão que a `@internationalized/date` resolve pra
+  `pt-BR` (domingo) já é o esperado, sem necessidade de forçar.
+- Estilização via atributos de dado que os próprios primitivos já expõem
+  (`data-selected`, `data-today`, `data-outside-view`, `data-disabled` em
+  `CalendarCellTrigger`; `data-state` em `PopoverTrigger` pro anel de
+  foco, mesmo padrão do `Select.vue`) — nenhum estado calculado à mão no
+  componente.
+- **Mesmo achado de portal já documentado pro Select/Tooltip/DropdownMenu/
+  Modal**: `PopoverPortal` teletransporta `PopoverContent` pro fim do
+  `<body>`, então todas as classes usam `:global(...)` com seletor
+  "plano" — incluindo `[data-selected]`/`[data-today]`/`[data-outside-view]`/
+  `[data-disabled]` do dia selecionado, escritos direto como
+  `:global(.ui-date-picker-calendar-cell-trigger[data-selected])` desde a
+  primeira versão (não `&[data-selected]` aninhado dentro do bloco
+  `:global()`) — aplicando de propósito a lição do bug real já corrigido
+  no `Select.vue` em vez de descobrir de novo por tentativa e erro.
+- Verificado em browser real: abre no clique, mês/ano em português
+  ("agosto de 2026"), seleção de um dia atualiza o trigger e fecha
+  ("28/08/2026"), reabrir mantém o dia destacado, navegação de mês
+  (anterior/próximo) funciona e não carrega nenhum destaque de dia
+  selecionado de outro mês, botão de limpar remove o valor e volta ao
+  placeholder, trigger `disabled` bloqueia o clique.
+
 ## Do's and Don'ts
 
 ### Do
