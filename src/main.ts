@@ -1,4 +1,6 @@
 import '@fontsource-variable/inter'
+import dayjs from 'dayjs'
+import 'dayjs/locale/pt-br'
 import { createPinia } from 'pinia'
 import { createApp } from 'vue'
 import App from './App.vue'
@@ -8,6 +10,11 @@ import { router } from './core/router'
 import './core/styles/main.scss'
 import 'vue-sonner/style.css'
 import { useAuthStore } from './core/store/useAuthStore'
+
+// Produto é pt-BR only no MVP (seção 6.3 de docs/infra/convencoes-frontend-infra.md)
+// — mesmo critério já aplicado no `vue-i18n`, agora também no `dayjs`
+// (nomes de mês/dia abreviados do `DatePicker`, ex. "fev" em vez de "feb").
+dayjs.locale('pt-br')
 
 const app = createApp(App)
 

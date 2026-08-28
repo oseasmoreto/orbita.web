@@ -1,17 +1,24 @@
 <script setup lang="ts">
 /**
- * Tier 11 do catálogo (`docs/design/catalogo-componentes.md`) — sem
- * grounding pixel-a-pixel no Figma: a API do Figma estava sob rate limit
- * (retry-after de dias, achado já registrado na Tier 0) e nenhuma tela do
- * plano atual ainda exige filtro de data, então não valia esperar. Mesmo
- * caminho já usado pro `Modal`/`Drawer` (sem frame de origem): primitivo
- * Reka UI (`Popover` + `Calendar`, standalone — não a família composta
- * `DatePicker*`, que embute um campo segmentado dia/mês/ano que não temos
- * caso de uso pra hoje) + tokens do design system, aproximando o mesmo
- * tratamento visual de `Input.vue`/`Select.vue` (Input-A/B) pro trigger.
+ * Tier 11 do catálogo (`docs/design/catalogo-componentes.md`) —
+ * **revisado em 2026-08-28, pixel-perfect contra captura real do
+ * usuário** cobrindo as 4 variantes do frame "Date Picker" do Figma
+ * ("Date Picker", "Date Picker with time", e as 2 de intervalo, que
+ * viraram `DateRangePicker.vue` — ver seção própria em design-system.md).
+ * Primitivo Reka UI (`Popover` + `Calendar`, standalone — não a família
+ * composta `DatePicker*`, que embute um campo segmentado dia/mês/ano que
+ * não temos caso de uso pra hoje) + tokens do design system.
+ *
+ * Painel do popover ganhou 3 elementos novos que a v1 (sem grounding)
+ * não tinha: **preview** (data — e hora, se `show-time` — formatada,
+ * atualiza ao vivo conforme o usuário navega/seleciona), **atalhos**
+ * ("Hoje"/"Última seleção") e **cabeçalho de mês abreviado** ("Fev", não
+ * "fevereiro de 2026" do `CalendarHeading` padrão). Grid de dias não
+ * mudou — já batia com a captura desde a v1.
  */
 import type { DateValue } from '@internationalized/date'
-import { parseDate } from '@internationalized/date'
+import { getLocalTimeZone, parseDate, today } from '@internationalized/date'
+import dayjs from 'dayjs'
 import {
   CalendarCell,
   CalendarCellTrigger,
@@ -20,8 +27,6 @@ import {
   CalendarGridHead,
   CalendarGridRow,
   CalendarHeadCell,
-  CalendarHeader,
-  CalendarHeading,
   CalendarNext,
   CalendarPrev,
   CalendarRoot,
@@ -30,8 +35,7 @@ import {
   PopoverRoot,
   PopoverTrigger,
 } from 'reka-ui'
-import { computed, ref, useId } from 'vue'
-import dayjs from 'dayjs'
+import { computed, ref, useId, watch } from 'vue'
 import {
   CalendarBlank,
   CaretLeft,
@@ -40,50 +44,115 @@ import {
 } from '@/shared/components/icons/regular.generated'
 import Icon from './Icon.vue'
 
-withDefaults(
+const props = withDefaults(
   defineProps<{
     placeholder?: string
     disabled?: boolean
     invalid?: boolean
     /** Label dentro da mesma caixa do trigger — variante "Input-B" do Figma. */
     label?: string
+    /** Mostra a linha de hora no preview do popover — variante "Date Picker with time" da captura. */
+    showTime?: boolean
   }>(),
   {
     disabled: false,
     invalid: false,
     label: undefined,
     placeholder: undefined,
+    showTime: false,
   },
 )
 
 /**
  * Model público é uma data ISO (`YYYY-MM-DD`), nunca o `DateValue` do
  * `@internationalized/date` que a Reka UI usa por baixo — mesmo raciocínio
- * de `Select.vue` expor `string`, não o tipo interno da lib. Serializa
- * direto num `FormRequest date`/schema Zod do módulo consumidor, sem
- * ninguém além deste componente precisar conhecer `@internationalized/date`.
- * `CalendarDate.toString()` já devolve ISO 8601 puro, então a conversão de
- * volta pro model não precisa de formatação manual.
+ * de `Select.vue` expor `string`, não o tipo interno da lib.
  */
 const model = defineModel<string>({ default: '' })
 
-const triggerId = useId()
+/** Hora em "HH:mm" 24h, só relevante quando `show-time`. */
+const timeModel = defineModel<string>('time', { default: '' })
 
-// Fecha o popover ao escolher um dia — mesmo comportamento de
-// `Select.vue` (escolher uma opção fecha o dropdown), diferente do
-// `closeOnSelect` da família composta `DatePickerRoot` (não usada aqui,
-// ver comentário acima) que resolveria isso sozinho.
+const triggerId = useId()
 const open = ref(false)
 
 const calendarValue = computed<DateValue | undefined>({
   get: () => (model.value ? parseDate(model.value) : undefined),
   set: (value) => {
     model.value = value ? value.toString() : ''
-    open.value = false
+    // Sem hora pra ajustar, escolher o dia já basta — fecha igual à v1.
+    // Com hora, fica aberto pro usuário ajustar o relógio antes de sair
+    // (fecha via clique fora/Esc, sem botão de confirmar — não visto na
+    // captura).
+    if (!props.showTime) {
+      open.value = false
+    }
   },
 })
 
+/**
+ * Snapshot tirado toda vez que o popover abre — "Última seleção" volta
+ * pra esse valor, não pro último confirmado historicamente (não haveria
+ * como saber "confirmado" sem um botão de Apply, que a captura não tem).
+ */
+const lastSelection = ref({ date: '', time: '' })
+
+watch(open, (isOpen) => {
+  if (isOpen) {
+    lastSelection.value = { date: model.value, time: timeModel.value }
+  }
+})
+
+function selectToday(): void {
+  calendarValue.value = today(getLocalTimeZone())
+}
+
+function selectLastSelection(): void {
+  model.value = lastSelection.value.date
+  timeModel.value = lastSelection.value.time
+}
+
 const displayValue = computed(() => (model.value ? dayjs(model.value).format('DD/MM/YYYY') : ''))
+
+/** Preview do popover — mesmo formato "DD / MM / YYYY" da captura (com espaços), sempre com um valor (hoje quando nada foi escolhido ainda). */
+const previewDate = computed(() => dayjs(model.value || undefined).format('DD / MM / YYYY'))
+
+function monthLabel(date: DateValue): string {
+  const formatted = dayjs(date.toString()).format('MMM')
+  return formatted.charAt(0).toUpperCase() + formatted.slice(1)
+}
+
+// Hora sempre com um valor pro preview (hora atual quando nada foi
+// ajustado ainda) — só grava no model quando o usuário mexe de verdade.
+const effectiveTime = computed(() => timeModel.value || dayjs().format('HH:mm'))
+const hour24 = computed(() => Number(effectiveTime.value.split(':')[0]))
+const minute = computed(() => Number(effectiveTime.value.split(':')[1]))
+const meridiem = computed<'AM' | 'PM'>(() => (hour24.value >= 12 ? 'PM' : 'AM'))
+const hour12 = computed(() => {
+  const remainder = hour24.value % 12
+  return remainder === 0 ? 12 : remainder
+})
+
+function setTime(nextHour12: number, nextMinute: number, nextMeridiem: 'AM' | 'PM'): void {
+  const clampedHour = Math.min(Math.max(nextHour12, 1), 12) % 12
+  const hour = nextMeridiem === 'PM' ? clampedHour + 12 : clampedHour
+  const clampedMinute = Math.min(Math.max(nextMinute, 0), 59)
+  timeModel.value = `${String(hour).padStart(2, '0')}:${String(clampedMinute).padStart(2, '0')}`
+}
+
+function handleHourInput(event: Event): void {
+  const value = Number((event.target as HTMLInputElement).value)
+  setTime(Number.isNaN(value) ? hour12.value : value, minute.value, meridiem.value)
+}
+
+function handleMinuteInput(event: Event): void {
+  const value = Number((event.target as HTMLInputElement).value)
+  setTime(hour12.value, Number.isNaN(value) ? minute.value : value, meridiem.value)
+}
+
+function toggleMeridiem(): void {
+  setTime(hour12.value, minute.value, meridiem.value === 'AM' ? 'PM' : 'AM')
+}
 </script>
 
 <template>
@@ -106,16 +175,49 @@ const displayValue = computed(() => (model.value ? dayjs(model.value).format('DD
 
     <PopoverPortal>
       <PopoverContent class="ui-date-picker-content" :side-offset="4" align="start">
-        <CalendarRoot v-slot="{ weekDays, grid }" v-model="calendarValue" locale="pt-BR" class="ui-date-picker-calendar">
-          <CalendarHeader class="ui-date-picker-calendar-header">
-            <CalendarPrev class="ui-date-picker-calendar-nav">
-              <Icon :icon="CaretLeft" :size="16" />
-            </CalendarPrev>
-            <CalendarHeading class="ui-date-picker-calendar-heading" />
-            <CalendarNext class="ui-date-picker-calendar-nav">
-              <Icon :icon="CaretRight" :size="16" />
-            </CalendarNext>
-          </CalendarHeader>
+        <div class="ui-date-picker-preview">
+          <span class="ui-date-picker-preview-date">{{ previewDate }}</span>
+          <div v-if="showTime" class="ui-date-picker-preview-time">
+            <input
+              class="ui-date-picker-time-input"
+              maxlength="2"
+              :value="String(hour12).padStart(2, '0')"
+              @change="handleHourInput"
+            />
+            <span>:</span>
+            <input
+              class="ui-date-picker-time-input"
+              maxlength="2"
+              :value="String(minute).padStart(2, '0')"
+              @change="handleMinuteInput"
+            />
+            <button class="ui-date-picker-meridiem" type="button" @click="toggleMeridiem">
+              {{ meridiem }}
+            </button>
+          </div>
+        </div>
+
+        <CalendarRoot
+          v-slot="{ weekDays, grid, date }"
+          v-model="calendarValue"
+          locale="pt-BR"
+          class="ui-date-picker-calendar"
+        >
+          <div class="ui-date-picker-shortcuts">
+            <button class="ui-date-picker-shortcut" type="button" @click="selectToday">Hoje</button>
+            <button class="ui-date-picker-shortcut" type="button" @click="selectLastSelection">
+              Última seleção
+            </button>
+            <div class="ui-date-picker-nav">
+              <CalendarPrev class="ui-date-picker-calendar-nav">
+                <Icon :icon="CaretLeft" :size="14" />
+              </CalendarPrev>
+              <span class="ui-date-picker-month-label">{{ monthLabel(date) }}</span>
+              <CalendarNext class="ui-date-picker-calendar-nav">
+                <Icon :icon="CaretRight" :size="14" />
+              </CalendarNext>
+            </div>
+          </div>
 
           <CalendarGrid v-for="month in grid" :key="month.value.toString()" class="ui-date-picker-calendar-grid">
             <CalendarGridHead>
@@ -232,20 +334,106 @@ const displayValue = computed(() => (model.value ? dayjs(model.value).format('DD
 // real já corrigido no Select, ver design-system.md).
 :global(.ui-date-picker-content) {
   z-index: 50;
-  padding: $spacing-8;
+  width: 280px;
+  padding: $spacing-16;
   background-color: $color-bg-1;
   border: 1px solid $color-ink-10;
-  border-radius: $radius-8;
+  border-radius: $radius-12;
+  box-shadow: 0 4px 12px rgb(0 0 0 / 10%);
 }
 
-:global(.ui-date-picker-calendar-header) {
+// Preview — grounded na captura: "DD / MM / YYYY" fixo à esquerda, hora
+// (quando `show-time`) empurrada pro fim da mesma linha, borda inferior
+// separando do resto do painel.
+:global(.ui-date-picker-preview) {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: $spacing-4 $spacing-4 $spacing-8;
+  padding-bottom: $spacing-12;
+  margin-bottom: $spacing-12;
+  font-size: $font-size-md;
+  color: $color-ink;
+  border-bottom: 1px solid $color-ink-10;
 }
 
-:global(.ui-date-picker-calendar-heading) {
+:global(.ui-date-picker-preview-time) {
+  display: flex;
+  align-items: center;
+  gap: $spacing-4;
+  font-size: $font-size-sm;
+  color: $color-ink;
+}
+
+// Inputs de hora/minuto sem aparência de campo (sem borda/fundo) de
+// propósito — a captura mostra só texto puro ("04 : 08"), a edição é uma
+// affordance nossa (não visível na captura, que não mostra estado de
+// foco/hover), não um campo desenhado.
+:global(.ui-date-picker-time-input) {
+  width: 20px;
+  padding: 0;
+  font-family: inherit;
+  font-size: inherit;
+  color: inherit;
+  text-align: center;
+  background: none;
+  border: none;
+  border-radius: $radius-4;
+
+  &:focus-visible {
+    @include focus-ring;
+  }
+}
+
+:global(.ui-date-picker-meridiem) {
+  padding: 0;
+  margin-left: $spacing-4;
+  font-family: inherit;
+  font-size: inherit;
+  font-weight: $font-weight-semibold;
+  color: $color-ink-40;
+  cursor: pointer;
+  background: none;
+  border: none;
+
+  &:hover {
+    color: $color-ink;
+  }
+}
+
+// Atalhos ("Hoje"/"Última seleção") — pill apagada, mesmo tratamento
+// visual de fundo já usado no Badge "gray"/chip do TagsInput
+// ({colors.ink-4}), só maior (padding de botão pequeno, não de chip).
+:global(.ui-date-picker-shortcuts) {
+  display: flex;
+  align-items: center;
+  gap: $spacing-8;
+  margin-bottom: $spacing-12;
+}
+
+:global(.ui-date-picker-shortcut) {
+  padding: $spacing-4 $spacing-8;
+  font-family: inherit;
+  font-size: $font-size-sm;
+  color: $color-ink;
+  cursor: pointer;
+  background-color: $color-ink-4;
+  border: none;
+  border-radius: $radius-4;
+
+  &:hover {
+    background-color: $color-ink-10;
+  }
+}
+
+:global(.ui-date-picker-nav) {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  justify-content: flex-end;
+  gap: $spacing-4;
+}
+
+:global(.ui-date-picker-month-label) {
   font-size: $font-size-sm;
   font-weight: $font-weight-semibold;
   color: $color-ink;
@@ -255,8 +443,8 @@ const displayValue = computed(() => (model.value ? dayjs(model.value).format('DD
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: $size-24;
-  height: $size-24;
+  width: $size-20;
+  height: $size-20;
   color: $color-ink-40;
   cursor: pointer;
   background: none;
@@ -335,6 +523,6 @@ const displayValue = computed(() => (model.value ? dayjs(model.value).format('DD
 :global(.ui-date-picker-calendar-cell-trigger[data-selected]) {
   font-weight: $font-weight-semibold;
   color: $color-paper;
-  background-color: $color-primary;
+  background-color: $color-accent-indigo;
 }
 </style>

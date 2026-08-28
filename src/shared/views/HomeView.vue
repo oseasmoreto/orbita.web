@@ -35,6 +35,7 @@ import Breadcrumb from '@/shared/components/ui/Breadcrumb.vue'
 import Button from '@/shared/components/ui/Button.vue'
 import Checkbox from '@/shared/components/ui/Checkbox.vue'
 import DatePicker from '@/shared/components/ui/DatePicker.vue'
+import DateRangePicker from '@/shared/components/ui/DateRangePicker.vue'
 import DropdownMenu from '@/shared/components/ui/DropdownMenu.vue'
 import Drawer from '@/shared/components/ui/Drawer.vue'
 import Icon from '@/shared/components/ui/Icon.vue'
@@ -87,6 +88,14 @@ const searchFilled = ref('produto azul')
 
 const datePickerEmpty = ref('')
 const datePickerFilled = ref('2026-08-27')
+const datePickerWithTime = ref('2026-08-27')
+const datePickerTime = ref('16:08')
+
+const dateRangeStart = ref('2026-08-10')
+const dateRangeEnd = ref('2026-08-10')
+const dateRangeWithTimeStart = ref('2026-08-10')
+const dateRangeWithTimeEnd = ref('2026-08-10')
+const dateRangeTime = ref('16:08')
 
 const tagsInputEmpty = ref<string[]>([])
 const tagsInputBoxed = ref<string[]>(['Tag', 'Tag'])
@@ -378,6 +387,30 @@ const toast = useToast()
         <DatePicker v-model="datePickerEmpty" placeholder="Selecione uma data" />
         <DatePicker v-model="datePickerFilled" label="Data de lançamento" />
         <DatePicker disabled placeholder="Desabilitado" />
+        <DatePicker
+          v-model="datePickerWithTime"
+          v-model:time="datePickerTime"
+          label="Com hora"
+          show-time
+        />
+      </div>
+    </section>
+
+    <section class="showcase__section">
+      <h2>DateRangePicker</h2>
+      <div class="showcase__row showcase__row--wrap">
+        <DateRangePicker
+          v-model:end="dateRangeEnd"
+          v-model:start="dateRangeStart"
+          label="Período"
+        />
+        <DateRangePicker
+          v-model:end="dateRangeWithTimeEnd"
+          v-model:start="dateRangeWithTimeStart"
+          v-model:time="dateRangeTime"
+          label="Período com hora"
+          show-time
+        />
       </div>
     </section>
 

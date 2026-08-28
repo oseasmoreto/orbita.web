@@ -1829,6 +1829,137 @@ override próprio). Corrigido:
   estados do trigger (vazio, preenchido com label, desabilitado) batem
   com a mesma composição ícone-texto-ícone da referência.
 
+**Revisão pixel-perfect do CALENDÁRIO, 2026-08-28, com captura real
+cobrindo 4 variantes** ("Date Picker", "Date Picker with time", e as 2 de
+intervalo — estas viraram `DateRangePicker.vue`, seção própria abaixo). A
+captura mostra um painel bem mais rico que a v1 (só grid + header de
+mês): **preview** de data/hora no topo, **atalhos** ("Today"/"Last
+selection") e **cabeçalho de mês abreviado**, sem ano ("Feb", não
+"February 2026"). Grid de dias não mudou — já batia com a captura desde a
+v1 (`CalendarCellTrigger`, estados via `data-*`).
+
+- **Preview** (`10 / 02 / 2025`, `+ 04 : 08 AM` quando `show-time`) —
+  formatado com `dayjs`, sempre com um valor concreto (hoje/hora atual
+  quando nada foi escolhido ainda, mesmo espírito do "sempre mostra
+  algo" já usado no trigger). A parte de DATA é só leitura (preview ao
+  vivo do que está selecionado na grade); a de HORA é editável (2 inputs
+  numéricos sem borda + botão de AM/PM) — a captura não mostra nenhuma
+  affordance visível de edição (sem borda/hover state capturado), então a
+  editabilidade em si é uma decisão nossa pra cumprir "com funcionalidade"
+  do pedido, não algo visto pixel a pixel.
+- **Atalhos traduzidos pra pt-BR** ("Hoje"/"Última seleção", não "Today"/
+  "Last selection" literal da captura) — mesmo critério já usado no resto
+  da vitrine (`docs/negocio/...`: produto é pt-BR). "Hoje" seleciona o
+  dia atual (`today(getLocalTimeZone())` do `@internationalized/date`).
+  "Última seleção" **não é "o último valor confirmado historicamente"**
+  (não haveria como saber isso sem um botão de Apply, que a captura não
+  tem) — é um snapshot tirado toda vez que o popover abre
+  (`watch(open, ...)`), então "desfaz o que mudei nesta sessão do
+  popover", não "volta pro que eu tinha há 3 aberturas atrás".
+- **Cabeçalho de mês abreviado, não `CalendarHeading` padrão** — a
+  captura mostra só "Feb" (sem ano, sem dia da semana por extenso); o
+  `headingValue` que `CalendarHeading` expõe por padrão via Reka UI é o
+  formato completo ("fevereiro de 2026"). Substituído por um label
+  calculado na mão com `dayjs(date.toString()).format('MMM')`
+  (capitalizado manualmente) — exigiu registrar o locale `pt-br` do
+  `dayjs` globalmente (`main.ts`, `dayjs.locale('pt-br')`), primeiro
+  ponto do projeto que precisava de nomes de mês/dia por extenso (a
+  formatação `DD/MM/YYYY` já usada não depende de locale nenhum).
+- **Cor do dia selecionado corrigida**: a v1 usava `{colors.primary}`
+  (preto puro no tema claro); a captura mostra claramente um quadrado
+  arredondado **lavanda/indigo**, não preto — trocado pra
+  `{colors.accent-indigo}`, mesma cor já usada pro status "In Progress"
+  no `StatusDot` (mesma sessão), reforçando a mesma associação em vez de
+  inventar um tom novo.
+- **Fecha ao selecionar só quando não tem hora pra ajustar**
+  (`!showTime`) — com `show-time`, o popover fica aberto depois de
+  escolher o dia (ainda pode faltar ajustar o relógio); sem hora, mantém
+  o comportamento já testado da v1 (fecha ao escolher, mesmo padrão do
+  `Select.vue`). Sem botão de "Aplicar" — fecha via clique fora/Esc
+  (`PopoverContent` nativo), não visto na captura.
+- Verificado em browser real, incluindo interações que só apareceriam
+  num teste funcional (não só visual): popover permanece aberto depois
+  de clicar um dia quando `show-time`; alternar AM/PM funciona; "Hoje"
+  seleciona a data atual; "Última seleção" reverte pro valor de quando o
+  popover abriu, não pro valor confirmado antes disso.
+
+### DateRangePicker (`shared/components/ui/DateRangePicker.vue`)
+
+Variantes "Date Picker with date range" (com e sem hora) da mesma captura
+de 2026-08-28 do `DatePicker.vue` — mesmo painel (preview + atalhos +
+grid), mas sobre `RangeCalendarRoot`/`RangeCalendarCellTrigger` da Reka
+UI (intervalo de verdade — início E fim, com estado "no meio" — não 2
+`DatePicker`s soltos fingindo um intervalo).
+
+- **Trigger com 2 datas numa caixa só** (`10/08/2026 — 10/08/2026`),
+  separador é uma linha de 1px (`{colors.ink-20}`), não um traço de
+  texto — mesma caixa/borda/label do `DatePicker.vue` (Input-A/B).
+- **Modelos**: `start`/`end` (ISO `YYYY-MM-DD`, mesmo raciocínio do
+  `DatePicker.vue`) + `time` opcional compartilhado pelos dois lados — a
+  captura só mostra **um** campo de hora pro intervalo inteiro, não
+  hora de início e hora de fim separadas, então não inventamos um
+  segundo campo sem grounding.
+- **"Hoje" marca início E fim no mesmo dia** (intervalo de 1 dia) — única
+  interpretação coerente pra um atalho de data única aplicado a um
+  seletor de intervalo. "Última seleção" funciona igual ao
+  `DatePicker.vue` (snapshot de abertura do popover), agora com 3 campos
+  (`start`/`end`/`time`).
+- **Fecha só com o intervalo completo** (`start` E `end` definidos, e
+  `!showTime`) — clicar uma vez só marca o início; fechar aí devolveria
+  um intervalo pela metade. Confirmado que clicar um único dia mantém o
+  popover aberto (`data-selection-end` ainda vazio nesse ponto).
+- **Achado real: `data-highlighted` da Reka UI não persiste o intervalo
+  reaberto** — esse atributo (usado pra pintar a "barra conectada" entre
+  início e fim) só é verdadeiro durante o hover **em andamento**, entre
+  escolher o início e passar o mouse antes do 2º clique; o próprio
+  `useRangeCalendar.js` do pacote zera `highlightedRange` assim que
+  início E fim já estão definidos (`if (start && end) return null`).
+  Sem tratamento, reabrir o popover com um intervalo já completo mostra
+  só os 2 dias extremos destacados, sem nenhuma barra no meio — conferido
+  em browser real antes da correção (dias 4–11 sem nenhum tom, só 3 e 12
+  destacados). **Corrigido** com uma função própria (`isInRange`, calcula
+  se um dia está estritamente entre `start`/`end` via comparação de
+  string ISO — `YYYY-MM-DD` ordena igual à data real, sem precisar de
+  helper de comparação de datas) e uma classe extra
+  (`--in-range`) aplicada em cima do `data-highlighted` já existente, não
+  no lugar dele — os dois cobrem momentos diferentes (hover em andamento
+  vs. intervalo já persistido).
+- **Tom do meio do intervalo via `color-mix()`**, mesma técnica já usada
+  no `StatusDot` variante `pill` (`color-mix(in srgb, {colors.accent-indigo}
+  20%, transparent)`) — sem token de "indigo claro" pronto na escala,
+  reaproveita a cor sólida do início/fim numa opacidade menor em vez de
+  inventar um tom novo.
+- **Sem grounding pixel-a-pixel pra um intervalo de verdade** (dias
+  diferentes) — a captura mostra os 2 exemplos com início=fim
+  (`10/02/2025` pros dois lados), não um intervalo de múltiplos dias de
+  verdade. O visual da "barra conectada" (arredondado nas pontas, reto
+  no meio) é extrapolação nossa a partir do padrão comum desse tipo de
+  componente, revisável se uma captura futura mostrar o padrão real.
+- **Estilos não compartilhados com `DatePicker.vue`** — mesmo `:global()`
+  usado nos dois, mas com classes prefixadas diferentes
+  (`ui-date-range-picker-*`), porque são unidades de compilação Sass
+  separadas (`@use`/`:global()` não atravessam arquivo). Duplicação de
+  ~200 linhas de CSS entre os dois componentes é aceita conscientemente
+  — é estilo coeso (não lógica de decisão), mesma régua de "2-3 linhas
+  parecidas" do doc de convenções aplicada a um bloco maior.
+- Verificado em browser real: seleção de intervalo completo (dias
+  diferentes) fecha o popover automaticamente; preview mostra "–– / –– /
+  ––––" pro lado ainda não escolhido (não "hoje", que pareceria um valor
+  real já definido); barra conectada aparece ao reabrir um intervalo já
+  completo; variante com hora mantém o popover aberto e os mesmos
+  controles de hora do `DatePicker.vue`.
+
+**Correção, reportada pelo usuário em 2026-08-28 (mesmo dia)**: o ícone
+`CaretUpDown` do trigger ficava colado nas datas (`10/08/2026 —
+28/08/2026 ⌄`) em vez de alinhado à direita — nenhum elemento da linha
+tinha `flex: 1` pra empurrá-lo, diferente do `DatePicker.vue` (onde
+`.ui-date-picker-value` já tem `flex: 1` desde a correção anterior do
+trigger). Corrigido aplicando `flex: 1; min-width: 0;` só no span de
+**fim** (`.ui-date-range-picker-value--end`, classe nova) — não nos dois
+spans de data, que empurraria também o separador/início pra longe do
+texto inicial; início-separador-fim precisam continuar colados, só o
+ícone final vai pro fim do trigger. Reverificado em browser real.
+
 ### TagsInput (`shared/components/ui/TagsInput.vue`)
 
 **Pedido direto pelo usuário em 2026-08-28, com captura real do frame
