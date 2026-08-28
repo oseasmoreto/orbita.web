@@ -678,8 +678,13 @@ const toast = useToast()
         <StatCard label="Marketplaces conectados" tint="purple" value="3" />
       </div>
       <div class="showcase__row showcase__row--wrap">
-        <StatCard label="Views" :trend="{ direction: 'up', value: '+11.01%' }" value="753" />
-        <StatCard :icon="Eye" label="Views" value="753" />
+        <StatCard
+          label="Views"
+          tint="neutral"
+          :trend="{ direction: 'up', value: '+11.01%' }"
+          value="753"
+        />
+        <StatCard :icon="Eye" label="Views" tint="neutral" value="753" />
       </div>
       <div class="showcase__row showcase__row--charts">
         <ChartCard

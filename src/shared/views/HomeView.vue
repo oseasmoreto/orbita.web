@@ -144,10 +144,16 @@ const activeChartMetric = ref('price')
         />
         <StatCard
           :label="$t('dashboard.stats.activeLinks')"
+          tint="neutral"
           :trend="{ direction: 'up', value: '+8%' }"
           value="94"
         />
-        <StatCard :icon="Warning" :label="$t('dashboard.stats.outOfMargin')" value="7" />
+        <StatCard
+          :icon="Warning"
+          :label="$t('dashboard.stats.outOfMargin')"
+          tint="neutral"
+          value="7"
+        />
       </div>
 
       <ChartCard

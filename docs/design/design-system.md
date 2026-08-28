@@ -1498,6 +1498,30 @@ tendência" do catálogo. 3 achados reais, corrigidos:
   acompanha o tema. Mesmo fix aplicado em `IconTile.vue` (ícone sobre o
   mesmo tipo de fundo) e no toast do `vue-sonner` (`main.scss`, que
   também é deliberadamente sempre escuro — ver seção Notifiers/Toast).
+- **Variante `neutral`, pedida direto pelo usuário em 2026-08-28 com
+  captura real do dashboard de referência em tema escuro**: dos 4
+  `StatCard` da captura, só 2 mantêm o acento tint (fixo, não acompanha
+  o tema — os outros 2 viram superfície neutra que escurece junto com o
+  resto da página. Até então `tint` só aceitava `blue`/`purple` (default
+  `blue`), então TODO `StatCard` sem `tint` explícito saía tintado — não
+  existia uma opção "sem destaque". Prop `tint` ganhou o terceiro valor
+  `neutral` (agora o default, no lugar de `blue`) — fundo
+  `{colors.bg-2}` (não `{colors.bg-1}`, que seria igual ao fundo da
+  página atrás e o card sumiria por trás dele), acompanha claro/escuro
+  normalmente. **Cor de texto teve que virar condicional por variante**:
+  `$color-ink` (tema-adaptativo) é a base agora em
+  `.stat-card__header`/`__label`/`__value` — correto pro `neutral`, cujo
+  fundo também é tema-adaptativo — com um override só pra
+  `.stat-card--blue`/`.stat-card--purple` forçando `$color-ink-fixed` de
+  volta (fundo fixo continua precisando de texto fixo, mesmo achado do
+  bullet acima). `HomeView.vue`: "Produtos cadastrados"/"Marketplaces
+  conectados" mantêm o tint (blue/purple, cards em destaque), "Vínculos
+  ativos"/"Fora da margem" viraram `neutral`. Confirmado via
+  `getComputedStyle` no tema escuro: os 2 tintados resolvem pro mesmo
+  `rgb(230, 241, 253)`/`rgb(237, 238, 252)` do claro (fixos), os 2
+  neutros resolvem pra `rgba(255, 255, 255, 0.04)` (a mesma composição
+  translúcida de `{colors.bg-2}` escuro já usada em outras superfícies
+  não-portal, corretamente escurecendo).
 
 ### ProgressBar (`shared/components/ui/ProgressBar.vue`)
 

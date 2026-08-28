@@ -43,14 +43,23 @@ withDefaults(
   defineProps<{
     label: string
     value: string
-    tint?: 'blue' | 'purple'
+    /**
+     * `blue`/`purple`: fundo `{colors.tint-1}`/`{colors.tint-2}`, fixo
+     * (não acompanha o tema — ver `$color-ink-fixed`) — reservado pro
+     * card "em destaque" (referência real do usuário, 2026-08-28:
+     * captura em tema escuro mostrando só 2 dos 4 `StatCard` com esse
+     * acento, os outros 2 em superfície neutra que acompanha o tema).
+     * `neutral` (default): fundo `{colors.bg-2}`, acompanha claro/escuro
+     * normalmente — pro card sem destaque especial.
+     */
+    tint?: 'blue' | 'neutral' | 'purple'
     trend?: { direction: 'up' | 'down'; value: string }
     /** Ícone no canto superior direito, ao lado do label — variante "Type=B" do Figma. */
     icon?: Component
   }>(),
   {
     icon: undefined,
-    tint: 'blue',
+    tint: 'neutral',
     trend: undefined,
   },
 )
@@ -97,11 +106,21 @@ withDefaults(
   background-color: $color-tint-2;
 }
 
+// Achado real, captura do usuário em tema escuro (2026-08-28): dos 4
+// `StatCard` de referência, só 2 mantêm o acento tint (fixo, não
+// acompanha o tema) — os outros 2 viram superfície neutra que ESCURECE
+// junto com o resto da página. `{colors.bg-2}` (não `bg-1`, que seria
+// igual ao fundo da página por trás e sumiria o card) resolve isso nos
+// dois temas sem token novo.
+.stat-card--neutral {
+  background-color: $color-bg-2;
+}
+
 .stat-card__header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  color: $color-ink-fixed;
+  color: $color-ink;
 }
 
 // Peso corrigido na revisão pixel-perfect: a captura real mostra "Views"
@@ -111,7 +130,7 @@ withDefaults(
 .stat-card__label {
   font-size: $font-size-md;
   font-weight: $font-weight-regular;
-  color: $color-ink-fixed;
+  color: $color-ink;
 }
 
 // Gap aumentado (8px → 16px) na revisão pixel-perfect — a captura real
@@ -126,7 +145,21 @@ withDefaults(
 .stat-card__value {
   font-size: $font-size-xl;
   font-weight: $font-weight-semibold;
-  color: $color-ink-fixed;
+  color: $color-ink;
+}
+
+// `$color-ink` sozinho (acima) já resolve certo pro card `--neutral`
+// (fundo acompanha o tema). Só `--blue`/`--purple` (fundo FIXO, nunca
+// escurece) precisam do texto também fixo — sem isso o texto viraria
+// branco no tema escuro sobre um fundo que continua claro (mesmo achado
+// já documentado no design-system.md pra este componente).
+.stat-card--blue,
+.stat-card--purple {
+  .stat-card__header,
+  .stat-card__label,
+  .stat-card__value {
+    color: $color-ink-fixed;
+  }
 }
 
 // Reescrito na revisão pixel-perfect: a primeira versão reaproveitava
