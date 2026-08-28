@@ -5,6 +5,7 @@ Before planning or editing, find the row whose globs match the file's path and r
 | Applies to | Rule file |
 | --- | --- |
 | src/\*\*/\*.ts, src/\*\*/\*.vue | .ai/rules/structure.md |
+| src/\*\*/\*.vue, src/core/i18n/\*\* | .ai/rules/i18n.md |
 | src/core/styles/\*\* | .ai/rules/design-tokens.md |
 | src/shared/components/ui/\*\*, src/shared/components/blocks/\*\* | .ai/rules/component-portals.md |
 | src/shared/components/icons/\*\* | .ai/rules/icons.md |

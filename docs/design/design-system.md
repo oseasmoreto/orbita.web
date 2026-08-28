@@ -2209,6 +2209,34 @@ pelo usuário com captura de uma sidebar completa (grupos "Dashboards"/
   (fica em `0`), e `.ui-data-table-wrapper` continua aceitando
   `scrollLeft` normalmente (`clientWidth: 294`, `scrollWidth: 627`, sem
   regressão).
+- **Regressão real causada pela correção acima, pega implementando a
+  primeira página com conteúdo mais alto que a viewport (2026-08-28)**: a
+  correção original pôs `overflow-x: hidden` em `html` **E** `body` — por
+  spec CSS, `overflow-x` diferente de `visible` força o `overflow-y` do
+  MESMO elemento a virar `auto` (não fica `visible` num eixo com o outro
+  travado). Como `html, body, #app` já forçam `height: 100%` (viewport
+  inteira) nos três, o `body` também ganhar `overflow-x: hidden` o
+  transformava num container de scroll independente
+  (`overflow-y: auto` forçado + altura travada) — o conteúdo que
+  overflowava passava a rolar dentro do `scrollTop` do `<body>`, nunca do
+  `<html>`/viewport. `window.scrollTo()`/`window.scrollY` só enxergam
+  `document.scrollingElement` (`<html>` em modo standards) — com o scroll
+  real preso dentro do `<body>`, a página parecia simplesmente não rolar
+  (`scrollY` sempre `0`, mouse wheel sem efeito nenhum no nível do
+  documento). **Achado colateral, sério**: o teste que "confirmou" o
+  header sticky logo depois da correção original (`getBoundingClientRect().top`
+  igual a `0` depois de "rolar") era um falso positivo — com a página
+  travada em `scrollY: 0`, o header nunca precisava ficar sticky de
+  verdade pra esse valor bater. Corrigido pondo `overflow-x: hidden`
+  **só em `html`** — `body` mantém `overflow-y: visible` de verdade, o
+  overflow de `#app` propaga pra `<html>` normalmente (que vira o
+  elemento de scroll real), sem perder a proteção horizontal. Confirmado
+  depois da correção: `window.scrollTo(0, 900)` → `window.scrollY` vira
+  `900` de verdade (antes: `0`), `getBoundingClientRect().top` do header
+  continua `0` com scroll real acontecendo (não mais vacuamente
+  verdadeiro), e o teste original do bug do `vue-sonner` (`scrollX`
+  travado em `0`, `.ui-data-table-wrapper` com scroll próprio) continua
+  passando sem regressão.
 
 ### AppHeader (`core/layouts/AppHeader.vue`)
 

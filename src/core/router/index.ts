@@ -12,6 +12,12 @@ const routes: RouteRecordRaw[] = [
         name: 'home',
         path: '',
       },
+      {
+        component: () => import('@/shared/views/ShowcaseView.vue'),
+        meta: { title: 'Vitrine de componentes' },
+        name: 'showcase',
+        path: 'showcase',
+      },
     ],
     component: AppLayout,
     meta: { requiresAuth: false },
