@@ -10,3 +10,33 @@ body {
   color: $color-ink;
   background-color: $color-bg-1;
 }
+
+// Theming do `vue-sonner` (`shared/composables/useToast.ts`) — grounded
+// na captura real do usuário: fundo escuro sólido uniforme pros 5 tipos
+// (não o verde/vermelho/etc. do `rich-colors`, desligado em `App.vue`),
+// `{colors.paper}` de texto. `--normal-border` igual ao fundo (não
+// `transparent`, que deixaria a borda de 1px do vue-sonner sem cor
+// nenhuma pra resolver) — visualmente vira "sem borda visível", mesmo
+// resultado da referência sem brigar com a regra `border: 1px solid
+// var(--normal-border)` que o pacote já aplica sempre. `theme="dark"` no
+// `<Toaster>` cobre o resto (cor de `[data-description]`, que o CSS do
+// pacote só clareia sob `data-sonner-theme="dark"`).
+//
+// **Achado real**: `!important` em todas as declarações, não só
+// `font-family` — o próprio pacote define
+// `[data-sonner-toaster][data-sonner-theme='dark'] { --normal-bg: #000;
+// ... }` (2 seletores de atributo, especificidade 0-0-2-0), mais
+// específico que um `[data-sonner-toaster]` nosso sozinho (0-0-1-0); sem
+// `!important`, a regra do pacote sempre vencia e o fundo/texto/borda
+// continuavam com os tons genéricos dele, não os tokens do Orbita —
+// confirmado via `getComputedStyle` (`background-color` resolvendo pra
+// `transparent`, `border-radius` pra `0px`, nenhum dos dois herdando os
+// valores daqui) antes da correção.
+[data-sonner-toaster] {
+  --normal-bg: #{$color-ink} !important;
+  --normal-border: #{$color-ink} !important;
+  --normal-text: #{$color-paper} !important;
+  --border-radius: #{$radius-8} !important;
+
+  font-family: $font-family-base !important;
+}

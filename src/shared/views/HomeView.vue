@@ -5,6 +5,7 @@
 // implementado. Some daqui assim que a Fase 4 tiver conteúdo de verdade.
 import { TabsContent } from 'reka-ui'
 import { ref } from 'vue'
+import { useToast } from '@/shared/composables/useToast'
 import {
   ArrowRight,
   Bell,
@@ -295,6 +296,8 @@ const chartMetrics: ChartMetricOption[] = [
   { key: 'margin', label: 'Margem' },
 ]
 const activeChartMetric = ref('price')
+
+const toast = useToast()
 </script>
 
 <template>
@@ -694,6 +697,30 @@ const activeChartMetric = ref('price')
           <p class="showcase__info-label">Profile Completion</p>
           <ProgressBar show-percentage :value="51" />
         </div>
+      </div>
+    </section>
+
+    <section class="showcase__section">
+      <h2>Notifiers</h2>
+      <p>
+        <code>useToast()</code> (<code>shared/composables/useToast.ts</code>) sobre o
+        <code>vue-sonner</code> já montado em <code>App.vue</code> — ícone e cor por tipo
+        configurados uma vez só no <code>&lt;Toaster&gt;</code>, nunca por chamada.
+      </p>
+      <div class="showcase__row">
+        <Button variant="secondary" @click="toast.success('Successful Operation')">
+          Success
+        </Button>
+        <Button variant="secondary" @click="toast.error('Operation Failed')"> Error </Button>
+        <Button variant="secondary" @click="toast.warning('Something needs attention')">
+          Warning
+        </Button>
+        <Button variant="secondary" @click="toast.info('Nova versão disponível')">
+          Info
+        </Button>
+        <Button variant="secondary" @click="toast.message('Produto atualizado')">
+          Default
+        </Button>
       </div>
     </section>
 

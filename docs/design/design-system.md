@@ -1217,6 +1217,85 @@ duplicado dentro do arquivo do gráfico. O usuário pediu a extração.
   genérico vs. tipo específico de domínio do `ChartCard`), compatíveis
   estruturalmente sem conversão.
 
+### Notifiers / Toast (`shared/composables/useToast.ts`)
+
+Pedido direto pelo usuário em 2026-08-28 com captura real (`success` —
+"Successful Operation"/"Done" — e `error` — "Operation Failed"/"Something
+Wrong" — lado a lado, fundo escuro sólido uniforme, só o ícone muda de
+cor/forma) — `warning`/`info`/`default` pedidos junto, sem captura própria,
+extrapolados na mesma linguagem visual da captura. `useToast()` é um
+wrapper fino sobre `vue-sonner` (decisão de stack já fixada, seção 15.3
+de `docs/infra/convencoes-frontend-infra.md`) — `error`/`info`/`warning`/
+`success`/`message` (este último cobre o tipo "default" do pacote,
+`toast()` sem sufixo, já usado em `core/pwa/useAppUpdatePrompt.ts`), cada
+um um repasse 1:1 pro `toast.*` correspondente. Sem lógica de decisão —
+não é candidato a test-first (mesma régua de "services/utils puros" só
+vale quando há ramificação real pra testar).
+
+- **Ícone e cor por tipo configurados uma vez só, no `<Toaster>` de
+  `App.vue`, nunca em cada chamada** — via slots nomeados
+  (`#success-icon`/`#error-icon`/`#warning-icon`/`#info-icon`), cada um
+  um `Icon.vue` com `style="color: ..."` direto (`{colors.accent-green}`/
+  `{colors.accent-red}`/`{colors.accent-yellow}`/`{colors.accent-blue}`).
+  `error` (`Warning`, ícone de triângulo) e `warning` (`WarningCircle`,
+  ícone circular) usam **formas diferentes** de propósito, não só cores
+  diferentes — a captura só mostrava o triângulo pro caso de erro; dar o
+  mesmo triângulo pro warning, só trocando a cor, dificultaria diferenciar
+  os dois por daltonismo ou leitura rápida. `default` fica sem ícone —
+  não tem slot próprio no pacote, é o caso mais neutro por design.
+- **Fundo escuro uniforme pros 5 tipos, não o `rich-colors` do
+  `vue-sonner`** — a captura mostra `error` (Operation Failed) com o
+  MESMO fundo escuro do `success` (Successful Operation), só o ícone
+  muda; `rich-colors` (que estava ligado antes desta rodada) pintaria o
+  fundo inteiro de verde/vermelho/etc. por tipo, incompatível com a
+  captura. Desligado (removido do `<Toaster>`), tema geral vem de
+  `theme="dark"` + variáveis de tema sobrescritas em
+  `core/styles/main.scss` (`--normal-bg`/`--normal-border`/`--normal-text`/
+  `--border-radius`, todas com os tokens do Orbita: `{colors.ink}` de
+  fundo, `{colors.paper}` de texto, `{radius.8}`).
+- **Achado real 1 — `vue-sonner/style.css` nunca tinha sido importado no
+  projeto.** `import { Toaster } from 'vue-sonner'` sozinho NÃO carrega o
+  CSS do pacote (é um export separado, `vue-sonner/style.css`) — sem ele,
+  o toast sempre renderizou com `position: static` (não `fixed`), sem
+  fundo/raio/z-index nenhum, efetivamente invisível (some no fluxo normal
+  da página, longe da viewport). Isso é anterior a esta rodada — o toast
+  de atualização do PWA (`useAppUpdatePrompt.ts`) nunca tinha sido
+  verificado visualmente em browser real antes de agora. Corrigido com
+  `import 'vue-sonner/style.css'` em `main.ts`, junto de `main.scss`.
+- **Achado real 2 — variáveis de tema precisam de `!important`.** O
+  próprio pacote já define `--normal-bg`/`--normal-text`/etc. via
+  `[data-sonner-toaster][data-sonner-theme='dark'] { ... }` (2 seletores
+  de atributo, especificidade 0-0-2-0) — um seletor nosso de 1 atributo
+  (`[data-sonner-toaster] { --normal-bg: ...; }`) nunca venceria essa
+  regra sem `!important`, não importa a ordem de import. Confirmado via
+  `getComputedStyle` antes/depois (fundo resolvendo pro branco/preto
+  genérico do pacote antes, pro `{colors.ink}` do Orbita depois).
+- **Achado real 3, sistêmico — bug em `_tokens.scss`, não só no
+  toast.** O seletor de dark mode do design system inteiro
+  (`core/styles/_tokens.scss`) era `[data-theme='dark']`, **sem ancorar
+  em `:root`** — um seletor de atributo desancorado casa com QUALQUER
+  elemento da página que carregue esse atributo, não só a raiz. O
+  `<Toaster theme="dark">` do `vue-sonner` bota `data-theme="dark"` no
+  próprio container (convenção própria do pacote, sem relação nenhuma
+  com a nossa — coincidência de nome de atributo) — sem o `:root`, isso
+  ativava os tokens de dark mode do Orbita (`--color-ink` virando branco,
+  etc.) só dentro da árvore do toaster, quebrando meu próprio
+  `--normal-bg: var(--color-ink)` (a variável em si resolvia pro branco
+  do dark mode ali dentro, não pro preto esperado). Descoberto
+  comparando `getComputedStyle(toaster).getPropertyValue('--color-ink')`
+  (`#ffffff`) contra o mesmo em `document.documentElement`
+  (`#000000`) — deveriam ser iguais e não eram. Corrigido pra
+  `:root[data-theme='dark']` — sem efeito colateral no app hoje (nenhum
+  composable liga esse atributo ainda, "Known Gaps"), mas um bug real
+  que só não tinha aparecido porque nada até agora colidia com o nome do
+  atributo.
+- Verificado em browser real, tipo a tipo (`success`/`error`/`warning`/
+  `info`/`default`, cada um isolado numa navegação própria pra evitar
+  interferência do empilhamento do `vue-sonner`): `success`/`error`
+  batem pixel a pixel com a captura do usuário (fundo, raio, ícone,
+  posição do ícone antes do texto); `warning`/`info`/`default` seguem a
+  mesma linguagem visual com ícone/cor próprios.
+
 ### NotificationItem (`modules/platform/components/NotificationItem.vue`)
 
 **Correção sobre a decisão original da Tier 9**: o catálogo citava
@@ -1987,10 +2066,18 @@ Media queries sempre `min-width` (mobile-first) — sem exceção.
 ## Known Gaps
 
 - **Modo escuro sem toggle**: os tokens `SnowUI-Dark` estão 100% cabeados
-  em `_tokens.scss` (`[data-theme='dark']`), mas nenhum composable liga
-  esse atributo ainda — não existe switch de tema na UI. Ativar isso é uma
-  feature nova (provavelmente `core/store`/`shared/composables/useTheme.ts`
-  futuramente), não implementá-la a partir só desta doc.
+  em `_tokens.scss` (`:root[data-theme='dark']`), mas nenhum composable
+  liga esse atributo ainda — não existe switch de tema na UI. Ativar isso
+  é uma feature nova (provavelmente `core/store`/
+  `shared/composables/useTheme.ts` futuramente), não implementá-la a
+  partir só desta doc. **Achado real, 2026-08-28**: o seletor não estava
+  ancorado em `:root` até essa data — corrigido depois de descobrir, via
+  integração do `vue-sonner`, que um atributo `data-theme="dark"` de
+  QUALQUER elemento da página (não só a raiz) ativava os tokens escuros
+  ali dentro, mesmo sem toggle nenhum ligado (ver seção Components →
+  Notifiers/Toast). Sem esse achado, o gap acima ("nenhum composable liga
+  esse atributo ainda") seria falso pela metade — o atributo podia vir de
+  fora do nosso próprio código.
 - **Sem token de elevação/sombra**: o export de `docs/design/tokens/` não
   inclui nenhum grupo de shadow — qualquer necessidade futura de elevação
   de verdade (modal, dropdown flutuante) exige uma decisão nova, não uma

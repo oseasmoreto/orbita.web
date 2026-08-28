@@ -110,7 +110,20 @@
 // ficam idênticos ao modo claro. Reservado pra quando existir um toggle de
 // tema de verdade (nenhum composable liga `data-theme` ainda — ver "Known
 // Gaps" em design-system.md).
-[data-theme='dark'] {
+//
+// **Achado real, 2026-08-28**: seletor tinha que ser ancorado em `:root`
+// desde o início e não estava — `[data-theme='dark']` sem `:root` casa
+// com QUALQUER elemento da página que carregue esse atributo, não só a
+// raiz. Descoberto integrando `vue-sonner`: `<Toaster theme="dark">`
+// bota `data-theme="dark"` no próprio container do toaster (convenção
+// própria do pacote, sem relação com a nossa) — sem o `:root`, isso
+// ativava os tokens de dark mode do Orbita só dentro da árvore do
+// toaster (ex.: `--color-ink` virando branco ali), nunca extrapolando pro
+// resto da página, mas quebrando qualquer componente nosso que morasse
+// dentro dessa árvore. Confirmado via `getComputedStyle` antes/depois da
+// correção (`--color-ink` no toaster: `#ffffff` antes, `#000000` depois,
+// igual ao `:root`).
+:root[data-theme='dark'] {
   --color-primary: var(--color-accent-indigo);
   // Não verificado no Figma (sem variante dark do Button nesse arquivo) —
   // aproximação por filtro sobre o indigo, ao contrário do modo claro

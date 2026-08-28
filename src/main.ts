@@ -6,6 +6,7 @@ import { UNAUTHORIZED_EVENT } from './core/api/client'
 import { i18n } from './core/i18n'
 import { router } from './core/router'
 import './core/styles/main.scss'
+import 'vue-sonner/style.css'
 import { useAuthStore } from './core/store/useAuthStore'
 
 const app = createApp(App)
