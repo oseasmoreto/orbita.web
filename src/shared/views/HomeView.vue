@@ -8,7 +8,9 @@ import { ref } from 'vue'
 import {
   ArrowRight,
   Bell,
+  CalendarBlank,
   Check,
+  Clipboard,
   DotsThreeOutlineVertical,
   Download,
   PencilSimpleLine,
@@ -16,6 +18,7 @@ import {
   Star,
   Trash,
 } from '@/shared/components/icons/regular.generated'
+import AvatarGroup from '@/shared/components/blocks/AvatarGroup.vue'
 import ChartCard from '@/shared/components/blocks/ChartCard.vue'
 import ConfirmDialog from '@/shared/components/blocks/ConfirmDialog.vue'
 import AppFooter from '@/core/layouts/AppFooter.vue'
@@ -32,6 +35,8 @@ import Checkbox from '@/shared/components/ui/Checkbox.vue'
 import DatePicker from '@/shared/components/ui/DatePicker.vue'
 import DropdownMenu from '@/shared/components/ui/DropdownMenu.vue'
 import Drawer from '@/shared/components/ui/Drawer.vue'
+import Icon from '@/shared/components/ui/Icon.vue'
+import IconTile from '@/shared/components/ui/IconTile.vue'
 import Input from '@/shared/components/ui/Input.vue'
 import Modal from '@/shared/components/ui/Modal.vue'
 import Search from '@/shared/components/ui/Search.vue'
@@ -51,6 +56,7 @@ import type { DropdownMenuOption } from '@/shared/components/ui/types/dropdownMe
 import type { FooterLink } from '@/core/layouts/types/footer.type'
 import type { TabBarOption } from '@/shared/components/ui/types/tabBar.type'
 import type { ChartMetricOption } from '@/shared/components/blocks/types/chartCard.type'
+import type { AvatarGroupPerson } from '@/shared/components/blocks/types/avatarGroup.type'
 
 const checkboxUnchecked = ref(false)
 const checkboxChecked = ref(true)
@@ -191,6 +197,74 @@ const taskRows: TaskRow[] = [
     status: 'pending',
     timeSpent: '78h 5min',
     title: 'App de desenvolvimento',
+  },
+]
+
+/**
+ * Cobertura das variantes de célula do `COMPONENT_SET "Table Components"`
+ * do Figma, pedida diretamente pelo usuário em 2026-08-28 com captura
+ * real do frame inteiro — não são tipos novos inventados, são os mesmos
+ * já citados desde a Tier 6 (`docs/design/catalogo-componentes.md`):
+ * Title/Text/Text-Icon/User/Users/Date/Status/Operation/Activity. Uma
+ * linha só, igual à captura (que mostra 1 exemplo de cada tipo lado a
+ * lado, não uma tabela de dados de verdade).
+ */
+const statusColor: Record<TableComponentsRow['status'], 'gray' | 'green' | 'indigo' | 'yellow'> = {
+  approved: 'yellow',
+  complete: 'green',
+  'in-progress': 'indigo',
+  rejected: 'gray',
+}
+
+const statusLabel: Record<TableComponentsRow['status'], string> = {
+  approved: 'Approved',
+  complete: 'Complete',
+  'in-progress': 'In Progress',
+  rejected: 'Rejected',
+}
+
+interface TableComponentsRow {
+  activity: string
+  date: string
+  id: string
+  status: 'approved' | 'complete' | 'in-progress' | 'rejected'
+  text: string
+  textIcon: string
+  title: string
+  user: string
+  users: AvatarGroupPerson[]
+}
+
+const tableComponentsColumns: DataTableColumn[] = [
+  { key: 'menu', title: '' },
+  { key: 'title', title: 'Title' },
+  { key: 'text', title: 'Text' },
+  { key: 'textIcon', title: 'Text + Icon' },
+  { key: 'user', title: 'User' },
+  { key: 'users', title: 'Users' },
+  { key: 'date', title: 'Date' },
+  { key: 'status', title: 'Status' },
+  { key: 'download', title: '' },
+  { key: 'activity', title: 'Activity' },
+]
+
+const tableComponentsRows: TableComponentsRow[] = [
+  {
+    activity: 'Editar produto',
+    date: '12/08/2026',
+    id: '1',
+    status: 'in-progress',
+    text: 'Dashboard de precificação',
+    textIcon: 'Relatório mensal',
+    title: 'Design system',
+    user: 'Kate Morrison',
+    users: [
+      { name: 'Kate Morrison' },
+      { name: 'Oseas Moreto' },
+      { name: 'Ana Barbosa' },
+      { name: 'Lucas Prado' },
+      { name: 'Bianca Reis' },
+    ],
   },
 ]
 
@@ -483,6 +557,63 @@ const activeChartMetric = ref('price')
     </section>
 
     <section class="showcase__section">
+      <h2>Table Components (cobertura de células)</h2>
+      <p>
+        Uma linha só, cobrindo os tipos de célula do
+        <code>COMPONENT_SET "Table Components"</code> do Figma — Title/Text/Text-Icon/User/
+        Users/Date/Status/Operation/Activity.
+      </p>
+      <DataTable :columns="tableComponentsColumns" :rows="tableComponentsRows">
+        <template #cell-menu="{ row }">
+          <DropdownMenu :options="rowActions" @select="(key) => handleRowAction(row.title, key)">
+            <Button aria-label="Ações" :icon-before="DotsThreeOutlineVertical" variant="ghost" />
+          </DropdownMenu>
+        </template>
+        <template #cell-title="{ value }">
+          <span class="showcase__cell-title">{{ value }}</span>
+        </template>
+        <template #cell-textIcon="{ value }">
+          <div class="showcase__cell-marketplace">
+            <Icon :icon="Clipboard" :size="14" />
+            <span>{{ value }}</span>
+          </div>
+        </template>
+        <template #cell-user="{ row }">
+          <div class="showcase__cell-marketplace">
+            <Avatar :name="row.user" :size="20" />
+            <span>{{ row.user }}</span>
+          </div>
+        </template>
+        <template #cell-users="{ row }">
+          <AvatarGroup :max="2" :people="row.users" :size="24" />
+        </template>
+        <template #cell-date="{ value }">
+          <div class="showcase__cell-marketplace">
+            <Icon :icon="CalendarBlank" :size="14" />
+            <span>{{ value }}</span>
+          </div>
+        </template>
+        <template #cell-status="{ row }">
+          <StatusDot :color="statusColor[row.status]">{{ statusLabel[row.status] }}</StatusDot>
+        </template>
+        <template #cell-download="{ row }">
+          <Button
+            aria-label="Baixar"
+            :icon-before="Download"
+            variant="ghost"
+            @click="lastRowAction = `baixar (${row.title})`"
+          />
+        </template>
+        <template #cell-activity="{ value }">
+          <div class="showcase__cell-marketplace">
+            <IconTile :icon="PencilSimpleLine" :icon-size="14" :size="24" tint="blue" />
+            <span>{{ value }}</span>
+          </div>
+        </template>
+      </DataTable>
+    </section>
+
+    <section class="showcase__section">
       <h2>Breadcrumb</h2>
       <Breadcrumb :items="breadcrumbItems" />
     </section>
@@ -622,6 +753,13 @@ const activeChartMetric = ref('price')
   display: flex;
   align-items: center;
   gap: $spacing-8;
+}
+
+// Célula "Title" da captura do usuário aparece em cinza apagado (estado
+// vazio/placeholder), diferente da célula "Text" ao lado (cor cheia) —
+// mesma cor de placeholder já usada em Input/Select (`{colors.ink-40}`).
+.showcase__cell-title {
+  color: $color-ink-40;
 }
 
 .showcase__row--charts {

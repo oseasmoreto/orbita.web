@@ -959,6 +959,72 @@ critério já usado no Badge/Search pra valor fora da escala sólida).
   aplicar a correção manualmente. Reconfirmado depois: `20px` de largura
   real em toda a cadeia de ancestrais.
 
+**Cobertura de célula completada em 2026-08-28, pedido direto pelo
+usuário com captura da linha inteira do `COMPONENT_SET`** — nova seção
+"Table Components" na vitrine (`HomeView.vue`) demonstra, numa única
+linha, todos os tipos já citados desde a Tier 6: Title (texto apagado
+`{colors.ink-40}`, estado vazio/placeholder — não existe grounding pra
+diferenciar de "Text" além da cor), Text (fallback padrão do slot), Text-
+Icon (`Icon` 14px + texto), User (`Avatar` 20px + nome), Users
+(`AvatarGroup.vue`, novo — ver seção própria abaixo), Date (`CalendarBlank`
+14px + texto), Status (`StatusDot.vue` da Tier 14, não mais `Badge` — a
+célula "Status" do Figma real é ponto+texto, não pill), Operation (nas
+duas variantes vistas na captura: menu de kebab via `DropdownMenu` E
+botão de ícone solto, aqui "Baixar"), Activity (`IconTile.vue`, novo —
+ver seção própria abaixo). **"Select" fica sem cobertura** — é o único
+tipo nomeado no doc de convenções (`docs/infra/convencoes-frontend-infra.md`)
+sem representante visualmente distinguível de "Text" na captura recebida;
+não implementado por falta de grounding real, não por esquecimento —
+revisitável se uma captura futura mostrar a variante de verdade.
+
+### AvatarGroup (`shared/components/blocks/AvatarGroup.vue`)
+
+Grounded na célula "Users" do `COMPONENT_SET "Table Components"` — 2+
+avatares sobrepostos seguidos de um contador "+N" pra quem não coube.
+
+- **Anel entre avatares via `box-shadow`, não `border`** — um `border`
+  somaria ao diâmetro real do círculo (`box-sizing` à parte, ainda
+  precisaria compensar), enquanto `box-shadow: 0 0 0 2px {colors.bg-1}`
+  desenha o contorno por cima sem alterar o tamanho que o consumidor pediu
+  via prop `size`.
+- Sobreposição via `margin-left` negativo (`-{spacing.8}`) em todo item
+  exceto o primeiro — mesma técnica universal de "avatar stack" de
+  qualquer design system, sem novidade aqui.
+- Prop `max` (default 3) corta a lista visível; o restante vira só um
+  número no contador "+N", nunca mais avatares reais — evita compor uma
+  segunda camada de complexidade (tooltip com a lista completa, por
+  exemplo) sem pedido real.
+- **Nunca decide a lista de pessoas** — só recebe `people`
+  (`AvatarGroupPerson[]`, `{ name, src? }`) já pronta, mesma régua de
+  bloco sem regra de negócio.
+- Verificado em browser real contra a captura: 2 avatares sobrepostos
+  (iniciais "KM"/"OM") + contador "+3" pra uma lista de 5 pessoas com
+  `max={2}`, mesmo resultado visual da referência.
+
+### IconTile (`shared/components/ui/IconTile.vue`)
+
+**Resolve o gap "Featured Icon" do catálogo** — planejado desde a Tier 3
+como "IconTile.vue (nome a definir)", nunca extraído porque só tinha 1
+consumidor até agora (`NotificationItem.vue`, que já usava esse tile
+inline, com classes/CSS próprias). A célula "Activity" do `DataTable`
+(ícone `PencilSimpleLine` + texto) foi o segundo consumidor real —
+cruzou o critério de promoção pra `shared/` já documentado ("só sobe
+quando um **segundo** consumidor precisar de verdade", seção 2 de
+`docs/infra/convencoes-frontend-infra.md`).
+
+- Mesmos tokens que já existiam no tile do `NotificationItem`: `{size.24}`
+  de tile (prop `size`, customizável), `{radius.8}`, ícone 16px (prop
+  `iconSize`), fundo `{colors.tint-1}`("blue")/`{colors.tint-2}`("purple")
+  — os mesmos "tons reservados sem papel definido" do design system,
+  agora com um segundo papel real confirmado (célula de tabela, além do
+  tile de notificação).
+- **`NotificationItem.vue` refatorado pra consumir o átomo** em vez da
+  `<div>`+classes que tinha antes — `.notification-item__icon*` removido
+  do arquivo, substituído por `<IconTile :icon="notification.icon"
+  :tint="notification.tint" />`. Reconfirmado em browser real (painel de
+  notificações reaberto, 5 tiles renderizando idênticos a antes da
+  refatoração) — zero mudança visual, só remoção de duplicação.
+
 ### PaginationNav (`shared/components/blocks/PaginationNav.vue`)
 
 Grounded na instância "Pagination" do Figma (`#4113:42236`, ao lado do

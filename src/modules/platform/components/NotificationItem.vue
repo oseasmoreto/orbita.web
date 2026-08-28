@@ -9,7 +9,7 @@
  * já feita pro `Search.vue`/`DropdownMenu.vue` — grounding contra o frame
  * certo, não contra o nome mais parecido na lista de componentes.
  */
-import Icon from '@/shared/components/ui/Icon.vue'
+import IconTile from '@/shared/components/ui/IconTile.vue'
 import type { NotificationItemData } from '../types/notification.type'
 
 defineProps<{
@@ -19,9 +19,7 @@ defineProps<{
 
 <template>
   <div class="notification-item">
-    <div :class="['notification-item__icon', `notification-item__icon--${notification.tint}`]">
-      <Icon :icon="notification.icon" :size="16" />
-    </div>
+    <IconTile :icon="notification.icon" :tint="notification.tint" />
     <div class="notification-item__body">
       <p
         :class="[
@@ -55,29 +53,6 @@ defineProps<{
   &:hover {
     background-color: $color-ink-4;
   }
-}
-
-.notification-item__icon {
-  display: flex;
-  flex-shrink: 0;
-  align-items: center;
-  justify-content: center;
-  width: $size-24;
-  height: $size-24;
-  color: $color-ink;
-  border-radius: $radius-8;
-}
-
-// Tons "reservados sem papel definido" do design system (ver design-system.md,
-// seção Known Gaps) — primeiro uso real: aproximação dos 2 tons claros do
-// Figma ("Primary/Blue" #E3F5FF, "Primary/Purple" #E5ECF6) usados como
-// fundo do tile de ícone de notificação.
-.notification-item__icon--blue {
-  background-color: $color-tint-1;
-}
-
-.notification-item__icon--purple {
-  background-color: $color-tint-2;
 }
 
 .notification-item__body {
