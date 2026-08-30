@@ -182,37 +182,80 @@ concluída.
 Cadastro, login, sessão. Bloqueia todas as fases seguintes (tudo exige
 usuário autenticado).
 
-**Rotas** (`modules/identity/routes.ts`):
-`/login`, `/register`, `/forgot-password`, `/reset-password/:token`,
-`/verify-email`, `/sso/callback`, `/account` (perfil).
+**Login/cadastro/recuperação de senha e o guard de auth, implementados em
+2026-08-28** — pedido direto do usuário ("vamos iniciar a fase 1"), com
+capturas de referência de estrutura (outro produto, "pegue como
+referência só a estrutura") + "ative ele" (o guard de rota, que tinha
+ficado desligado desde o CRUD de Produtos da Fase 3).
 
-**Services** (`modules/identity/services/identityApi.ts`):
-`register`, `login`, `me`, `updateMe`, `deleteMe`, `listSsoAccounts`,
-`removeSsoAccount`, `requestPasswordReset`, `resetPassword`,
-`resendVerificationEmail`.
+**Entregue:**
+- `modules/identity/services/identityApi.ts` — `login`, `register`,
+  `requestPasswordReset`, `resetPassword`, `fetchCurrentUser` (`GET
+  /auth/me`, usado só pro bootstrap de sessão), `buildSsoRedirectUrl`
+  (monta a URL de `GET /auth/sso/{provider}/redirect`, navegação de
+  página inteira via `window.location.href`, nunca uma chamada axios).
+  `login()` absorve uma particularidade real da API: `login.store` (402)
+  devolve o mesmo `LoginResultResource` do 200 — credenciais corretas,
+  sessão criada, só sem assinatura ativa — tratado como sucesso, nunca
+  propagado como erro pro composable.
+- `modules/identity/schemas/{login,register,forgotPassword,resetPassword}FormSchema.ts`
+  — fábricas (`t()`), mesma régua não-negociável de i18n do
+  `productFormSchema.ts`. "Senha e confirmação precisam bater" via
+  `.refine()`.
+- `modules/identity/composables/use{Login,Register,ForgotPassword,ResetPassword}Form.ts`
+  — mesmo padrão de `useProductForm.ts` (valida antes de chamar a API,
+  popula `errors` com 422 também).
+- `modules/identity/views/{Login,Register,ForgotPassword,ResetPassword}View.vue`
+  + `core/layouts/AuthLayout.vue` (shell split-screen compartilhado pelas
+  4 telas — marca + card à esquerda, painel decorativo à direita).
+  **3 divergências deliberadas da referência**, com motivo real (contrato
+  da API, não gosto pessoal): sem checkbox "Remember me" (`LoginRequest`
+  não aceita esse parâmetro — mesma régua de "sem botão sem ação" do
+  `ListToolbar`); SSO é Google + Microsoft, não Google + Apple
+  (`SSO_ACCOUNT.provider` só aceita os dois primeiros); "Redefinir senha"
+  é formulário de nova senha via link de e-mail (`?email=&token=`), não
+  um código digitado — `ResetPasswordRequest` usa `token` de link
+  (Laravel padrão), igual já documentado em `jornada-usuario.mmd`
+  ("define nova senha via link recebido").
+- `shared/components/ui/Input.vue` ganhou `iconBefore` (ícone fixo à
+  esquerda) e revelar/ocultar senha automático quando `type="password"` —
+  primeiro consumidor real desses dois recursos.
+- **Guard de auth ativado** (`core/router/index.ts`,
+  `meta.requiresAuth: true` no `AppLayout` pai — cobre `home`/`showcase`/
+  `products` por herança de `meta`) + **bootstrap de sessão**
+  (`core/router/guards.ts`): como a store de auth (Pinia) não persiste
+  entre reloads mas o cookie httpOnly do Sanctum sim, o guard chama `GET
+  /auth/me` uma única vez por carregamento do app antes da primeira
+  decisão de navegação — sem isso, todo F5 derrubaria um usuário real pro
+  login. `requiresGuest` novo (nas 4 rotas de Identity) faz o inverso:
+  usuário já logado que abre `/login` é redirecionado pro dashboard.
+  Login honra `?redirect=` (gerado pelo guard ao bloquear uma rota
+  protegida) — devolve o usuário pra rota que ele tentou acessar, não
+  sempre pro dashboard; só aceita caminho relativo, nunca uma URL
+  absoluta da query string (evita redirect aberto).
 
-**Composables:**
-- `useLoginForm` / `useRegisterForm` — Zod schema (`schemas/loginSchema.ts`,
-  `schemas/registerSchema.ts`) + `ensureCsrfCookie()` + chamada ao service +
-  `useAuthStore().setUser(...)`. Candidatos a test-first (seção 11.2 das
-  convenções — validação de formulário com regra não-trivial).
-- `usePasswordResetForm`, `useProfileForm`.
-- `useSsoRedirect` — monta a URL de `GET /auth/sso/{provider}/redirect` e
-  redireciona o browser (sem chamada axios, é navegação de página inteira).
+**Gap de backend resolvido em 2026-08-30** (histórico, mantido por
+contexto): o endpoint de logout não existia em `orbita.api` até
+2026-08-27 (reportado à sessão do backend na época). Implementado desde
+então (`POST /v1/auth/logout`, `LogoutController`/`LogoutUserAction`,
+`auth:sanctum`) — regenerado `schema.d.ts` (`npm run generate:api-types`)
+e adicionado `logout()` em `identityApi.ts` + `useLogout()`
+(`modules/identity/composables/`, chamado a partir do topo do
+`AppSidebar` — `core/layouts/AppSidebarContent.vue`, ao lado do
+avatar/nome do usuário logado). `useLogout()` sempre limpa
+`useAuthStore()` e redireciona pro login mesmo se a chamada de rede
+falhar (sessão já invalidada no servidor não deve travar o usuário
+"logado" na tela). `core/layouts` importando de `modules/identity`
+segue a mesma exceção já usada em `core/router/guards.ts`
+(`fetchCurrentUser`) — sessão/Identity é infraestrutura cross-cutting,
+não um módulo de negócio comum.
 
-**Views:** substituir os placeholders da Fase 0 pelos formulários reais
-(`LoginView`, `RegisterView`, `ForgotPasswordView`, `ResetPasswordView`,
-`VerifyEmailView`, `SsoCallbackView`, `AccountView`).
-
-**Gap de backend confirmado (não é decisão de frontend):** **não existe
-endpoint de logout** em `orbita.api` (`grep` em `routes/api/v1/identity.php`
-e `Http/Controllers/Api/Identity/` não retorna nenhuma rota `logout`). Como a
-autenticação é sessão via cookie Sanctum (não Bearer token), o frontend não
-tem como encerrar a sessão do lado do servidor sem uma rota
-`POST /v1/auth/logout`. Já reportado à sessão do backend em 2026-08-27 — a
-tela de "sair da conta" fica bloqueada até essa rota existir. Enquanto isso,
-`useAuthStore().clear()` limpa o estado local, mas o cookie de sessão
-continua válido no servidor.
+**Pendências reais** (fora do escopo do pedido "telas de login/cadastro/
+recuperação de senha"): `/verify-email` (`VerifyEmailView`, endpoint
+`verification.verify`/`emailVerification.resend` já existem no backend,
+tela ainda não construída), `/sso/callback` (`SsoCallbackView` — o
+redirect em si já funciona, falta a tela de retorno), `/account`
+(perfil — `userProfile.show`/`update`/`destroy` já existem no backend).
 
 ---
 
@@ -251,10 +294,13 @@ usuário ("vamos montar o CRUD", segunda página de exemplo depois do
 dashboard da Fase 0.5/Home), grounded numa captura de referência de uma
 listagem genérica ("Order List"). Implementado **antes** das Fases 1/2
 (Identity/Billing) por decisão explícita do usuário — a rota `/products`
-já existe e funciona de ponta a ponta contra o backend real, mas ainda
-sem guard de autenticação de verdade (`meta.requiresAuth: false` no
-`AppLayout` pai, Fase 1 gap já registrado) e sem `usePlanLimit`/checagem
-de `max_products` (depende de Billing, Fase 2, não implementada ainda).
+já existe e funciona de ponta a ponta contra o backend real. **Guard de
+autenticação ativado depois, mesmo dia** (Fase 1, `meta.requiresAuth:
+true` no `AppLayout` pai) — `/products` agora exige sessão real como
+qualquer outra rota do shell. Segue sem `usePlanLimit`/checagem de
+`max_products` (depende de Billing, Fase 2, não implementada ainda) — o
+dado do produto em si continua mockado (`catalogApi.mock.ts`), sem
+relação com o guard de auth.
 
 **Entregue:**
 - `modules/catalog/services/catalogApi.ts` — `listProducts`/
@@ -328,9 +374,8 @@ do pedido "montar o CRUD de exemplo"):
   mencionado no pedido, não implementado.
 - `usePlanLimit` — depende de `SUBSCRIPTION`/`PLAN` (Fase 2, Billing),
   que ainda não existe no frontend.
-- Guard de rota real (`requiresAuth`) — depende da Fase 1 (Identity)
-  terminar; hoje qualquer um acessa `/products` sem estar logado (só não
-  CONSEGUE fazer nada porque a API real devolve 401 sem sessão).
+- ~~Guard de rota real (`requiresAuth`)~~ — **resolvido em 2026-08-28**,
+  ver Fase 1 acima (`meta.requiresAuth: true` no `AppLayout` pai).
 
 ---
 
@@ -433,6 +478,5 @@ impersonando X") enquanto ativo — notificação de "início de impersonation"
 
 | Item | Fase afetada | Status |
 |---|---|---|
-| Endpoint de logout inexistente | Fase 1 | Reportado à sessão backend em 2026-08-27, aguardando |
 | `APP_URL`/`.env` real ainda aponta pro túnel ngrok de teste | Fase 1 (verificação de e-mail) | Reportado, não bloqueia infra |
 | Sugestão de preço (`PricingCalculator`) nunca exposta em rota | Fase 4 | Sem rota — fase segue só com vínculo puro até existir |

@@ -21,8 +21,19 @@ withDefaults(
   defineProps<{
     title: string
     description?: string
+    /**
+     * Variante de "resultado" (ex.: sucesso de reset de senha) — ícone
+     * (slot `#icon`)/título/descrição centralizados e botão(ões) do
+     * footer esticados pra largura total, em vez do padrão de diálogo
+     * (título à esquerda, footer alinhado à direita) usado por
+     * `ConfirmDialog`. Sem grounding de frame próprio no Figma pro Modal
+     * em si — variante estrutural pra bater com o padrão real visto num
+     * modal de sucesso (ícone em círculo tintado acima do título).
+     */
+    centered?: boolean
   }>(),
   {
+    centered: false,
     description: undefined,
   },
 )
@@ -34,7 +45,11 @@ const open = defineModel<boolean>({ default: false })
   <DialogRoot v-model:open="open">
     <DialogPortal>
       <DialogOverlay class="ui-modal-overlay" />
-      <DialogContent class="ui-modal-content">
+      <DialogContent :class="['ui-modal-content', { 'ui-modal-content--centered': centered }]">
+        <div v-if="$slots.icon" class="ui-modal-icon">
+          <slot name="icon" />
+        </div>
+
         <DialogTitle class="ui-modal-title">{{ title }}</DialogTitle>
 
         <DialogDescription v-if="description" class="ui-modal-description">
@@ -97,6 +112,13 @@ const open = defineModel<boolean>({ default: false })
   outline: none;
 }
 
+:global(.ui-modal-icon) {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: $spacing-16;
+}
+
 :global(.ui-modal-title) {
   font-size: $font-size-lg;
   font-weight: $font-weight-semibold;
@@ -107,6 +129,19 @@ const open = defineModel<boolean>({ default: false })
   margin-top: $spacing-4;
   font-size: $font-size-md;
   color: $color-ink-40;
+}
+
+:global(.ui-modal-content--centered .ui-modal-title),
+:global(.ui-modal-content--centered .ui-modal-description) {
+  text-align: center;
+}
+
+:global(.ui-modal-content--centered .ui-modal-footer) {
+  flex-direction: column;
+}
+
+:global(.ui-modal-content--centered .ui-modal-footer > *) {
+  width: 100%;
 }
 
 :global(.ui-modal-body) {

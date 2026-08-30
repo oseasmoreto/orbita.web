@@ -22,7 +22,7 @@ const routes: RouteRecordRaw[] = [
       ...catalogRoutes,
     ],
     component: AppLayout,
-    meta: { requiresAuth: false },
+    meta: { requiresAuth: true },
     path: '/',
   },
   ...identityRoutes,

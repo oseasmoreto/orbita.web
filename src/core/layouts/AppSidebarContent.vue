@@ -14,14 +14,25 @@
  * resolve sozinho o fallback de iniciais — `USER` não tem campo de foto
  * no modelo de dados (`docs/negocio/contexto-plataforma-precificacao.md`
  * seção 2.1), então não tem `src` nenhum pra passar aqui.
+ *
+ * Botão de logout, 2026-08-30 — backend implementou `POST /auth/logout`
+ * (antes bloqueado, gap registrado em `docs/planejamento/plano-implementacao.md`).
+ * Colocado aqui, ao lado do usuário logado, por ser o lugar mais natural:
+ * mesma linha de quem está logado, sempre visível (não depende de abrir
+ * nenhum menu). `useLogout()` vem de `modules/identity/composables` —
+ * ver justificativa de fronteira no próprio arquivo.
  */
 import { ref } from 'vue'
+import { SignOut } from '@/shared/components/icons/regular.generated'
 import { useAuthStore } from '@/core/store/useAuthStore'
 import Avatar from '@/shared/components/ui/Avatar.vue'
+import Button from '@/shared/components/ui/Button.vue'
+import { useLogout } from '@/modules/identity/composables/useLogout'
 import AppSidebarNavItem from './AppSidebarNavItem.vue'
 import { favoriteItems, navGroups } from './config/navigation'
 
 const authStore = useAuthStore()
+const { isLoggingOut, logout } = useLogout()
 const activeFavoritesTab = ref<'favorites' | 'recently'>('favorites')
 </script>
 
@@ -29,8 +40,17 @@ const activeFavoritesTab = ref<'favorites' | 'recently'>('favorites')
   <div class="app-sidebar-content">
     <div class="app-sidebar-content__scroll">
       <div v-if="authStore.user" class="app-sidebar-content__user">
-        <Avatar :name="authStore.user.name" :size="32" />
-        <span class="app-sidebar-content__user-name">{{ authStore.user.name }}</span>
+        <div class="app-sidebar-content__user-info">
+          <Avatar :name="authStore.user.name" :size="32" />
+          <span class="app-sidebar-content__user-name">{{ authStore.user.name }}</span>
+        </div>
+        <Button
+          :aria-label="$t('common.actions.logout')"
+          :disabled="isLoggingOut"
+          :icon-before="SignOut"
+          variant="ghost"
+          @click="logout"
+        />
       </div>
 
       <div class="app-sidebar-content__favorites">
@@ -123,14 +143,25 @@ const activeFavoritesTab = ref<'favorites' | 'recently'>('favorites')
 .app-sidebar-content__user {
   display: flex;
   align-items: center;
-  gap: $spacing-12;
+  justify-content: space-between;
+  gap: $spacing-8;
   padding: $spacing-8;
 }
 
+.app-sidebar-content__user-info {
+  display: flex;
+  align-items: center;
+  gap: $spacing-12;
+  min-width: 0;
+}
+
 .app-sidebar-content__user-name {
+  overflow: hidden;
   font-size: $font-size-lg;
   font-weight: $font-weight-semibold;
   color: $color-ink;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .app-sidebar-content__favorites {

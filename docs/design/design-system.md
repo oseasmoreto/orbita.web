@@ -856,6 +856,29 @@ do design system, mesmo caminho já usado por Select/Tooltip.
   com seletor "plano" (nunca `&` aninhado dentro do `:global()`, é o bug
   real já corrigido no Select — ver seção Select acima).
 
+**Variante `centered` + slot `#icon`, 2026-08-30** — pedida direto pelo
+usuário comparando o modal de sucesso do reset de senha
+(`ResetPasswordView.vue`) com a captura real do Figma: a v1 punha o ícone
+no slot padrão (corpo), que no `Modal` sempre renderiza DEPOIS do
+título/descrição — errado contra a referência, que mostra ícone em círculo
+tintado ACIMA do título, texto centralizado e um único botão esticado pra
+largura total, não alinhado à direita.
+
+- Slot novo `#icon`, renderizado antes de `DialogTitle` (só aparece quando
+  o consumidor passa conteúdo, mesmo padrão condicional de `body`/`footer`)
+  — `Modal.vue` só centraliza o slot (`display:flex; justify-content:center`)
+  e dá `margin-bottom`, nunca decide cor/tamanho do badge: isso é
+  apresentação específica do consumidor (ex.: círculo verde de sucesso em
+  `ResetPasswordView.vue`, `$size-64` + `color-mix()` sobre
+  `{colors.accent-green}`, mesma técnica já usada no `StatusDot` variante
+  `pill`) — sem grounding pra padronizar isso como átomo próprio ainda
+  (só 1 consumidor real).
+- Prop `centered?: boolean` (default `false`) — quando `true`, título e
+  descrição ganham `text-align: center` e o footer vira coluna com cada
+  filho a `width: 100%` (botão único esticado). Sem `centered`, o `Modal`
+  continua exatamente como antes (título à esquerda, footer alinhado à
+  direita) — `ConfirmDialog`/demais usos não mudam nada.
+
 ### ConfirmDialog (`shared/components/blocks/ConfirmDialog.vue`)
 
 Composição de `Modal.vue` + 2 `Button` — confirmação de ação (cancelar

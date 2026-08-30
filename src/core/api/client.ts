@@ -1,6 +1,21 @@
 import axios, { isAxiosError } from 'axios'
 import Cookies from 'js-cookie'
 
+declare module 'axios' {
+  export interface AxiosRequestConfig {
+    /**
+     * Pula o `UNAUTHORIZED_EVENT` global num 401 desta chamada — usado só por
+     * `fetchCurrentUser()` (bootstrap de sessão no router guard), onde um 401
+     * é o caso normal de "ainda não logou" (ex.: link de reset de senha
+     * aberto sem sessão), não uma sessão expirada que deveria expulsar o
+     * usuário da tela atual. Sem isso, o próprio bootstrap forçava
+     * `router.push({ name: 'login' })` em cima de rotas `requiresGuest`
+     * (login/register/forgot-password/reset-password), atropelando o guard.
+     */
+    skipUnauthorizedRedirect?: boolean
+  }
+}
+
 const READ_METHODS = new Set(['get', 'head'])
 
 const apiBaseUrl = import.meta.env.VITE_API_BASE_URL
@@ -40,7 +55,11 @@ export const UNAUTHORIZED_EVENT = 'orbita:unauthorized'
 apiClient.interceptors.response.use(
   (response) => response,
   (error: unknown) => {
-    if (isAxiosError(error) && error.response?.status === 401) {
+    if (
+      isAxiosError(error) &&
+      error.response?.status === 401 &&
+      !error.config?.skipUnauthorizedRedirect
+    ) {
       window.dispatchEvent(new CustomEvent(UNAUTHORIZED_EVENT))
     }
 
