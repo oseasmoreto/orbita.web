@@ -615,7 +615,7 @@ testado — `isSubscriptionConfirmed` é função pura, test-first):
 
 ---
 
-## Fase 3 — Catalog
+## Fase 3 — Catalog (concluída)
 
 Cadastro de produto — primeira tela "de trabalho" do vendedor.
 
@@ -701,12 +701,134 @@ do pedido "montar o CRUD de exemplo"):
 - Rotas `/products/new`/`/products/:id/edit` dedicadas — o form atual só
   existe dentro do Drawer, nunca como página própria (decisão explícita
   do usuário: "renderizarão no modal lateral direito").
-- `/products/:id/launches` (histórico de `PRODUCT_LAUNCH`) — não
-  mencionado no pedido, não implementado.
-- `usePlanLimit` — depende de `SUBSCRIPTION`/`PLAN` (Fase 2, Billing),
-  que ainda não existe no frontend.
+- `usePlanLimit` — depende de `SUBSCRIPTION`/`PLAN` (Fase 2, Billing).
+  **Fase 2 concluída em 2026-08-31** — deixou de ser um bloqueio real,
+  só não foi pedido ainda nesta rodada de Catalog; candidato natural pra
+  entrar quando alguém pedir "limite de plano no cadastro de produto".
 - ~~Guard de rota real (`requiresAuth`)~~ — **resolvido em 2026-08-28**,
   ver Fase 1 acima (`meta.requiresAuth: true` no `AppLayout` pai).
+
+**"Lançamentos de produto" implementado em 2026-08-31** — pedido direto
+do usuário ("vamos seguir com o catálogo... implementar produtos e
+lançamentos de produtos"), fechando a única pendência funcional real que
+restava desta fase. Antes de implementar, `.ai/rules/crud-pattern.md` foi
+auditado contra o `ProductsView.vue`/`ProductForm.vue` existentes — sem
+achado de drift real, o CRUD de Produtos continuava 100% alinhado ao
+padrão documentado.
+
+- Mesma forma de módulo CRUD do padrão (`.ai/rules/crud-pattern.md`):
+  `types/productLaunch.type.ts`, `catalogApi.ts` ganhou 4 funções
+  (`listProductLaunches`/`createProductLaunch`/`updateProductLaunch`/
+  `deleteProductLaunch`, todas recebendo `productId` explícito —
+  `PRODUCT_LAUNCH` é sempre aninhado a um produto), `schemas/productLaunchFormSchema.ts`
+  (fábrica, testada), `composables/useProductLaunchList.ts`
+  (`buildProductLaunchSortParam` testado, mesmo critério de
+  `useProductList.ts`) e `useProductLaunchForm.ts`.
+- **UI**: "Lançamentos" é sempre uma aba dentro do detalhe de UM produto
+  (`core/layouts/config/navigation.ts` já documentava essa decisão desde
+  a Fase 3 original) — `ProductsView.vue` ganhou `TabBar` ("Dados do
+  produto"/"Lançamentos") dentro do `Drawer` de EDIÇÃO (só existe em modo
+  `edit`, produto precisa existir pra ter lançamentos); Drawer cresce de
+  `size="md"` pra `"lg"` só nesse modo, pra caber a tabela de lançamentos.
+  `components/blocks/ProductLaunchList.vue` (novo, primeiro componente do
+  módulo a justificar a subpasta `blocks/` — é composição de verdade:
+  `DataTable`+toolbar+`Modal`+`ConfirmDialog`) + `components/ProductLaunchForm.vue`
+  (form simples, mesmo padrão de `ProductForm.vue`) dentro de um `Modal`,
+  não um segundo `Drawer` — um painel lateral empilhado dentro de outro
+  ficaria estranho.
+- **2 achados reais, verificados e corrigidos no processo** (não
+  específicos de Lançamentos — bugs sistêmicos preexistentes,
+  encontrados só agora porque foi a primeira vez que certas combinações
+  de componentes foram usadas juntas):
+  1. **Erro de campo do backend nunca aparecia sob o input, pra qualquer
+     campo com nome composto** (`full_sale_price`, `purchase_price`,
+     `target_margin`...) — `parseApiError.ts` devolvia `fieldErrors`
+     chaveado exatamente como o Laravel manda (snake_case, nome do
+     REQUEST), mas todo `useXForm.ts` indexa `errors.value` pela chave
+     CAMELCASE de `XFormValues`. 3 forms de Identity já tinham percebido
+     isso pro único campo composto que cada um tem
+     (`password_confirmation`) e remendado com um ternário ad-hoc
+     repetido 3 vezes; `useProductForm.ts` (3 campos compostos) nunca
+     tinha sido corrigido. Centralizado em `parseApiError.ts`
+     (`toCamelCaseKey`, testado) — os 3 ternários ad-hoc removidos,
+     `useProductForm.ts`/`useProductLaunchForm.ts` funcionam sem precisar
+     de nenhum remendo próprio.
+  2. **`Select`/`Tooltip`/`DropdownMenu`/`DatePicker`/`DateRangePicker`
+     nunca funcionavam de verdade dentro de um `Modal`/`Drawer`** — os 5
+     portais floating do design system usavam `z-index: 50`, sempre
+     menor que `Modal.vue`/`Drawer.vue` (`100`/`101`), então qualquer um
+     deles usado ANINHADO renderizava atrás do modal/drawer,
+     interceptando clique (confirmado com Playwright: "element
+     intercepts pointer events", tentando clicar no atalho "Hoje" do
+     `DatePicker` dentro do `Modal` de lançamento). Nunca tinha aparecido
+     antes porque nenhum componente flutuante tinha sido usado dentro de
+     um Modal/Drawer até `ProductLaunchForm.vue`. Corrigido nos 5 pra
+     `z-index: 200`.
+- Verificado em browser real contra o backend local: criar produto →
+  editar → aba "Lançamentos" aparece com 2 tabs corretos → estado vazio
+  honesto → criar lançamento (incluindo escolher "Hoje" no `DatePicker`
+  dentro do `Modal`, confirmando o fix de z-index) → editar → excluir,
+  ciclo completo funcionando ponta a ponta.
+
+---
+
+## Bugs de formulário, transversal (2026-08-31)
+
+Pedido direto do usuário ("temos alguns bugs de form no geral"), com 2
+capturas reais — 2 bugs distintos, os dois cross-cutting (não específicos
+de nenhum módulo), corrigidos no mesmo PR:
+
+**1. Anel de foco cortado** — `.ui-drawer-body`/`.ui-modal-body`
+(`Drawer.vue`/`Modal.vue`) e `.product-form__fields`
+(`ProductForm.vue`) tinham `overflow-y: auto` sem padding nenhum. Um
+campo focado ENCOSTADO na borda desse container tinha o próprio
+`focus-ring` (`outline: 2px` + `outline-offset: 2px` = 4px de extensão)
+CORTADO pelo `overflow` — nunca aparecia de verdade, só a borda reta do
+campo (exatamente a captura mandada). Corrigido nos 3 com `padding:
+$spacing-4` + `margin` negativo compensando (conteúdo visível fica
+pixel-a-pixel onde estava, só a área de clipping do `overflow` cresce) —
+detalhe completo em `docs/design/design-system.md` seção Components →
+Drawer/Modal.
+
+**2. Erro de campo sem tradução — "closure_validation_rule" cru na
+tela** — investigado a fundo (não assumido como bug óbvio): o backend
+(`../backend/bootstrap/app.php`) manda `errors` de validação chaveado
+pela RULE NAME que falhou (`Str::snake(class_basename($rule))`), não uma
+frase pronta — mesmo espírito de catálogo do `ApiMessageKey`, decisão
+DELIBERADA do backend, não um bug de lá. `closure_validation_rule` é o
+nome genérico que QUALQUER regra `Closure` custom vira (`ean`/`ncm` em
+`CreateProductRequest`/`UpdateProductRequest`, `document` em
+`SubscribeToPlanRequest`) — sem dicionário nenhum do lado do front, a
+chave crua aparecia direto na tela.
+
+- **2 gaps reais encontrados no processo**: `errorMessageValidation`
+  (`ApiMessageKey::ErrorValidation`, o toast GERAL de qualquer 422 em
+  QUALQUER formulário do app) nunca tinha sido cadastrada em
+  `pt-BR.ts` — todo erro de validação, desde sempre, mostrava o toast com
+  a chave crua "errorMessageValidation" em vez de um texto de verdade.
+  E nenhum `useXForm.ts` passava a mensagem de campo por
+  `useApiMessage()` antes de guardar em `errors.value` — sempre
+  `messages[0]` cru.
+- **Corrigido**: `errorMessageValidation` cadastrada
+  ("Confira os campos destacados abaixo."); `useApiMessage()` ganhou
+  `resolveFieldError(field, rule)` (testado —
+  `tests/shared/composables/useApiMessage.test.ts`), com 2 camadas de
+  dicionário em `pt-BR.ts` (`errors.validation.<rule>` genérico;
+  `errors.validation.byField.<campo>.<rule>` só pros 3 casos reais e
+  ambíguos de `closure_validation_rule`, grounded exaustivamente contra
+  `../backend/app/Http/Requests/**/*.php` — nunca adivinhado). Os 7
+  `useXForm.ts` que populam `errors.value` a partir de
+  `apiError.fieldErrors` (`useLoginForm`/`useRegisterForm`/
+  `useForgotPasswordForm`/`useResetPasswordForm`/`useUpdateProfileForm`/
+  `useProductForm`/`useProductLaunchForm`) passaram a usar
+  `resolveFieldError()` em vez de `messages[0]` direto.
+- Detalhe completo (raciocínio de como o "closure_validation_rule" foi
+  rastreado até a linha exata do backend que o gera) em
+  `docs/infra/convencoes-frontend-infra.md` seção 4.
+- Verificado em browser real contra o backend local: EAN inválido em
+  `ProductForm.vue` agora mostra "EAN inválido — deve ser um código de
+  barras EAN-8/12/13/14 válido." sob o campo, e o toast geral mostra
+  "Confira os campos destacados abaixo." em vez das chaves cruas.
 
 ---
 

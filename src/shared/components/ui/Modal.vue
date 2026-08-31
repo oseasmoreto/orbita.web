@@ -144,8 +144,15 @@ const open = defineModel<boolean>({ default: false })
   width: 100%;
 }
 
+// `padding: $spacing-4` — mesmo achado real do `Drawer.vue`
+// (`.ui-drawer-body`): sem esse respiro, o anel de foco de qualquer
+// campo encostado na borda deste container ficava cortado pelo próprio
+// `overflow-y: auto`. `margin` negativo compensa o padding novo (mesma
+// técnica do Drawer) — conteúdo visível fica onde estava, só a área de
+// clipping do `overflow` cresce.
 :global(.ui-modal-body) {
-  margin-top: $spacing-16;
+  padding: $spacing-4;
+  margin: calc(#{$spacing-16} - #{$spacing-4}) calc(-1 * #{$spacing-4}) calc(-1 * #{$spacing-4});
   overflow-y: auto;
   color: $color-ink;
 }

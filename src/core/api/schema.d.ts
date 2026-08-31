@@ -1078,6 +1078,10 @@ export interface components {
             user: components["schemas"]["UserResource"];
             requires_subscription: boolean;
             favorites: components["schemas"]["UserFavoriteResource"][];
+            plan_limits: {
+                max_products: number | null;
+                max_marketplaces: number | null;
+            } | null;
         };
         /** MarketplaceResource */
         MarketplaceResource: {

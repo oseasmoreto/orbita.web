@@ -391,8 +391,10 @@ function toggleMeridiem(): void {
   background-color: $color-ink-20;
 }
 
+// `z-index: 200`, não 50 — acima de `Modal.vue`/`Drawer.vue` (100/101),
+// mesmo achado real do `DatePicker.vue` (2026-08-31).
 :global(.ui-date-range-picker-content) {
-  z-index: 50;
+  z-index: 200;
   width: 280px;
   padding: $spacing-16;
   background-color: $color-bg-1;

@@ -879,6 +879,14 @@ largura total, não alinhado à direita.
   continua exatamente como antes (título à esquerda, footer alinhado à
   direita) — `ConfirmDialog`/demais usos não mudam nada.
 
+**Anel de foco cortado — mesmo bug real de `Drawer.vue`, corrigido
+junto, 2026-08-31**: `.ui-modal-body` (`overflow-y: auto`) também não
+tinha padding nenhum, cortando o `focus-ring` de qualquer campo
+encostado na borda (ex.: `ProductLaunchForm.vue` dentro do `Modal` de
+lançamento). Mesma correção: `padding: $spacing-4` + `margin` negativo
+compensando — ver seção Drawer acima pro relato completo (raciocínio,
+técnica de compensação e verificação são idênticos nos dois).
+
 ### ConfirmDialog (`shared/components/blocks/ConfirmDialog.vue`)
 
 Composição de `Modal.vue` + 2 `Button` — confirmação de ação (cancelar
@@ -948,6 +956,34 @@ continua painel lateral direito como antes.
   vez depois dela estabilizar (~1s). Não é bug, é phys-based animation;
   quem for testar isso de novo precisa esperar a animação terminar antes
   de inspecionar posição/transform.
+
+**Anel de foco cortado, achado real reportado pelo usuário em
+2026-08-31** ("borda do focus cortando, já vi isso em outros forms") —
+`.ui-drawer-body` (o miolo rolável do Drawer, `overflow-y: auto`) tinha
+`padding: 0`. Qualquer campo focado ENCOSTADO na borda desse container
+(ex.: o campo "Nome" de `ProductForm.vue`, o primeiro do formulário) tinha
+o próprio `focus-ring` (mixin: `outline: 2px solid` + `outline-offset: 2px`
+= 4px de extensão pra fora da caixa) CORTADO pelo `overflow` do
+container — o outline nunca aparecia de verdade, só a borda reta de 1px
+do campo, exatamente a captura que o usuário mandou. Mesmo bug existia em
+`Modal.vue` (`.ui-modal-body`) e em `ProductForm.vue`
+(`.product-form__fields`, um segundo `overflow-y: auto` ANINHADO dentro
+do body do Drawer, pro rodapé de ações ficar fixo enquanto só os campos
+rolam).
+
+- **Corrigido nos 3** com a técnica padrão pra esse problema: `padding: $spacing-4`
+  (4px, do tamanho exato da extensão do `focus-ring`) + `margin` NEGATIVO
+  compensando o padding novo nos mesmos 4 lados (inclusive combinado com
+  o `margin-top: $spacing-16` que o Drawer/Modal já tinham, virando
+  `calc($spacing-16 - $spacing-4)`) — o conteúdo visível fica
+  PIXEL-A-PIXEL onde estava antes (nada se move, nenhum desalinhamento
+  novo contra o rodapé de ações, que não tem esse padding), só a ÁREA DE
+  CLIPPING do `overflow` cresce o suficiente pro anel de foco não ser
+  cortado.
+- Verificado em browser real com `getBoundingClientRect()`: antes do fix,
+  o wrapper do input ficava exatamente flush com a borda do container
+  (0px de folga); depois, sobra exatamente 4px de cada lado — o outline
+  (4px de extensão) cabe inteiro sem cortar.
 
 ### DataTable (`shared/components/blocks/DataTable.vue`)
 
@@ -2962,6 +2998,75 @@ em `ConfirmDialog.vue` (Figma não define essa variante pro `Button`).
 tem senha cadastrada (conta só-SSO não tem), então a UI nunca sabe se
 deve exigir preenchimento — manda o que foi digitado e deixa o backend
 recusar com `errorMessageIncorrectPassword` se for o caso.
+
+### ProductLaunchList (`modules/catalog/components/blocks/ProductLaunchList.vue`)
+
+"Lançamentos" (`PRODUCT_LAUNCH`) — pedido direto do usuário em 2026-08-31
+("vamos seguir com o catálogo... implementar produtos e lançamentos de
+produtos"), fechando a única pendência funcional real da Fase 3.
+`docs/negocio/contexto-plataforma-precificacao.md` (seção 2.3) e
+`core/layouts/config/navigation.ts` já documentavam a decisão: nunca uma
+listagem própria/item de sidebar, sempre uma ABA dentro do detalhe de UM
+produto.
+
+- **Primeiro componente do módulo Catalog a justificar `components/blocks/`**
+  — `ProductForm.vue` (form simples) continua solto em `components/`;
+  `ProductLaunchList.vue` é composição de verdade (`DataTable`+toolbar+
+  `Modal`+`ConfirmDialog`), mesmo critério de promoção de subpasta já
+  usado noutros módulos (seção 3.3 de `docs/infra/convencoes-frontend-infra.md`).
+  Mesmo motor genérico de `ProductsView.vue`
+  (`useResourceList`/`useCrudDrawer`/`useConfirmAction`) — `useCrudDrawer`
+  reaproveitado apesar do nome sugerir `Drawer.vue`: a lógica não conhece
+  qual componente de UI a consome.
+- **`ProductLaunchForm.vue` (`components/ProductLaunchForm.vue`) dentro
+  de um `Modal`, não um segundo `Drawer`** — já se está dentro do Drawer
+  de edição do produto quando essa tela abre; um painel lateral
+  empilhado dentro de outro ficaria estranho, `Modal` sobrepõe em vez de
+  deslizar. Mesmo padrão de form único create+edit de `ProductForm.vue`.
+- **`TabBar` no `Drawer` de edição de `ProductsView.vue`** ("Dados do
+  produto"/"Lançamentos") — só existe em modo `edit` (produto precisa
+  existir pra ter lançamentos); `activeProductTab` reseta pra "Dados"
+  toda vez que um edit novo abre, porque `useCrudDrawer.close()` não
+  reseta `mode`/`editingRecord` de propósito (evita flicker na animação
+  de saída) — sem esse reset explícito, reabrir pra um produto DIFERENTE
+  poderia herdar a aba "Lançamentos" ainda ativa da edição anterior. O
+  `Drawer` cresce de `size="md"` pra `"lg"` só no modo `edit`, pra caber
+  a tabela de lançamentos.
+- **Achado real, sistêmico — `Select`/`Tooltip`/`DropdownMenu`/`DatePicker`/
+  `DateRangePicker` nunca funcionavam de verdade dentro de um
+  `Modal`/`Drawer`**: os 5 portais floating do design system usavam
+  `z-index: 50`, sempre MENOR que `Modal.vue`/`Drawer.vue` (`100`/`101`)
+  — qualquer um deles usado aninhado renderizava atrás do modal/drawer,
+  interceptando clique. Só apareceu agora porque `ProductLaunchForm.vue`
+  (`DatePicker` dentro de um `Modal`, que por sua vez está dentro do
+  `Drawer` de edição do produto) foi o primeiro caso real de componente
+  flutuante aninhado num desses dois. Confirmado com Playwright: clicar
+  no atalho "Hoje" do `DatePicker` travava com "element intercepts
+  pointer events", o elemento por cima sendo o próprio conteúdo do
+  `Modal`. Corrigido nos 5 componentes pra `z-index: 200`.
+- **Achado real, sistêmico, encontrado no mesmo processo — erro de campo
+  do backend nunca aparecia sob o input pra qualquer campo com nome
+  composto** (`full_sale_price`, `purchase_price`, `target_margin`,
+  `password_confirmation`...): `parseApiError.ts` devolvia `fieldErrors`
+  chaveado como o Laravel manda (snake_case, nome do REQUEST), mas todo
+  `useXForm.ts` indexa `errors.value` pela chave CAMELCASE de
+  `XFormValues` — sem conversão, `errors.value['full_sale_price']` nunca
+  é lido por `fieldError('fullSalePrice')`. 3 forms de Identity
+  (`useRegisterForm`/`useUpdateProfileForm`/`useResetPasswordForm`) já
+  tinham percebido isso pro único campo composto que cada um tem
+  (`password_confirmation`) e remendado com um ternário ad-hoc repetido 3
+  vezes; `useProductForm.ts` (3 campos compostos) nunca tinha sido
+  corrigido — só ficou visível agora ao escrever `useProductLaunchForm.ts`
+  (`purchase_price`) e revisar o padrão de perto. Corrigido de forma
+  centralizada em `parseApiError.ts` (`toCamelCaseKey`, testado em
+  `tests/shared/services/parseApiError.test.ts`) — os 3 ternários ad-hoc
+  removidos, todo formulário (existente e futuro) funciona sem precisar
+  de nenhum remendo próprio por campo.
+- Verificado em browser real contra o backend local: criar produto →
+  editar → aba "Lançamentos" com as 2 tabs corretas → estado vazio
+  honesto → criar lançamento (incluindo escolher "Hoje" no `DatePicker`
+  dentro do `Modal`, confirmando o fix de z-index) → editar → excluir,
+  ciclo completo funcionando ponta a ponta contra a API real.
 
 ## Do's and Don'ts
 

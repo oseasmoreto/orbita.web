@@ -70,6 +70,10 @@ export const catalogGroup: NavGroup = {
       icon: Package,
       id: 'catalog-products',
       label: t('sidebar.nav.products'),
+      // `products-new`/`products-edit` são deep link pro MESMO Drawer
+      // desta página (`routes.ts`) — sem isso o breadcrumb
+      // (`useBreadcrumb.ts`) não achava o item pra essas 2 rotas.
+      relatedRouteNames: ['products-new', 'products-edit'],
       to: { name: 'products' },
     },
     // Lançamentos (PRODUCT_LAUNCH) não é item de topo — é sempre uma aba

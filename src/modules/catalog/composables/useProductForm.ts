@@ -71,7 +71,7 @@ function toRequestPayload(values: ProductFormValues) {
  */
 export function useProductForm() {
   const toast = useToast()
-  const { resolveMessage } = useApiMessage()
+  const { resolveFieldError, resolveMessage } = useApiMessage()
   const { t } = useI18n()
   const schema = createProductFormSchema(t)
 
@@ -123,7 +123,7 @@ export function useProductForm() {
 
       if (apiError.fieldErrors) {
         for (const [field, messages] of Object.entries(apiError.fieldErrors)) {
-          errors.value[field as keyof ProductFormValues] = messages[0]
+          errors.value[field as keyof ProductFormValues] = resolveFieldError(field, messages[0])
         }
       }
 

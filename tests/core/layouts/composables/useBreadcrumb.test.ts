@@ -56,3 +56,54 @@ describe('resolveBreadcrumbItems', () => {
     expect(items).toEqual([{ label: 'Orbita' }])
   })
 })
+
+describe('resolveBreadcrumbItems — related routes (deep link variants of the same page)', () => {
+  // Achado real, reportado pelo usuário em 2026-08-31: `/products/new`/
+  // `/products/:id/edit` (deep link pro Drawer, `route.name` diferente de
+  // `'products'`) perdiam o "Catálogo /" inteiro — `findActiveTrail` só
+  // casava por igualdade exata de `to.name`, então a rota nunca era
+  // encontrada na árvore e caía direto pro fallback sozinho ("Produtos",
+  // sem trilha). `relatedRouteNames` resolve isso: a rota related ainda
+  // acha o mesmo grupo/item, e ganha um 3º nível (o título da própria
+  // rota) — era pra ficar "Catálogo / Produtos / Novo produto", não só
+  // "Produtos".
+  const groupsWithRelated: NavGroup[] = [
+    {
+      items: [
+        {
+          id: 'catalog-products',
+          label: 'Produtos',
+          relatedRouteNames: ['products-new', 'products-edit'],
+          to: { name: 'products' },
+        },
+      ],
+      title: 'Catálogo',
+    },
+  ]
+
+  it('resolves [group, item, current title] for a related route, item gains a `to` (it is now an ancestor, not the final page)', () => {
+    const items = resolveBreadcrumbItems(groupsWithRelated, 'products-new', 'Novo produto')
+
+    expect(items).toEqual([
+      { label: 'Catálogo', to: { name: 'products' } },
+      { label: 'Produtos', to: { name: 'products' } },
+      { label: 'Novo produto' },
+    ])
+  })
+
+  it('resolves the same 3-level trail for the other related route (edit)', () => {
+    const items = resolveBreadcrumbItems(groupsWithRelated, 'products-edit', 'Editar produto')
+
+    expect(items).toEqual([
+      { label: 'Catálogo', to: { name: 'products' } },
+      { label: 'Produtos', to: { name: 'products' } },
+      { label: 'Editar produto' },
+    ])
+  })
+
+  it('still resolves the plain 2-level trail (no 3rd level, item has no `to`) for the exact route itself', () => {
+    const items = resolveBreadcrumbItems(groupsWithRelated, 'products', 'Produtos')
+
+    expect(items).toEqual([{ label: 'Catálogo', to: { name: 'products' } }, { label: 'Produtos' }])
+  })
+})

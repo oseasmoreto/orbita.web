@@ -40,8 +40,10 @@ withDefaults(
 
 // `:global()`: `TooltipPortal` teletransporta pro <body>, mesmo achado
 // real do Select/Drawer (ver design-system.md, seção Components).
+// `z-index: 200`, não 50 — acima de `Modal.vue`/`Drawer.vue` (100/101),
+// mesmo achado real do `DatePicker.vue` (2026-08-31).
 :global(.ui-tooltip) {
-  z-index: 50;
+  z-index: 200;
   display: flex;
   align-items: center;
   gap: $spacing-4;

@@ -35,7 +35,7 @@ export function useRegisterForm() {
   const router = useRouter()
   const authStore = useAuthStore()
   const toast = useToast()
-  const { resolveMessage } = useApiMessage()
+  const { resolveFieldError, resolveMessage } = useApiMessage()
   const { t } = useI18n()
   const schema = createRegisterFormSchema(t)
 
@@ -82,8 +82,7 @@ export function useRegisterForm() {
 
       if (apiError.fieldErrors) {
         for (const [field, messages] of Object.entries(apiError.fieldErrors)) {
-          const key = field === 'password_confirmation' ? 'passwordConfirmation' : field
-          errors.value[key as keyof RegisterFormValues] = messages[0]
+          errors.value[field as keyof RegisterFormValues] = resolveFieldError(field, messages[0])
         }
       }
     } finally {

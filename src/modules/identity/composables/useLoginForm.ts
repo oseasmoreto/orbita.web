@@ -2,7 +2,7 @@ import { reactive, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRoute, useRouter } from 'vue-router'
 import { ensureCsrfCookie } from '@/core/api/client'
-import { toFavoriteItem } from '@/core/store/types/auth.type'
+import { toFavoriteItem, toPlanLimits } from '@/core/store/types/auth.type'
 import { useAuthStore } from '@/core/store/useAuthStore'
 import { useApiMessage } from '@/shared/composables/useApiMessage'
 import { useToast } from '@/shared/composables/useToast'
@@ -28,7 +28,7 @@ export function useLoginForm() {
   const route = useRoute()
   const authStore = useAuthStore()
   const toast = useToast()
-  const { resolveMessage } = useApiMessage()
+  const { resolveFieldError, resolveMessage } = useApiMessage()
   const { t } = useI18n()
   const schema = createLoginFormSchema(t)
 
@@ -61,9 +61,16 @@ export function useLoginForm() {
       await ensureCsrfCookie()
       const result = await login({ email: values.email, password: values.password })
 
-      authStore.setUser(toAuthUser(result.user, result.favorites.map(toFavoriteItem)), {
-        requiresSubscription: result.requires_subscription,
-      })
+      authStore.setUser(
+        toAuthUser(
+          result.user,
+          result.favorites.map(toFavoriteItem),
+          toPlanLimits(result.plan_limits),
+        ),
+        {
+          requiresSubscription: result.requires_subscription,
+        },
+      )
 
       if (result.requires_subscription) {
         await router.push({ name: 'choose-plan' })
@@ -86,7 +93,7 @@ export function useLoginForm() {
 
       if (apiError.fieldErrors) {
         for (const [field, messages] of Object.entries(apiError.fieldErrors)) {
-          errors.value[field as keyof LoginFormValues] = messages[0]
+          errors.value[field as keyof LoginFormValues] = resolveFieldError(field, messages[0])
         }
       }
     } finally {

@@ -24,7 +24,7 @@ function emptyValues(): ForgotPasswordFormValues {
  */
 export function useForgotPasswordForm() {
   const toast = useToast()
-  const { resolveMessage } = useApiMessage()
+  const { resolveFieldError, resolveMessage } = useApiMessage()
   const { t } = useI18n()
   const schema = createForgotPasswordFormSchema(t)
 
@@ -64,7 +64,10 @@ export function useForgotPasswordForm() {
 
       if (apiError.fieldErrors) {
         for (const [field, messages] of Object.entries(apiError.fieldErrors)) {
-          errors.value[field as keyof ForgotPasswordFormValues] = messages[0]
+          errors.value[field as keyof ForgotPasswordFormValues] = resolveFieldError(
+            field,
+            messages[0],
+          )
         }
       }
     } finally {

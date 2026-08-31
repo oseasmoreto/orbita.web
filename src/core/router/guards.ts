@@ -1,7 +1,7 @@
 import type { Router } from 'vue-router'
 import { i18n } from '@/core/i18n'
 import { useAppShell } from '@/core/layouts/composables/useAppShell'
-import { toFavoriteItem, type UserRole } from '@/core/store/types/auth.type'
+import { toFavoriteItem, toPlanLimits, type UserRole } from '@/core/store/types/auth.type'
 import { useAuthStore } from '@/core/store/useAuthStore'
 import { fetchCurrentUser } from '@/modules/identity/services/identityApi'
 import { toAuthUser } from '@/modules/identity/types/user.type'
@@ -65,9 +65,16 @@ async function bootstrapSession(): Promise<void> {
 
   try {
     const result = await fetchCurrentUser()
-    authStore.setUser(toAuthUser(result.user, result.favorites.map(toFavoriteItem)), {
-      requiresSubscription: result.requires_subscription,
-    })
+    authStore.setUser(
+      toAuthUser(
+        result.user,
+        result.favorites.map(toFavoriteItem),
+        toPlanLimits(result.plan_limits),
+      ),
+      {
+        requiresSubscription: result.requires_subscription,
+      },
+    )
   } catch {
     authStore.clear()
   }

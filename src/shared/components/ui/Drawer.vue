@@ -189,9 +189,21 @@ const direction = computed(() => (isMobile.value ? 'bottom' : 'right'))
   color: $color-ink-40;
 }
 
+// `padding: $spacing-4`, não 0 — achado real, 2026-08-31: sem esse
+// respiro, o anel de foco (`focus-ring` mixin, `outline: 2px` +
+// `outline-offset: 2px` = 4px de extensão) de qualquer campo encostado
+// na borda deste container (ex.: `ProductForm.vue` dentro do Drawer)
+// ficava CORTADO pelo próprio `overflow-y: auto` — o outline nunca
+// aparecia de verdade, só a borda reta do campo. Mesmo bug existia em
+// `Modal.vue` (`.ui-modal-body`), corrigido junto. `margin` negativo
+// compensa o `padding` novo nos 4 lados (inclusive o `margin-top`
+// original, virando `$spacing-16 − $spacing-4`) — o conteúdo visível
+// fica exatamente onde estava antes, só a ÁREA DE CLIPPING do
+// `overflow` cresce o suficiente pro anel de foco não ser cortado.
 :global(.ui-drawer-body) {
   flex: 1;
-  margin-top: $spacing-16;
+  padding: $spacing-4;
+  margin: calc(#{$spacing-16} - #{$spacing-4}) calc(-1 * #{$spacing-4}) calc(-1 * #{$spacing-4});
   overflow-y: auto;
   color: $color-ink;
 }

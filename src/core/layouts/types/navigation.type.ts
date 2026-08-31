@@ -21,6 +21,17 @@ export interface NavItem {
   icon?: Component
   id: string
   label: string
+  /**
+   * Nomes de rota que são deep link pro MESMO item (ex.: `/products/new`/
+   * `/products/:id/edit`, que abrem o mesmo Drawer da página de
+   * "Produtos", `to.name: 'products'`) — achado real, 2026-08-31: sem
+   * isso, `useBreadcrumb.ts` não achava o item na árvore pra essas rotas
+   * (`route.name` diferente de `to.name`) e o breadcrumb perdia o grupo
+   * inteiro, caindo só no título da rota sozinho. Nunca usado pra
+   * destacar item ativo na sidebar — isso continua sendo só `to`, via
+   * `router-link-exact-active` (`AppSidebarNavItem.vue`).
+   */
+  relatedRouteNames?: string[]
   to?: RouteLocationRaw
 }
 

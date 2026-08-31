@@ -145,8 +145,12 @@ const triggerId = useId()
 // atributo de escopo do Vue (`data-v-xxx`) nunca chega nesses elementos —
 // sem `:global()` essas regras não casam com nada e o dropdown renderiza
 // sem estilo nenhum (achado real, confirmado inspecionando o DOM).
+// `z-index: 200`, não 50 — achado real, 2026-08-31: precisa ficar acima
+// de `Modal.vue`/`Drawer.vue` (100/101) pra funcionar corretamente
+// aninhado dentro de um dos dois; ver `DatePicker.vue` pro relato
+// completo (mesmo bug corrigido nos 5 portais floating do design system).
 :global(.ui-select-content) {
-  z-index: 50;
+  z-index: 200;
   overflow: hidden;
   background-color: $color-bg-1;
   border: 1px solid $color-ink-10;

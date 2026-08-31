@@ -37,6 +37,14 @@
  * usa), e `ProductsView.vue` desliga os dois explicitamente com o motivo
  * real registrado ali (ordenação já existe via cabeçalho da `DataTable`,
  * filtro não tem nenhuma dimensão além do SKU que a busca já cobre).
+ *
+ * **`addDisabled`, pedido direto pelo usuário em 2026-08-31** (Fase 3,
+ * `usePlanLimit`): checagem PROATIVA de `PLAN.max_products` —
+ * `ProductsView.vue` desabilita o botão de criar quando o limite já foi
+ * atingido, em vez de deixar o usuário só descobrir isso no 422 do
+ * backend (`CreateProductAction`, continua sendo a trava real). Bloco
+ * continua sem regra de negócio própria: só repassa o booleano já
+ * decidido pelo consumidor pro `Button` interno.
  */
 import { ArrowsDownUp, FunnelSimple, Plus } from '@/shared/components/icons/regular.generated'
 import Button from '../ui/Button.vue'
@@ -44,12 +52,14 @@ import Search from '../ui/Search.vue'
 
 withDefaults(
   defineProps<{
+    addDisabled?: boolean
     addLabel?: string
     filterable?: boolean
     searchPlaceholder?: string
     sortable?: boolean
   }>(),
   {
+    addDisabled: false,
     addLabel: undefined,
     filterable: true,
     searchPlaceholder: undefined,
@@ -69,12 +79,19 @@ const search = defineModel<string>('search', { default: '' })
 <template>
   <div class="ui-toolbar">
     <div class="ui-toolbar__actions">
-      <Button v-if="addLabel" :icon-before="Plus" variant="primary" @click="emit('add')">
+      <Button
+        v-if="addLabel"
+        :disabled="addDisabled"
+        :icon-before="Plus"
+        variant="primary"
+        @click="emit('add')"
+      >
         {{ addLabel }}
       </Button>
       <Button
         v-else
         :aria-label="$t('common.actions.add')"
+        :disabled="addDisabled"
         :icon-before="Plus"
         variant="ghost"
         @click="emit('add')"

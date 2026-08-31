@@ -173,11 +173,18 @@ async function handleSubmit(): Promise<void> {
   height: 100%;
 }
 
+// `padding`/`margin` negativo — mesmo achado real de `Drawer.vue`
+// (`.ui-drawer-body`)/`Modal.vue` (`.ui-modal-body`): sem esse respiro,
+// o anel de foco do campo encostado na borda ficava cortado pelo
+// próprio `overflow-y: auto`. Aqui os 4 lados partiam de margem 0, então
+// a compensação é uniforme nos 4.
 .product-form__fields {
   display: flex;
   flex: 1;
   flex-direction: column;
   gap: $spacing-16;
+  padding: $spacing-4;
+  margin: calc(-1 * #{$spacing-4});
   overflow-y: auto;
 }
 

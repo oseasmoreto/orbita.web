@@ -24,7 +24,7 @@ function emptyValues(): ResetPasswordFormValues {
  */
 export function useResetPasswordForm() {
   const toast = useToast()
-  const { resolveMessage } = useApiMessage()
+  const { resolveFieldError, resolveMessage } = useApiMessage()
   const { t } = useI18n()
   const schema = createResetPasswordFormSchema(t)
 
@@ -68,8 +68,10 @@ export function useResetPasswordForm() {
 
       if (apiError.fieldErrors) {
         for (const [field, messages] of Object.entries(apiError.fieldErrors)) {
-          const key = field === 'password_confirmation' ? 'passwordConfirmation' : field
-          errors.value[key as keyof ResetPasswordFormValues] = messages[0]
+          errors.value[field as keyof ResetPasswordFormValues] = resolveFieldError(
+            field,
+            messages[0],
+          )
         }
       }
       return false

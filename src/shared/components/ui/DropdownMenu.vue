@@ -63,8 +63,10 @@ const emit = defineEmits<{
 // `DropdownMenuPortal` teletransporta pro fim do <body>, mesmo achado já
 // documentado pro Select/Tooltip/Modal — seletores sempre "planos" dentro
 // do `:global(...)`, nunca `&` aninhado (bug real já corrigido no Select).
+// `z-index: 200`, não 50 — acima de `Modal.vue`/`Drawer.vue` (100/101),
+// mesmo achado real do `DatePicker.vue` (2026-08-31).
 :global(.ui-dropdown-menu-content) {
-  z-index: 50;
+  z-index: 200;
   min-width: 174px;
   padding: $spacing-8;
   background-color: $color-bg-1;

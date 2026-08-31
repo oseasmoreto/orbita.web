@@ -1,5 +1,5 @@
 import type { components } from '@/core/api/schema'
-import type { AuthUser, FavoriteItem, UserRole } from '@/core/store/types/auth.type'
+import type { AuthUser, FavoriteItem, PlanLimits, UserRole } from '@/core/store/types/auth.type'
 
 type UserResource = components['schemas']['UserResource']
 
@@ -26,14 +26,26 @@ type UserResource = components['schemas']['UserResource']
  * nunca tem favorito), `useUpdateProfileForm.ts` preserva
  * `authStore.user.favorites` explicitamente, mesmo padrão já usado pra
  * `requiresSubscription` nesse mesmo composable.
+ *
+ * `planLimits` segue o MESMO raciocínio de `favorites` (campo irmão de
+ * `user`, não aninhado — pedido pra sessão de backend em 2026-08-31,
+ * junto com `pending_plan_id`). `useRegisterForm.ts` não passa nada
+ * (conta nova nunca tem plano ainda), `useUpdateProfileForm.ts` preserva
+ * `authStore.user.planLimits` explicitamente, mesmo padrão de
+ * `favorites`/`requiresSubscription`.
  */
-export function toAuthUser(resource: UserResource, favorites: FavoriteItem[] = []): AuthUser {
+export function toAuthUser(
+  resource: UserResource,
+  favorites: FavoriteItem[] = [],
+  planLimits: PlanLimits | null = null,
+): AuthUser {
   return {
     email: resource.email,
     emailVerifiedAt: resource.email_verified_at,
     favorites,
     id: resource.id,
     name: resource.name,
+    planLimits,
     role: resource.role as UserRole,
     status: resource.status,
   }

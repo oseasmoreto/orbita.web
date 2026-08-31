@@ -22,7 +22,7 @@ import { toAuthUser } from '../types/user.type'
 export function useUpdateProfileForm() {
   const authStore = useAuthStore()
   const toast = useToast()
-  const { resolveMessage } = useApiMessage()
+  const { resolveFieldError, resolveMessage } = useApiMessage()
   const { t } = useI18n()
   const schema = createUpdateProfileFormSchema(t)
 
@@ -69,12 +69,14 @@ export function useUpdateProfileForm() {
       // `UpdateUserProfileAction` reseta e reenvia verificação) — o guard
       // (`core/router/guards.ts`) já manda pro `verify-email` sozinho na
       // próxima navegação, nada especial a fazer aqui além de atualizar a
-      // store. `requiresSubscription`/`favorites` são preservados (não
-      // vêm nesta resposta, só em `/auth/me`/login) — sem isso, salvar o
-      // perfil apagaria os favoritos já carregados da store.
-      authStore.setUser(toAuthUser(user, authStore.user?.favorites ?? []), {
-        requiresSubscription: authStore.requiresSubscription,
-      })
+      // store. `requiresSubscription`/`favorites`/`planLimits` são
+      // preservados (não vêm nesta resposta, só em `/auth/me`/login) — sem
+      // isso, salvar o perfil apagaria os favoritos/limites já carregados
+      // da store.
+      authStore.setUser(
+        toAuthUser(user, authStore.user?.favorites ?? [], authStore.user?.planLimits ?? null),
+        { requiresSubscription: authStore.requiresSubscription },
+      )
       values.password = ''
       values.passwordConfirmation = ''
       toast.success(t('identity.account.updateSuccess'))
@@ -84,8 +86,10 @@ export function useUpdateProfileForm() {
 
       if (apiError.fieldErrors) {
         for (const [field, messages] of Object.entries(apiError.fieldErrors)) {
-          const key = field === 'password_confirmation' ? 'passwordConfirmation' : field
-          errors.value[key as keyof UpdateProfileFormValues] = messages[0]
+          errors.value[field as keyof UpdateProfileFormValues] = resolveFieldError(
+            field,
+            messages[0],
+          )
         }
       }
     } finally {

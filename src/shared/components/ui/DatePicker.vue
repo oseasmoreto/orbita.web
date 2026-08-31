@@ -332,8 +332,17 @@ function toggleMeridiem(): void {
 // achado já documentado pro Select/Tooltip/DropdownMenu/Modal — sempre
 // seletor "plano" dentro do `:global(...)`, nunca `&` aninhado (é o bug
 // real já corrigido no Select, ver design-system.md).
+//
+// `z-index: 200`, não 50 — achado real, 2026-08-31: usar este componente
+// DENTRO de um `Modal.vue` (`z-index: 101`) fazia o popover renderizar
+// atrás do conteúdo do modal, interceptando clique nos dias/atalhos
+// (confirmado com Playwright: "element intercepts pointer events"). O
+// mesmo bug existe em Select/Tooltip/DropdownMenu/DateRangePicker — os 5
+// portais floating do design system usavam 50, sempre menor que
+// Modal/Drawer (100/101), então nenhum funcionava de verdade aninhado
+// dentro de um Modal/Drawer. Corrigido nos 5 pro mesmo valor.
 :global(.ui-date-picker-content) {
-  z-index: 50;
+  z-index: 200;
   width: 280px;
   padding: $spacing-16;
   background-color: $color-bg-1;

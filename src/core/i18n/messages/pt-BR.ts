@@ -193,7 +193,49 @@ export default {
         },
         submitCreate: 'Criar produto',
         submitEdit: 'Salvar alterações',
+        tabs: {
+          details: 'Dados do produto',
+          launches: 'Lançamentos',
+        },
         updateSuccess: 'Produto atualizado com sucesso.',
+      },
+      launches: {
+        columns: {
+          date: 'Data',
+          purchasePrice: 'Preço de compra',
+          quantity: 'Quantidade',
+        },
+        createButton: 'Novo lançamento',
+        deleteConfirm: {
+          description: 'Essa ação não pode ser desfeita.',
+          title: 'Excluir lançamento?',
+        },
+        deleteSuccess: 'Lançamento excluído com sucesso.',
+        empty: 'Nenhum lançamento cadastrado ainda.',
+        form: {
+          createSuccess: 'Lançamento criado com sucesso.',
+          createTitle: 'Novo lançamento',
+          editTitle: 'Editar lançamento',
+          errors: {
+            dateRequired: 'Data é obrigatória.',
+            purchasePriceMin: 'Preço de compra não pode ser negativo.',
+            quantityInteger: 'Quantidade deve ser um número inteiro.',
+            quantityMin: 'Quantidade deve ser pelo menos 1.',
+          },
+          fields: {
+            date: 'Data',
+            purchasePrice: 'Preço de compra',
+            quantity: 'Quantidade',
+          },
+          submitCreate: 'Criar lançamento',
+          submitEdit: 'Salvar alterações',
+          updateSuccess: 'Lançamento atualizado com sucesso.',
+        },
+      },
+      planLimit: {
+        reached:
+          'Você atingiu o limite de produtos do seu plano. Faça upgrade para cadastrar mais.',
+        usage: '{total} de {max} produtos cadastrados',
       },
       searchPlaceholder: 'Buscar por SKU',
       title: 'Produtos',
@@ -272,22 +314,113 @@ export default {
    * backend manda em `message` (`useApiMessage.resolveMessage()` resolve
    * por igualdade exata, `te()`/`t()` do vue-i18n tratam ponto como
    * caminho de objeto aninhado, então essas chaves não podem ser
-   * namespaced). Só as que a Fase 2 (assinatura) realmente usa — não
-   * adiantar o catálogo inteiro de erros do backend sem uma tela que
-   * dispare cada um (seção 6.3 de `docs/infra/convencoes-frontend-infra.md`).
+   * namespaced).
+   *
+   * **Regra revista em 2026-08-31** (era "só as que a Fase 2 realmente
+   * usa" — seção 6.3 de `docs/infra/convencoes-frontend-infra.md`):
+   * achado real ao testar deep link pra um produto inexistente
+   * (`/products/:id/edit`) — o toast mostrou a chave crua
+   * "errorMessageNotFound" na tela. Conferido: as 9 chaves
+   * "genéricas/infra" do backend (`ErrorUnauthorized`/`ErrorForbidden`/
+   * `ErrorNotFound`/`ErrorTooManyRequests`/`ErrorCsrfTokenMismatch`/
+   * `ErrorServer`/`ErrorInvalidCredentials`/`ErrorAccountNotActive`/
+   * `ErrorCannotModifyOwnAccount`) NENHUMA delas tinha sido cadastrada —
+   * TODO 401/403/404/429/CSRF/500 do app inteiro, desde sempre, mostrava
+   * a chave crua. Diferente de uma `ApiMessageKey` de NEGÓCIO específica
+   * (ex.: `ErrorPlanChangeAlreadyPending`, só existe em `PATCH
+   * /subscriptions`), essas genéricas podem ser disparadas por QUALQUER
+   * endpoint do backend — não faz sentido esperar "uma tela que dispare
+   * cada uma" pra cadastrar, cadastradas todas de uma vez agora.
    */
+  errorMessageAccountNotActive: 'Sua conta está desativada.',
   errorMessageCannotDisconnectLastAccessMethod:
     'Esse é seu único jeito de acessar a conta — defina uma senha antes de desconectar.',
+  errorMessageCannotModifyOwnAccount: 'Você não pode alterar a própria conta por aqui.',
+  errorMessageCsrfTokenMismatch: 'Sua sessão expirou. Recarregue a página e tente de novo.',
   errorMessageDocumentRequired: 'Informe um CPF ou CNPJ válido pra continuar.',
   errorMessageEmailNotVerified: 'Confirme seu e-mail antes de assinar um plano.',
+  errorMessageForbidden: 'Você não tem permissão para fazer isso.',
   errorMessageIncorrectPassword: 'Senha incorreta.',
+  errorMessageInvalidCredentials: 'E-mail ou senha incorretos.',
+  errorMessageNotFound: 'Não encontramos o que você estava procurando.',
   errorMessagePlanChangeAlreadyPending:
     'Você já tem uma troca de plano aguardando confirmação de pagamento.',
+  /**
+   * `ApiMessageKey::ErrorProductLimitReached` — `CreateProductAction`
+   * (backend) já bloqueia a criação quando `PRODUCT.count() >= PLAN.max_products`,
+   * achado real ao levantar o item "usePlanLimit" da Fase 3 (a validação
+   * já existia no backend, só nunca tinha sido cadastrada aqui — o
+   * usuário via a chave crua "errorMessageProductLimitReached" no toast).
+   */
+  errorMessageProductLimitReached:
+    'Você atingiu o limite de produtos do seu plano. Faça upgrade para cadastrar mais.',
   errorMessageSamePlan: 'Você já está nesse plano.',
+  errorMessageServer: 'Ocorreu um erro no servidor. Tente novamente em instantes.',
   errorMessageSubscriptionAlreadyActive: 'Você já tem uma assinatura ativa.',
   errorMessageSubscriptionNotActive: 'Sua assinatura não está ativa no momento.',
+  errorMessageTooManyRequests: 'Muitas tentativas. Aguarde um momento e tente de novo.',
+  errorMessageUnauthorized: 'Sua sessão expirou. Faça login novamente.',
+  /**
+   * `ApiMessageKey::ErrorValidation` (backend) — achado real, 2026-08-31:
+   * nunca tinha sido cadastrada aqui, então TODO 422 de validação em
+   * qualquer formulário do app mostrava o toast genérico com a chave
+   * crua "errorMessageValidation" em vez de um texto de verdade. Mensagem
+   * de campo específica (embaixo de cada input) é resolvida à parte, via
+   * `errors.validation.*` abaixo — este toast é só o aviso geral de "veja
+   * os campos destacados".
+   */
+  errorMessageValidation: 'Confira os campos destacados abaixo.',
   errors: {
     unknown: 'Ocorreu um erro inesperado. Tente novamente.',
+    /**
+     * Dicionário de erro de VALIDAÇÃO DE CAMPO (não confundir com
+     * `errorMessage*`/`ApiMessageKey`, que é a mensagem GERAL do 422) —
+     * resolvido via `useApiMessage().resolveFieldError(field, rule)`.
+     * Achado real: o backend manda `errors` chaveado pelo NOME DA REGRA
+     * que falhou (`Str::snake(class_basename($rule))`,
+     * `../backend/bootstrap/app.php`), nunca uma frase pronta — sem esse
+     * dicionário, o usuário via a chave crua embaixo do campo (ex.:
+     * "closure_validation_rule" sob um EAN inválido, a captura real que
+     * motivou isto). Lista abaixo é EXAUSTIVA contra as regras
+     * realmente usadas em `../backend/app/Http/Requests/**\/*.php` hoje —
+     * nunca adivinhada, checar lá antes de adicionar uma regra nova.
+     */
+    validation: {
+      /**
+       * Regras `Closure` custom (`$fail()`) SEMPRE colapsam pro mesmo
+       * nome genérico de classe (`closure_validation_rule`) — só um
+       * dicionário POR CAMPO diferencia "EAN inválido" de "NCM inválido"
+       * de "CPF/CNPJ inválido". Os 3 casos reais que existem hoje:
+       * `CreateProductRequest`/`UpdateProductRequest` (`ean`/`ncm`) e
+       * `SubscribeToPlanRequest` (`document`).
+       */
+      byField: {
+        document: {
+          closure_validation_rule: 'Informe um CPF ou CNPJ válido.',
+        },
+        ean: {
+          closure_validation_rule:
+            'EAN inválido — deve ser um código de barras EAN-8/12/13/14 válido.',
+        },
+        ncm: {
+          closure_validation_rule: 'NCM inválido — deve ter exatamente 8 dígitos.',
+        },
+      },
+      confirmed: 'A confirmação não corresponde.',
+      date: 'Informe uma data válida.',
+      email: 'Informe um e-mail válido.',
+      exists: 'Registro não encontrado.',
+      gte: 'Valor deve ser maior ou igual ao mínimo permitido.',
+      integer: 'Deve ser um número inteiro.',
+      max: 'Valor acima do máximo permitido.',
+      min: 'Valor abaixo do mínimo permitido.',
+      numeric: 'Deve ser um número.',
+      regex: 'Formato inválido.',
+      required: 'Campo obrigatório.',
+      string: 'Deve ser um texto.',
+      unique: 'Já existe um registro com esse valor.',
+      uuid: 'Identificador inválido.',
+    },
   },
   header: {
     goBack: 'Voltar',

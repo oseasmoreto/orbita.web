@@ -33,12 +33,37 @@ export function toFavoriteItem(
   }
 }
 
+/**
+ * Limites do plano ATUAL — `null` pra `admin_master` (sem assinatura
+ * própria) ou usuário ainda sem plano. `maxProducts`/`maxMarketplaces`
+ * também podem ser `null` individualmente (plano sem limite nesse
+ * recurso). Pedido pra sessão de backend em 2026-08-31 (mesmo padrão de
+ * `favorites`/`requiresSubscription`, denormalizado direto em
+ * `LoginResultResource` pra `modules/catalog` nunca precisar importar
+ * `modules/billing` só pra achar o plano ativo).
+ */
+export interface PlanLimits {
+  maxMarketplaces: number | null
+  maxProducts: number | null
+}
+
+export function toPlanLimits(
+  resource: components['schemas']['LoginResultResource']['plan_limits'],
+): PlanLimits | null {
+  if (!resource) {
+    return null
+  }
+
+  return { maxMarketplaces: resource.max_marketplaces, maxProducts: resource.max_products }
+}
+
 export interface AuthUser {
   email: string
   emailVerifiedAt: string | null
   favorites: FavoriteItem[]
   id: string
   name: string
+  planLimits: PlanLimits | null
   role: UserRole
   status: string
 }
