@@ -1,6 +1,6 @@
 import { createRouter, createWebHistory, type RouteRecordRaw } from 'vue-router'
 import AppLayout from '@/core/layouts/AppLayout.vue'
-import { billingRoutes } from '@/modules/billing/routes'
+import { billingAppRoutes, billingRoutes } from '@/modules/billing/routes'
 import { catalogRoutes } from '@/modules/catalog/routes'
 import { identityAppRoutes, identityRoutes } from '@/modules/identity/routes'
 import { setupRouterGuards } from './guards'
@@ -22,6 +22,7 @@ const routes: RouteRecordRaw[] = [
       },
       ...catalogRoutes,
       ...identityAppRoutes,
+      ...billingAppRoutes,
     ],
     component: AppLayout,
     meta: { requiresAuth: true },

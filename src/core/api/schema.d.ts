@@ -1278,6 +1278,15 @@ export interface components {
         SubscriptionResource: {
             id: string;
             plan_id: string;
+            /**
+             * @description Só preenchido quando existe uma troca de plano aguardando
+             *     confirmação de pagamento (tarefa 38) — plan_id continua o
+             *     ATUAL até o webhook do Mercado Pago aprovar. Mesmo campo já
+             *     exposto em SubscriptionCheckoutResource; faltava aqui — achado
+             *     real reportado pelo front, 2026-08-31 (tela "Meu plano" sem
+             *     sinal de troca pendente num carregamento novo de página).
+             */
+            pending_plan_id: string | null;
             status: components["schemas"]["SubscriptionStatus"];
             cancel_at_period_end: boolean;
             /** Format: date-time */

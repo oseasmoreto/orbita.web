@@ -2737,6 +2737,29 @@ Orbita** (pedido explícito): nenhum seletor de marketplace nem plano
   mais um anual mockado pra exercitar a variante) e com o fluxo completo
   de assinatura (ver `DocumentPromptModal` abaixo).
 
+**2 props novas, 2026-08-31 — segundo consumidor real (`MySubscriptionView.vue`,
+troca de plano) sem promover o componente pra `shared/` ainda** (continua
+só os 2 consumidores dentro de `modules/billing/`, critério de promoção
+não cruzado):
+
+- **`isCurrent`**: card representa o plano que o usuário JÁ tem hoje —
+  troca o `Button` de CTA por um badge "Plano atual" (fundo `{colors.ink-4}`,
+  texto `{colors.ink-40}`, mesma linguagem de "estado neutro" já usada em
+  outros badges do design system) — nunca oferece selecionar o próprio
+  plano de novo, o backend recusaria com `errorMessageSamePlan`
+  (`ChangeSubscriptionPlanAction`). `MySubscriptionView.vue` não passa
+  `isCurrent` pra nenhum card na prática — filtra o plano atual da lista
+  ANTES de renderizar a grade (`otherPlans`, via `canChangeToPlan`), então
+  a prop existe pronta pro caso um consumidor futuro preferir mostrar
+  todos os planos com o atual desabilitado em vez de escondido.
+- **`ctaLabelOverride`**: sobrescreve o texto do botão — sem isso, "Começar
+  agora"/"Assinar com desconto" (cópia de assinatura NOVA) apareciam até
+  no contexto de TROCA de plano, achado real ao inspecionar o screenshot
+  da primeira versão (`MySubscriptionView.vue` chamando `PlanCard` sem
+  essa prop). Corrigido passando `$t('billing.mySubscription.changePlan.cta')`
+  ("Trocar de plano") — `null` por padrão preserva o comportamento
+  original em `ChoosePlanView.vue`, que não passa a prop.
+
 ### DocumentPromptModal (`modules/billing/components/blocks/DocumentPromptModal.vue`)
 
 Aberto quando `useSubscribeToPlan.subscribe()` recebe
@@ -2767,13 +2790,146 @@ Uma view só pras 3 `back_urls` reais do Checkout Pro do Mercado Pago
 `${FRONTEND_URL}/billing/success`/`/pending`/`/failure`) — sem ela, quem
 completasse o pagamento hospedado caía num 404 real ao voltar.
 `route.meta.checkoutResult` (`'success' | 'pending' | 'failure'`) decide
-ícone/cor/texto/CTA; as 3 rotas (`modules/billing/routes.ts`) só variam
-esse meta, mesmo componente — nada de 3 views quase idênticas
-duplicadas. Reaproveita `AuthLayout.vue` (mesmo shell de
-Login/Register/ResetPassword). Sem polling de status — o webhook
-(`billing.webhooks.mercadopago`) confirma o pagamento no backend de
-forma assíncrona, independente dessa tela estar aberta ou não; refresh
-em tempo real é escopo maior, ainda não implementado.
+a variante ORIGINAL (ícone/cor/texto/CTA); as 3 rotas
+(`modules/billing/routes.ts`) só variam esse meta, mesmo componente —
+nada de 3 views quase idênticas duplicadas. Reaproveita `AuthLayout.vue`
+(mesmo shell de Login/Register/ResetPassword).
+
+**Refresh em tempo real ligado em 2026-08-31** — pedido direto do
+usuário ("vamos seguir com o gap 1"), fechando a última pendência real
+da Fase 2; só ficou barato de fazer depois do Gap 2 (`pending_plan_id`
+em `SubscriptionResource`, ver seção `MySubscriptionView` abaixo) já ter
+sido resolvido antes.
+
+- **`useSubscriptionConfirmationPoll.ts`** (`modules/billing/composables/`,
+  `isSubscriptionConfirmed` testado como função pura) — `start()`, no
+  `onMounted`, captura um SNAPSHOT da assinatura e só liga o poll
+  (`useIntervalFn` do `@vueuse/core`, 3s, até 20 tentativas — ~1min,
+  desiste em silêncio depois) se houver algo pendente pra confirmar:
+  `status: pending` (assinatura NOVA, `SubscribeToPlanAction` já cria a
+  linha assim antes do redirect) ou `pending_plan_id` setado (TROCA de
+  plano, `ChangeSubscriptionPlanAction` idem). As duas rotas de retorno
+  (`/success`/`/pending`) servem os dois fluxos sem diferenciar na
+  URL — comparar contra o snapshot inicial (não um valor fixo) é o que
+  permite saber qual das duas transições é a que importa aqui.
+  "Confirmado" = `status` virou `active` OU `pending_plan_id` voltou a
+  `null` — as 2 transições reais de `ConfirmSubscriptionPaymentAction`
+  (backend, chamado pelo webhook).
+- **`displayVariant` (não `variant`) é o que o template usa** — assim que
+  `isConfirmed`, a tela troca SOZINHA pra `success` (ícone/cor/texto/CTA,
+  reaproveitando os MESMOS textos/tokens já usados pra assinatura
+  aprovada de verdade, zero cópia nova) sem precisar de F5. `failure`
+  nunca é alvo de poll (resultado definitivo, sem nada a esperar).
+- **Indicador "Verificando confirmação automaticamente..."** (`Spinner`
+  14px + texto, `billing.checkoutResult.pending.checking`) — só aparece
+  na variante ORIGINAL `pending` enquanto `isPolling`; some sozinho
+  quando confirma (a tela já virou `success` nesse ponto) ou quando o
+  timeout de tentativas esgota.
+- Verificado em browser real contra o backend local, simulando o webhook
+  via tinker ENQUANTO a página estava aberta (o cenário real que a
+  feature existe pra cobrir, não só a leitura estática): assinatura
+  `pending`→`active` no meio do poll fez a tela virar de "Pagamento em
+  análise" pra "Pagamento aprovado" sozinha (ícone, cor, título,
+  descrição, indicador de verificação sumindo) sem nenhum reload; troca
+  de plano pendente resolvida (`pending_plan_id`→`null`) também
+  detectada da mesma forma, confirmada depois navegando pra "Meu plano"
+  (aviso de troca pendente já tinha sumido, plano atual já mostrando o
+  novo).
+
+### MySubscriptionView (`modules/billing/views/MySubscriptionView.vue`)
+
+Fecha as pendências reais que restavam da Fase 2, pedido direto do
+usuário ("implemente tudo q falta pra fase 02"): cancelamento
+(`DELETE /subscriptions/{id}`) e troca de plano
+(`PATCH /subscriptions/{id}`), os dois endpoints já prontos no backend
+desde a rodada original da Fase 2, telas nunca construídas até aqui.
+
+- **Mesma receita de "seção com borda" de `AccountView.vue`**
+  (`{colors.bg-1}` + borda `{colors.ink-10}` + `{radius.16}` + padding
+  `{spacing.24}`) — resumo da assinatura numa seção, troca de plano em
+  outra, sem componente de "card" novo (`AccountView.vue` já resolveu
+  esse gap, reaproveitado aqui, não reinventado).
+- **Resumo em grade de campos** (plano/status/ciclo/assinante desde/
+  válido até) — `StatusDot` pro status (`subscriptionStatusColor`,
+  `subscription.type.ts`), `CalendarBlank` 14px antes das datas (mesmo
+  padrão de "ícone de apoio pequeno antes de texto" já usado em
+  `IconText.vue`/células de tabela, sem reaproveitar `IconText` aqui
+  porque não é uma célula de `DataTable`).
+- **Sem `ConfirmDialog` antes de trocar de plano** — mesma consistência
+  do fluxo de assinatura original (`ChoosePlanView.vue`): clicar no
+  `PlanCard` já redireciona pro checkout do Mercado Pago, onde o usuário
+  revisa o valor prorata antes de pagar — o checkout hospedado já É a
+  confirmação. Cancelamento usa `ConfirmDialog` porque não tem esse passo
+  intermediário — o clique cancela direto.
+- **Grade de troca de plano reaproveita `PlanCard.vue`** (ver seção
+  acima, props `isCurrent`/`ctaLabelOverride` novas) — filtra o plano
+  atual da lista (`canChangeToPlan`, `useSubscription.ts`) antes de
+  renderizar, então a grade só mostra os planos pra que trocar de
+  verdade.
+- **`canCancelSubscription`/`canChangeToPlan` são funções puras,
+  test-first** (`tests/modules/billing/composables/useSubscription.test.ts`)
+  — mesma régua de `usePlanPricing.ts`: `canCancelSubscription` só é
+  falso quando já não há assinatura ou o cancelamento já foi agendado
+  (evita disparar `DELETE` de novo à toa — o backend é idempotente,
+  então isso é só UX, não uma trava de segurança real);
+  `canChangeToPlan` só é falso pro próprio plano atual (o backend
+  recusaria com `errorMessageSamePlan`).
+- **Gap de contrato do backend fechado em 2026-08-31** — pedido direto
+  do usuário ("vamos iniciar pelo gap 2"), mensagem pra sessão
+  `backend-c5` pedindo `pending_plan_id` em `SubscriptionResource`
+  (`GET /subscriptions`), resolvido no mesmo dia. `subscription.type.ts`
+  ganhou o campo em `Subscription`/`toSubscription()`. Efeito na tela:
+  um `computed` (`pendingPlan`, resolve o `id` pro `Plan` de verdade na
+  mesma lista já carregada pra grade de troca) alimenta um aviso
+  (`billing.mySubscription.pendingPlanChange`, "Troca para o plano {plano}
+  aguardando confirmação de pagamento") e esconde a seção inteira
+  "Trocar de plano" enquanto a troca está pendente — evita deixar
+  clicar de novo só pra bater no 422 `errorMessagePlanChangeAlreadyPending`.
+  **`.my-subscription-view__cancelled-notice` generalizada pra
+  `__notice`** — os 2 avisos (cancelamento agendado, troca pendente)
+  podem aparecer AO MESMO TEMPO (`cancelAtPeriodEnd`/`pendingPlanId` são
+  estados independentes na mesma assinatura), `margin-bottom` em vez de
+  depender de `gap` de container, pra empilhar bem nos dois casos (1 ou
+  2 avisos).
+- Verificado em browser real contra o backend local, com dado de
+  verdade (assinatura ativa criada via tinker + segundo plano real
+  disponível pra trocar): resumo renderiza plano/status/datas corretos;
+  cancelar mostra "Cancelamento agendado — acesso mantido até {data}" e
+  sobrevive a um reload da página; clicar "Trocar de plano" dispara o
+  `PATCH` real e redireciona de fato pro Checkout Pro do Mercado Pago
+  (sandbox, URL com `pref_id` real) — confirmado no banco que
+  `pending_plan_id` fica setado pro plano novo enquanto `plan_id`
+  continua o antigo, exatamente como `ChangeSubscriptionPlanAction`
+  documenta; repetir a troca com uma já pendente mostra o toast de erro
+  certo sem navegar pra lugar nenhum; com `pending_plan_id` real setado
+  no banco, o aviso mostra o nome do plano de destino resolvido ("Pro")
+  e a seção de troca some; com cancelamento E troca pendente ao mesmo
+  tempo, os 2 avisos empilham e o botão de cancelar (correto — já
+  cancelado) some.
+
+### TransactionsView (`modules/billing/views/TransactionsView.vue`)
+
+"Faturas" — histórico próprio via `GET /transactions`
+(`ListOwnTransactionsAction`), read-only. Mesma receita de
+`ProductsView.vue` (`useResourceList`/`DataTable`/`PaginationNav`), sem
+`ListToolbar`/`useCrudDrawer`/`ConfirmDialog` — não existe criar/editar/
+excluir transação (registro financeiro imutável, mesma regra já vale pro
+admin: `AdminTransactionController` só tem `index`/`show`).
+
+- **`buildTransactionSortParam` testado** (mesmo padrão de
+  `buildProductSortParam`, `useProductList.ts`) — a API real só ordena
+  por `value`/`created_at` (`core/api/schema.d.ts`, `transaction.index`),
+  qualquer outra coluna não ganha `sortable: true` na tabela.
+- **Status via `StatusDot`** (`transactionStatusColor`,
+  `transaction.type.ts`) — aprovada/autorizada em verde, pendente/em
+  processamento/em mediação em amarelo, recusada/cancelada em vermelho,
+  reembolsada/estornada (chargeback) em cinza (sem sinal claro de
+  "bom"/"ruim" pro usuário final, tratado como neutro).
+- Verificado em browser real contra o backend local, com 2 transações
+  reais criadas via tinker (`approved`/`pix`, `pending`/`credit_card`):
+  tabela renderiza as 2 linhas com valor formatado (`formatMoney`) e
+  `StatusDot` na cor certa (verde/amarelo), paginação aparece mesmo com
+  só 1 página (mesmo comportamento já esperado de `PaginationNav`).
 
 ### AccountView (`modules/identity/views/AccountView.vue`)
 

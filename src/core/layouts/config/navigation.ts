@@ -102,18 +102,38 @@ export const marketplacesGroup: NavGroup = {
 }
 
 /**
- * Billing (Bounded Context) — endpoints de assinatura já existem
- * (`GET /subscriptions`, `GET /transactions`), telas de gestão (troca de
- * plano, cancelamento, histórico) são pendência real da Fase 2
- * (`docs/planejamento/plano-implementacao.md`). `/choose-plan` (Fase 2,
- * já implementada) não entra aqui — é rota de onboarding, fora do shell
+ * Billing (Bounded Context) — "Meu plano" (`billing-subscription`, troca
+ * de plano + cancelamento) e "Faturas" (`billing-transactions`, histórico
+ * de transações) implementados em 2026-08-31, fechando as últimas
+ * pendências reais da Fase 2 (`docs/planejamento/plano-implementacao.md`).
+ * `/choose-plan` não entra aqui — é rota de onboarding, fora do shell
  * principal, não faz sentido como item de sidebar.
+ *
+ * **`roles: ['user']`, pedido direto do usuário em 2026-08-31**:
+ * `admin_master` não assina plano nenhum (`USER.role` é o único controle
+ * de acesso do MVP, sem cobrança pra quem administra a plataforma — o
+ * guard de assinatura ativa em `core/router/guards.ts` já pula esse check
+ * inteiro pra `admin_master`), então "Meu plano"/"Faturas" não fazem
+ * sentido nessa conta — mesma régua de `NavGroup.roles` já usada no grupo
+ * `adminGroup` abaixo, só que no sentido inverso (esconde de admin, em
+ * vez de mostrar só pra admin).
  */
 export const billingGroup: NavGroup = {
   items: [
-    { icon: Tag, id: 'billing-subscription', label: t('sidebar.nav.myPlan') },
-    { icon: Receipt, id: 'billing-transactions', label: t('sidebar.nav.invoices') },
+    {
+      icon: Tag,
+      id: 'billing-subscription',
+      label: t('sidebar.nav.myPlan'),
+      to: { name: 'billing-subscription' },
+    },
+    {
+      icon: Receipt,
+      id: 'billing-transactions',
+      label: t('sidebar.nav.invoices'),
+      to: { name: 'billing-transactions' },
+    },
   ],
+  roles: ['user'],
   title: t('sidebar.nav.subscription'),
 }
 

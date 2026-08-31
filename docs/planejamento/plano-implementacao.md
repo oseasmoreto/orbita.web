@@ -441,7 +441,7 @@ nunca importa de outro módulo. Detalhe completo em
 
 ---
 
-## Fase 2 — Billing
+## Fase 2 — Billing (concluída)
 
 Planos e assinatura — obrigatório antes de liberar o resto do sistema
 (jornada: `ChoosePlan → Payment → Dashboard`).
@@ -496,24 +496,122 @@ limitado a canal — `PLAN` não tem esse conceito
   erro de backend sem entrada aqui ainda cai no texto cru da chave,
   gap sistêmico que continua existindo pras chaves não cadastradas).
 
-**Pendências reais desta fase** (fora do escopo do pedido "listagem de
-planos"):
-- Troca de plano (`PATCH /subscriptions/{id}`, upgrade/downgrade com
-  prorata), cancelamento (`DELETE /subscriptions/{id}`), histórico de
-  transações (`GET /transactions`) — endpoints já existem no backend,
-  telas ainda não construídas.
-- Polling/webhook-driven refresh de status em tempo real
-  (`useSubscriptionStatus`) — hoje o webhook confirma o pagamento de
-  forma assíncrona, mas nada na UI reflete isso automaticamente; usuário
-  só vê o status atualizado num próximo carregamento de página.
-- `EmailNotVerifiedException` — **resolvido em 2026-08-30**: cadastro
-  normal agora passa por `/verify-email` (Fase 1) antes de chegar em
+**Troca de plano, cancelamento e histórico de transações concluídos em
+2026-08-31** — pedido direto do usuário ("implemente tudo q falta pra
+fase 02"), fechando as pendências que restavam desta fase:
+- `modules/billing/types/subscription.type.ts`/`transaction.type.ts` —
+  `Subscription`/`Transaction` (em cima de `SubscriptionResource`/
+  `TransactionResource` gerados) + `toSubscription`/`toTransaction` +
+  mapeamento status→cor pro `StatusDot` (`subscriptionStatusColor`/
+  `transactionStatusColor`).
+- `billingApi.ts` ganhou `getCurrentSubscription()` (`GET /subscriptions`,
+  `per_page: 1` + `sort: -created_at` — modelo é "1 login = 1 assinatura",
+  a lista na prática nunca tem mais que 1 item), `changeSubscriptionPlan()`
+  (`PATCH`, mesmo formato de resposta de `subscribeToPlan` — abre um novo
+  checkout REAL no Mercado Pago pelo valor prorata), `cancelSubscription()`
+  (`DELETE`, nunca apaga a linha, só marca `cancel_at_period_end`) e
+  `listTransactions()` (`GET /transactions`, paginado).
+- `useSubscription.ts` (fetch + cancelar + trocar de plano, com
+  `canCancelSubscription`/`canChangeToPlan` extraídas como funções puras
+  test-first — mesma régua de `usePlanPricing.ts`) e
+  `useTransactionList.ts` (wrapper de `useResourceList`, mesmo padrão de
+  `useProductList.ts`, com `buildTransactionSortParam` testado).
+- `MySubscriptionView.vue` ("Meu plano") — resumo da assinatura atual
+  (plano/status/ciclo/datas) + cancelamento (com `ConfirmDialog`) + troca
+  de plano reaproveitando `PlanCard.vue` (ganhou as props `isCurrent`/
+  `ctaLabelOverride` novas) num grid dos demais planos. Sem
+  `ConfirmDialog` antes de trocar de plano — mesma consistência do fluxo
+  de assinatura original: clicar já redireciona pro checkout do Mercado
+  Pago, que já é a confirmação (o usuário revisa o valor prorata lá antes
+  de pagar).
+- `TransactionsView.vue` ("Faturas") — mesmo padrão de `ProductsView.vue`
+  (`DataTable`/`PaginationNav`), sem `ListToolbar`/criar/editar/excluir
+  (transação é registro financeiro imutável, mesma regra já vale pro
+  admin).
+- `navigation.ts`: "Meu plano"/"Faturas" (grupo Assinatura) ganharam `to`
+  reais, apontando pras 2 rotas novas (`billingAppRoutes`, filhas de
+  `AppLayout`, mesmo padrão de `catalogRoutes`/`identityAppRoutes`).
+- Verificado em browser real contra o backend local, com dado de
+  verdade (assinatura ativa + 2 transações criadas via tinker): resumo
+  do plano renderiza correto; cancelar mostra o aviso "Cancelamento
+  agendado" e sobrevive a um reload; trocar de plano dispara o `PATCH`
+  real e redireciona de fato pro Checkout Pro do Mercado Pago (sandbox,
+  `pref_id` real na URL) — confirmado no banco que `pending_plan_id`
+  ficou setado pro plano novo enquanto `plan_id` continua o antigo, exatamente
+  como `ChangeSubscriptionPlanAction` documenta; tentar trocar de novo
+  com uma troca já pendente mostra o toast `errorMessagePlanChangeAlreadyPending`
+  sem navegar pra lugar nenhum; tabela de Faturas mostra as 2 transações
+  com `StatusDot` na cor certa (verde/amarelo) e valor formatado.
+
+**Gap do `pending_plan_id` fechado em 2026-08-31** — pedido direto do
+usuário ("vamos iniciar pelo gap 2"), mensagem pra sessão `backend-c5`
+pedindo o campo em `SubscriptionResource` (backend respondeu no mesmo
+dia). `subscription.type.ts` ganhou `pendingPlanId` em `Subscription`/
+`toSubscription()`; `MySubscriptionView.vue` ganhou:
+- Um aviso (`billing.mySubscription.pendingPlanChange`, mesma classe
+  visual `.my-subscription-view__notice` do aviso de cancelamento —
+  generalizada de `__cancelled-notice`, já que os 2 avisos podem
+  aparecer AO MESMO TEMPO: `cancelAtPeriodEnd`/`pendingPlanId` são
+  estados independentes, um usuário pode ter cancelado a renovação E
+  estar com uma troca de plano pendente na mesma assinatura).
+- A seção inteira "Trocar de plano" (`otherPlans`) fica escondida
+  enquanto existe uma troca pendente — evita deixar o usuário clicar de
+  novo só pra bater no 422 `errorMessagePlanChangeAlreadyPending`; antes
+  disso o front não tinha como saber que já existia uma troca em
+  andamento num carregamento novo de página.
+- Verificado em browser real (backend local, `pending_plan_id` setado
+  via tinker): aviso aparece com o nome do plano de destino resolvido
+  (`Pro`), seção de troca escondida, botão de cancelar continua visível
+  (independente); com os 2 estados simultâneos (cancelado E com troca
+  pendente), os 2 avisos empilham e o botão de cancelar some
+  corretamente.
+
+**Refresh de status em tempo real implementado em 2026-08-31** — pedido
+direto do usuário ("vamos seguir com o gap 1"), última pendência real da
+Fase 2. `useSubscriptionConfirmationPoll.ts` (`modules/billing/composables/`,
+testado — `isSubscriptionConfirmed` é função pura, test-first):
+- `start()` (chamado no `onMounted` de `BillingCheckoutResultView.vue`,
+  só nas variantes `success`/`pending` — `failure` é resultado
+  definitivo, sem nada a esperar) captura um SNAPSHOT da assinatura
+  (`getCurrentSubscription()`) e só liga o poll (`useIntervalFn` do
+  `@vueuse/core`, 3s de intervalo, até 20 tentativas — ~1min, desiste em
+  silêncio depois disso) se houver mesmo algo pendente: `status: pending`
+  (assinatura nova, `SubscribeToPlanAction` já cria a linha assim antes
+  do redirect) ou `pending_plan_id` setado (troca de plano,
+  `ChangeSubscriptionPlanAction` idem). As duas rotas de retorno servem
+  os dois fluxos sem diferenciar na URL — só dá pra saber qual transição
+  importa comparando contra o snapshot inicial, não um valor fixo.
+- Confirmado = `status` virou `active` (assinatura nova) OU
+  `pending_plan_id` voltou a `null` (troca resolvida) — `ConfirmSubscriptionPaymentAction`
+  (backend, chamado pelo webhook) é quem faz essas 2 transições.
+- Uma vez confirmado, a tela troca SOZINHA da variante `pending` pra
+  `success` (ícone/cor/texto/CTA, via um `displayVariant` computed que
+  prevalece sobre o `route.meta.checkoutResult` original) — sem F5. Um
+  indicador discreto ("Verificando confirmação automaticamente...", com
+  spinner) aparece enquanto isso, só na variante ORIGINAL `pending`.
+- Só ficou barato de implementar depois do Gap 2 (acima) fechar — sem
+  `pending_plan_id` em `SubscriptionResource`, a detecção de "troca de
+  plano confirmada" teria que comparar snapshots de mais campos, com
+  mais ambiguidade.
+- Verificado em browser real contra o backend local, simulando o
+  webhook via tinker enquanto a página estava aberta (o cenário real que
+  a feature existe pra cobrir): assinatura `pending`→`active` no meio do
+  poll fez a tela virar de "Pagamento em análise" pra "Pagamento
+  aprovado" sozinha, indicador de "verificando" sumiu; troca de plano
+  pendente resolvida (`pending_plan_id` → `null`, `plan_id` atualizado)
+  também detectada, confirmado depois navegando pra "Meu plano" (aviso
+  de troca pendente sumiu, plano atual já mostrando o novo).
+
+**Resolvidos antes desta rodada, mantidos por contexto**:
+- `EmailNotVerifiedException` — resolvido em 2026-08-30: cadastro normal
+  agora passa por `/verify-email` (Fase 1) antes de chegar em
   `choose-plan`, então na prática esse erro só apareceria se o usuário
   navegasse direto pra `/choose-plan` sem passar pela tela de verificação
   — caso residual, ainda cai no toast genérico (`errorMessageEmailNotVerified`).
-- Gap de SSO + `choose-plan` já registrado na Fase 1 continua aberto:
-  cadastro novo via SSO não é mandado pra `/choose-plan` (falta sinal do
-  backend nesse retorno específico).
+- Gap de SSO + `choose-plan` — **já tinha sido fechado em 2026-08-30**
+  (ver "Gap fechado de brinde" na Fase 1 acima); a lista de pendências
+  desta seção nunca tinha sido atualizada depois disso, achado ao revisar
+  esta seção pra fechar a Fase 2 — corrigido aqui.
 
 ---
 

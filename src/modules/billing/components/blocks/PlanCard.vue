@@ -34,6 +34,10 @@ const props = withDefaults(
   defineProps<{
     plan: Plan
     highlighted?: boolean
+    /** Sobrescreve o texto do CTA — sem isso, "Começar agora"/"Assinar com desconto" (cópia de assinatura nova) não fazem sentido no contexto de TROCA de plano (`MySubscriptionView.vue` passa `$t('billing.mySubscription.changePlan.cta')`). */
+    ctaLabelOverride?: string | null
+    /** Card representa o plano que o usuário JÁ tem hoje (`modules/billing/views/MySubscriptionView.vue`, troca de plano) — troca o CTA por um badge "Plano atual" em vez de um botão, nunca oferece selecionar o próprio plano de novo (o backend recusaria com `errorMessageSamePlan`). */
+    isCurrent?: boolean
     isSubmitting?: boolean
     /** Só relevante pra `billingCycle === 'yearly'` — preço/mês pra comparação (`usePlanPricing.getMonthlyEquivalent`). */
     monthlyEquivalent?: number | null
@@ -41,7 +45,9 @@ const props = withDefaults(
     yearlySavings?: number | null
   }>(),
   {
+    ctaLabelOverride: null,
     highlighted: false,
+    isCurrent: false,
     isSubmitting: false,
     monthlyEquivalent: null,
     yearlySavings: null,
@@ -58,10 +64,12 @@ const displayPrice = computed(() =>
   formatMoney(isYearly.value ? (props.monthlyEquivalent ?? 0) : props.plan.price),
 )
 
-const ctaLabel = computed(() =>
-  props.highlighted
-    ? t('billing.choosePlan.card.ctaHighlighted')
-    : t('billing.choosePlan.card.cta'),
+const ctaLabel = computed(
+  () =>
+    props.ctaLabelOverride ??
+    (props.highlighted
+      ? t('billing.choosePlan.card.ctaHighlighted')
+      : t('billing.choosePlan.card.cta')),
 )
 
 const description = computed(() =>
@@ -95,7 +103,11 @@ const description = computed(() =>
 
     <p class="plan-card__description">{{ description }}</p>
 
+    <span v-if="isCurrent" class="plan-card__current-badge">
+      {{ $t('billing.mySubscription.changePlan.currentPlanBadge') }}
+    </span>
     <Button
+      v-else
       class="plan-card__cta"
       :disabled="isSubmitting"
       :variant="highlighted ? 'primary' : 'outline'"
@@ -198,6 +210,19 @@ const description = computed(() =>
 .plan-card__cta {
   margin-top: $spacing-16;
   width: 100%;
+}
+
+.plan-card__current-badge {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: $spacing-8 $spacing-16;
+  margin-top: $spacing-16;
+  font-size: $font-size-sm;
+  font-weight: $font-weight-semibold;
+  color: $color-ink-40;
+  background-color: $color-ink-4;
+  border-radius: $radius-8;
 }
 
 .plan-card__features {

@@ -2,13 +2,32 @@ import { apiClient } from '@/core/api/client'
 import type { components } from '@/core/api/schema'
 import type { ApiResponse, Paginated } from '@/shared/types/api.type'
 import { type Plan, toPlan } from '../types/plan.type'
+import {
+  type Subscription,
+  type SubscriptionCheckout,
+  toSubscription,
+  toSubscriptionCheckout,
+} from '../types/subscription.type'
+import { type Transaction, toTransaction } from '../types/transaction.type'
 
 type PlanResource = components['schemas']['PlanResource']
 type SubscribeToPlanRequest = components['schemas']['SubscribeToPlanRequest']
-type SubscriptionCheckoutResource = components['schemas']['SubscriptionCheckoutResource']
+type ChangeSubscriptionPlanRequest = components['schemas']['ChangeSubscriptionPlanRequest']
+type SubscriptionResource = components['schemas']['SubscriptionResource']
+type TransactionResource = components['schemas']['TransactionResource']
 
 interface PlansEnvelope {
   items: PlanResource[]
+  meta: { current_page: number; per_page: number; total: number }
+}
+
+interface SubscriptionsEnvelope {
+  items: SubscriptionResource[]
+  meta: { current_page: number; per_page: number; total: number }
+}
+
+interface TransactionsEnvelope {
+  items: TransactionResource[]
   meta: { current_page: number; per_page: number; total: number }
 }
 
@@ -31,12 +50,6 @@ export async function listPlans(): Promise<Paginated<Plan>> {
   }
 }
 
-export interface SubscriptionCheckout {
-  checkoutUrl: string
-  id: string
-  planId: string
-}
-
 /**
  * `POST /subscriptions` (`SubscribeToPlanAction`, backend) cria a
  * assinatura E a preferência de checkout no Mercado Pago (Checkout Pro,
@@ -51,14 +64,94 @@ export async function subscribeToPlan(
   document?: string,
 ): Promise<SubscriptionCheckout> {
   const payload: SubscribeToPlanRequest = { document, plan_id: planId }
-  const { data } = await apiClient.post<ApiResponse<SubscriptionCheckoutResource>>(
-    '/subscriptions',
-    payload,
+  const { data } = await apiClient.post<
+    ApiResponse<components['schemas']['SubscriptionCheckoutResource']>
+  >('/subscriptions', payload)
+
+  return toSubscriptionCheckout(data.data)
+}
+
+/**
+ * `GET /subscriptions` (`ListOwnSubscriptionsAction`, tarefa 37) — modelo
+ * é "1 login = 1 assinatura" (troca de plano atualiza a mesma linha,
+ * nunca cria uma nova, `docs/negocio/contexto-plataforma-precificacao.md`
+ * seção 2.2), então na prática a lista tem sempre 0 ou 1 item. `per_page: 1`
+ * + `sort: '-created_at'` já basta pra pegar a linha certa sem paginação
+ * de UI — `null` quando o usuário nunca assinou nada (`choose-plan` já
+ * teria barrado a navegação antes disso pela guard de assinatura, mas a
+ * função continua honesta sobre o caso).
+ */
+export async function getCurrentSubscription(): Promise<Subscription | null> {
+  const { data } = await apiClient.get<ApiResponse<SubscriptionsEnvelope>>('/subscriptions', {
+    params: { per_page: 1, sort: '-created_at' },
+  })
+
+  const [subscription] = data.data.items
+  return subscription ? toSubscription(subscription) : null
+}
+
+/**
+ * `PATCH /subscriptions/{id}` (`ChangeSubscriptionPlanAction`, tarefa 38)
+ * — mesmo formato de resposta/fluxo de `subscribeToPlan`: abre um novo
+ * checkout REAL no Mercado Pago pelo valor prorata, `plan_id` só muda de
+ * verdade quando o webhook aprova o pagamento (fica em `pendingPlanId`
+ * até lá). Erros de negócio reais: `errorMessageSamePlan` (mesmo plano
+ * atual), `errorMessagePlanChangeAlreadyPending` (já existe troca
+ * aguardando pagamento), `errorMessageSubscriptionNotActive`.
+ */
+export async function changeSubscriptionPlan(
+  subscriptionId: string,
+  planId: string,
+): Promise<SubscriptionCheckout> {
+  const payload: ChangeSubscriptionPlanRequest = { plan_id: planId }
+  const { data } = await apiClient.patch<
+    ApiResponse<components['schemas']['SubscriptionCheckoutResource']>
+  >(`/subscriptions/${subscriptionId}`, payload)
+
+  return toSubscriptionCheckout(data.data)
+}
+
+/**
+ * `DELETE /subscriptions/{id}` (`CancelSubscriptionAction`, tarefa 39) —
+ * NUNCA apaga a linha nem cancela na hora: só marca
+ * `cancel_at_period_end`, mantém acesso até `end_date` do ciclo já pago,
+ * sem reembolso. Idempotente no backend (chamar de novo numa assinatura
+ * já marcada não é erro) — o front não precisa checar isso antes.
+ */
+export async function cancelSubscription(subscriptionId: string): Promise<Subscription> {
+  const { data } = await apiClient.delete<ApiResponse<SubscriptionResource>>(
+    `/subscriptions/${subscriptionId}`,
   )
 
+  return toSubscription(data.data)
+}
+
+export interface ListTransactionsParams {
+  page?: number
+  perPage?: number
+  /** Um de `value`/`created_at`, prefixo `-` inverte pra desc (`core/api/schema.d.ts`, `transaction.index`). */
+  sort?: string
+}
+
+/**
+ * `GET /transactions` (`ListOwnTransactionsAction`, tarefa 40) — histórico
+ * próprio, read-only. Sem filtro de status/gateway/subscription na UI por
+ * enquanto (a API aceita, mas não existe pedido pra isso ainda) — só
+ * paginação/ordenação, mesmo padrão de `listProducts`.
+ */
+export async function listTransactions(
+  params: ListTransactionsParams = {},
+): Promise<Paginated<Transaction>> {
+  const { data } = await apiClient.get<ApiResponse<TransactionsEnvelope>>('/transactions', {
+    params: {
+      page: params.page,
+      per_page: params.perPage,
+      sort: params.sort,
+    },
+  })
+
   return {
-    checkoutUrl: data.data.checkout_url,
-    id: data.data.id,
-    planId: data.data.plan_id,
+    items: data.data.items.map(toTransaction),
+    meta: data.data.meta,
   }
 }

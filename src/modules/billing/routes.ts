@@ -63,3 +63,27 @@ export const billingRoutes: RouteRecordRaw[] = [
     path: '/billing/failure',
   },
 ]
+
+/**
+ * Diferente das rotas acima, "Meu plano"/"Faturas" são telas do APP
+ * PRINCIPAL (não passos de onboarding) — precisam do chrome de
+ * `AppLayout.vue` (sidebar/header), então entram como FILHAS dele em
+ * `core/router/index.ts`, mesmo padrão de `identityAppRoutes`/
+ * `catalogRoutes`. Sem `skipOnboardingChecks` (diferente de `/account`) —
+ * são páginas normais do app, sujeitas ao mesmo guard de assinatura ativa
+ * que qualquer outra rota principal.
+ */
+export const billingAppRoutes: RouteRecordRaw[] = [
+  {
+    component: () => import('./views/MySubscriptionView.vue'),
+    meta: { title: 'billing.mySubscription.title' },
+    name: 'billing-subscription',
+    path: 'billing/subscription',
+  },
+  {
+    component: () => import('./views/TransactionsView.vue'),
+    meta: { title: 'billing.transactions.title' },
+    name: 'billing-transactions',
+    path: 'billing/transactions',
+  },
+]

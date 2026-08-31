@@ -33,6 +33,7 @@ export default {
         title: 'Pagamento não aprovado',
       },
       pending: {
+        checking: 'Verificando confirmação automaticamente...',
         cta: 'Ir para o dashboard',
         description:
           'Recebemos seu pagamento e estamos aguardando a confirmação (comum em Pix/boleto). Sua assinatura ativa assim que for aprovado.',
@@ -85,6 +86,65 @@ export default {
       },
       submit: 'Confirmar',
       title: 'Confirme seu CPF ou CNPJ',
+    },
+    mySubscription: {
+      cancel: {
+        cta: 'Cancelar assinatura',
+        description:
+          'Sua renovação será cancelada, mas você mantém acesso até o fim do ciclo já pago — sem reembolso.',
+        title: 'Cancelar assinatura',
+      },
+      cancelled: 'Cancelamento agendado — acesso mantido até {date}.',
+      cancelSuccess: 'Cancelamento agendado. Seu acesso continua até o fim do ciclo atual.',
+      changePlan: {
+        cta: 'Trocar de plano',
+        currentPlanBadge: 'Plano atual',
+        description:
+          'A troca abre um novo checkout com o valor proporcional aos dias restantes do ciclo atual.',
+        title: 'Trocar de plano',
+      },
+      empty: 'Você ainda não tem uma assinatura.',
+      error: 'Não foi possível carregar sua assinatura agora.',
+      fields: {
+        cycle: 'Ciclo de cobrança',
+        endDate: 'Válido até',
+        plan: 'Plano atual',
+        startDate: 'Assinante desde',
+        status: 'Status',
+      },
+      pendingPlanChange: 'Troca para o plano {plan} aguardando confirmação de pagamento.',
+      retry: 'Tentar de novo',
+      status: {
+        active: 'Ativa',
+        canceled: 'Cancelada',
+        expired: 'Expirada',
+        payment_failed: 'Pagamento recusado',
+        pending: 'Pendente',
+      },
+      title: 'Meu plano',
+    },
+    transactions: {
+      columns: {
+        createdAt: 'Data',
+        gateway: 'Gateway',
+        paymentMethod: 'Forma de pagamento',
+        status: 'Status',
+        value: 'Valor',
+      },
+      empty: 'Nenhuma transação encontrada.',
+      error: 'Não foi possível carregar suas transações agora.',
+      status: {
+        approved: 'Aprovada',
+        authorized: 'Autorizada',
+        cancelled: 'Cancelada',
+        charged_back: 'Estornada (chargeback)',
+        in_mediation: 'Em mediação',
+        in_process: 'Em processamento',
+        pending: 'Pendente',
+        refunded: 'Reembolsada',
+        rejected: 'Recusada',
+      },
+      title: 'Faturas',
     },
   },
   catalog: {
@@ -221,7 +281,11 @@ export default {
   errorMessageDocumentRequired: 'Informe um CPF ou CNPJ válido pra continuar.',
   errorMessageEmailNotVerified: 'Confirme seu e-mail antes de assinar um plano.',
   errorMessageIncorrectPassword: 'Senha incorreta.',
+  errorMessagePlanChangeAlreadyPending:
+    'Você já tem uma troca de plano aguardando confirmação de pagamento.',
+  errorMessageSamePlan: 'Você já está nesse plano.',
   errorMessageSubscriptionAlreadyActive: 'Você já tem uma assinatura ativa.',
+  errorMessageSubscriptionNotActive: 'Sua assinatura não está ativa no momento.',
   errors: {
     unknown: 'Ocorreu um erro inesperado. Tente novamente.',
   },
