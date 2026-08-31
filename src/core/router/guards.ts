@@ -2,11 +2,19 @@ import type { Router } from 'vue-router'
 import { i18n } from '@/core/i18n'
 import type { UserRole } from '@/core/store/types/auth.type'
 import { useAuthStore } from '@/core/store/useAuthStore'
+import { hasActiveSubscription } from '@/modules/billing/composables/useSubscriptionStatus'
 import { fetchCurrentUser } from '@/modules/identity/services/identityApi'
 import { toAuthUser } from '@/modules/identity/types/user.type'
 
 declare module 'vue-router' {
   interface RouteMeta {
+    /**
+     * Variante de `BillingCheckoutResultView.vue` (`modules/billing/routes.ts`)
+     * — as 3 rotas de retorno do Checkout Pro do Mercado Pago
+     * (`/billing/success`/`/pending`/`/failure`) compartilham o mesmo
+     * componente, só variando ícone/cor/texto/CTA por esse meta.
+     */
+    checkoutResult?: 'success' | 'pending' | 'failure'
     /** Rota exige sessão autenticada (cookie Sanctum válido). Default: false. */
     requiresAuth?: boolean
     /**
@@ -17,6 +25,15 @@ declare module 'vue-router' {
     requiresGuest?: boolean
     /** Restringe a rota a `USER.role` específicos — sem granularidade além disso no MVP. */
     roles?: UserRole[]
+    /**
+     * Pula os 2 checks de onboarding abaixo (e-mail verificado + assinatura
+     * ativa) mesmo em rota `requiresAuth` — pras poucas rotas que são
+     * justamente ESSE fluxo (`verify-email`, `choose-plan`,
+     * `billing-success`/`pending`/`failure`). Marcar a exceção nessas
+     * poucas rotas é mais sustentável que marcar "precisa de onboarding
+     * completo" em toda rota nova do app principal.
+     */
+    skipOnboardingChecks?: boolean
     /**
      * CHAVE de `core/i18n/messages/pt-BR.ts` (ex.: `'catalog.products.title'`),
      * nunca texto resolvido — título é texto de UI, regra não-negociável de
@@ -55,10 +72,40 @@ async function bootstrapSession(): Promise<void> {
 }
 
 /**
+ * Cache por usuário do check de assinatura ativa (`GET /subscriptions`,
+ * via `useSubscriptionStatus.hasActiveSubscription()`) — evita bater essa
+ * rota de novo a cada navegação dentro do app. Chaveado pelo `id` do
+ * usuário (não um booleano solto tipo `sessionBootstrapped`) justamente
+ * pra invalidar sozinho se alguém deslogar e logar com outra conta na
+ * MESMA aba, sem reload de página — um booleano solto ficaria com o
+ * resultado do usuário anterior.
+ */
+let subscriptionCheckedForUserId: string | null = null
+let cachedHasActiveSubscription = false
+
+async function checkHasActiveSubscription(userId: string): Promise<boolean> {
+  if (subscriptionCheckedForUserId !== userId) {
+    subscriptionCheckedForUserId = userId
+    cachedHasActiveSubscription = await hasActiveSubscription().catch(() => false)
+  }
+
+  return cachedHasActiveSubscription
+}
+
+/**
  * Guard central de autenticação/role (docs/infra/convencoes-frontend-infra.md
  * seção 9) — nunca espalhado em cada routes.ts de módulo. Sem checagem de
- * limite de plano aqui ainda: isso é validado na Action ao SUBMETER
- * (cadastrar produto/conectar marketplace), não como bloqueio de navegação.
+ * LIMITE de plano aqui (`max_products`/`max_marketplaces`): isso é
+ * validado na Action ao SUBMETER (cadastrar produto/conectar
+ * marketplace), não como bloqueio de navegação — mas TER ou não uma
+ * assinatura ativa é diferente, e precisa bloquear navegação mesmo:
+ * achado real, reportado pelo usuário em 2026-08-30 — um usuário mandado
+ * pra `/choose-plan` (sem assinatura) conseguia editar a URL pra `/` e
+ * cair direto no dashboard, porque nada aqui conferia isso além do
+ * redirect logo após o cadastro/login (`useRegisterForm`/`useLoginForm`).
+ * O mesmo valia pra e-mail não verificado. `admin_master` fica de fora
+ * dos dois — conta de admin não é assinante, não faz sentido mandar pra
+ * `choose-plan`.
  */
 export function setupRouterGuards(router: Router): void {
   router.beforeEach(async (to) => {
@@ -72,6 +119,21 @@ export function setupRouterGuards(router: Router): void {
 
     if (to.meta.requiresGuest && authStore.isAuthenticated) {
       return { name: 'home' }
+    }
+
+    if (
+      to.meta.requiresAuth &&
+      !to.meta.skipOnboardingChecks &&
+      authStore.user &&
+      authStore.user.role !== 'admin_master'
+    ) {
+      if (!authStore.user.emailVerifiedAt) {
+        return { name: 'verify-email' }
+      }
+
+      if (!(await checkHasActiveSubscription(authStore.user.id))) {
+        return { name: 'choose-plan' }
+      }
     }
 
     if (to.meta.roles && !(authStore.user && to.meta.roles.includes(authStore.user.role))) {

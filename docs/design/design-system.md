@@ -2547,6 +2547,87 @@ não vistas na primeira captura. Prop nova `variant: 'dot' | 'pill'`
   (indigo/green/cyan/yellow/gray) renderizam lado a lado com a lista de
   pontos pulsantes já existente, sem nenhuma mudança na variante `dot`.
 
+### PlanCard (`modules/billing/components/blocks/PlanCard.vue`)
+
+Inspirado numa referência visual mandada pelo usuário (2026-08-30,
+mockup de outro produto) pra Fase 2 (Billing) — card de plano com preço,
+checklist e CTA. **Sem os pedaços que não se aplicam ao domínio do
+Orbita** (pedido explícito): nenhum seletor de marketplace nem plano
+"combo" limitado a canal específico — `PLAN` não tem esse conceito
+(`docs/negocio/contexto-plataforma-precificacao.md` seção 2.2).
+
+- **Checklist é só os 2 limites REAIS do plano**
+  (`max_products`/`max_marketplaces`) — nunca uma lista de features
+  inventada sem campo nenhum por trás (a referência tinha ~13 itens
+  genéricos de marketing, sem equivalente nos dados reais).
+- **Preço/economia calculados fora do componente**
+  (`modules/billing/composables/usePlanPricing.ts`, testado —
+  `tests/modules/billing/composables/usePlanPricing.test.ts`): plano
+  anual mostra `getMonthlyEquivalent` (preço do próprio plano ÷ 12,
+  `PLAN.price` é o valor cobrado POR CICLO, não um valor mensal
+  separado) como número grande, com nota "*Valor equivalente pra
+  comparação" e o valor cobrado à vista; `getYearlySavings` compara
+  contra o plano mensal mais barato da mesma lista e só aparece
+  (`Economize R$X/ano`) quando a conta dá economia real — nunca um valor
+  negativo/zero.
+- **Badge "Mais econômico"** (`findMostEconomicalPlan`) é sempre o de
+  menor equivalente mensal entre os planos listados, nunca um plano fixo
+  por nome/id — sem pill/badge pronto no design system que bata com o
+  visual (fundo sólido `{colors.accent-blue}` + texto branco fixo,
+  `$color-paper-fixed` — nem `Badge.vue`, só ghost/gray, nem `StatusDot`
+  pill, tingido claro), então é markup local do próprio card.
+- Bloco puramente de apresentação — nunca chama API, só recebe os
+  números já calculados e emite `select`.
+- Vive em `modules/billing/components/blocks/`, não em `shared/` —
+  primeiro (e único, por ora) consumidor é `ChoosePlanView.vue`. Sobe pra
+  `shared/components/blocks/` só quando um segundo consumidor real
+  aparecer (ex.: oferta de upgrade no dashboard ao bater limite de plano,
+  nó "Upgrade" de `docs/negocio/jornada-usuario.mmd`) — critério de
+  promoção já estabelecido na seção 2 de `docs/infra/convencoes-frontend-infra.md`,
+  não antecipado agora.
+- Verificado em browser real com o payload de verdade do backend
+  (`GET /plans`, 2 planos mensais reais — nenhum anual seedado ainda —
+  mais um anual mockado pra exercitar a variante) e com o fluxo completo
+  de assinatura (ver `DocumentPromptModal` abaixo).
+
+### DocumentPromptModal (`modules/billing/components/blocks/DocumentPromptModal.vue`)
+
+Aberto quando `useSubscribeToPlan.subscribe()` recebe
+`errorMessageDocumentRequired` do backend (`SubscribeToPlanAction`) —
+usuário ainda sem CPF/CNPJ cadastrado. "O próprio checkout de assinatura
+é o ponto de coleta" no MVP (comentário real do backend, sem tela de
+perfil dedicada ainda) — em vez de falhar pro usuário, o card de plano
+segue clicável e esse modal pede o documento, revalidando e reenviando a
+MESMA assinatura sem precisar clicar de novo no plano.
+
+- Composição de `Modal.vue` + `FormGroup` + `Input` + 2 `Button`, mesmo
+  padrão de bloco de `ConfirmDialog.vue` — nunca decide o que fazer com o
+  documento validado, só emite `confirm` (quem decide reenviar é
+  `useSubscribeToPlan.confirmDocument`).
+- Validação (`documentFormSchema.ts`, testado) só confere a CONTAGEM de
+  dígitos (11 = CPF, 14 = CNPJ, aceitando formatado ou não) — espelha
+  `Document::fromString` (backend) só na parte barata; o dígito
+  verificador real (checksum) fica só pro 422 de volta, reimplementar
+  esse algoritmo no cliente não valia o custo pra este modal.
+- Verificado em browser real: fluxo completo (clicar plano → 422 sem
+  documento → modal abre → preenche CPF → confirma → segunda chamada com
+  `document` → sucesso → redirect de página inteira pra `checkout_url`).
+
+### BillingCheckoutResultView (`modules/billing/views/BillingCheckoutResultView.vue`)
+
+Uma view só pras 3 `back_urls` reais do Checkout Pro do Mercado Pago
+(`MercadoPagoGateway::createCheckout`, backend —
+`${FRONTEND_URL}/billing/success`/`/pending`/`/failure`) — sem ela, quem
+completasse o pagamento hospedado caía num 404 real ao voltar.
+`route.meta.checkoutResult` (`'success' | 'pending' | 'failure'`) decide
+ícone/cor/texto/CTA; as 3 rotas (`modules/billing/routes.ts`) só variam
+esse meta, mesmo componente — nada de 3 views quase idênticas
+duplicadas. Reaproveita `AuthLayout.vue` (mesmo shell de
+Login/Register/ResetPassword). Sem polling de status — o webhook
+(`billing.webhooks.mercadopago`) confirma o pagamento no backend de
+forma assíncrona, independente dessa tela estar aberta ou não; refresh
+em tempo real é escopo maior, ainda não implementado.
+
 ## Do's and Don'ts
 
 ### Do

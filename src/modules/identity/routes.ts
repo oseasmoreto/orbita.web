@@ -49,4 +49,17 @@ export const identityRoutes: RouteRecordRaw[] = [
     name: 'sso-callback',
     path: '/v1/auth/sso/:provider/callback',
   },
+  {
+    // `requiresAuth`, não `requiresGuest` — quem chega aqui já tem sessão
+    // (cadastro já loga via `Auth::login()`, `RegisterUserAction`), só
+    // falta confirmar o e-mail. O link do e-mail em si não volta pra cá
+    // (backend redireciona direto pro destino final) — ver
+    // `VerifyEmailView.vue` pro fluxo completo. `skipOnboardingChecks`:
+    // essa rota É o check de e-mail verificado, aplicá-lo aqui também
+    // criaria um loop de redirect.
+    component: () => import('./views/VerifyEmailView.vue'),
+    meta: { requiresAuth: true, skipOnboardingChecks: true, title: 'identity.verifyEmail.title' },
+    name: 'verify-email',
+    path: '/verify-email',
+  },
 ]

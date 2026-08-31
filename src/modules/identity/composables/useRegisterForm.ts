@@ -23,6 +23,13 @@ function emptyValues(): RegisterFormValues {
  * backend pra saber disso, é sempre verdade. `RegisterUserAction`
  * (backend) já chama `Auth::login()` — sessão (cookie Sanctum) já existe
  * quando a resposta volta, mesmo padrão do login.
+ *
+ * Manda pra `verify-email`, não direto pra `choose-plan`: cadastro normal
+ * sempre nasce com `email_verified_at: null` (diferente de SSO, que já
+ * vem verificado via `createVerified()`), e `SubscribeToPlanAction`
+ * (backend) recusa assinatura de e-mail não verificado
+ * (`EmailNotVerifiedException`). `VerifyEmailView.vue` é quem manda pro
+ * `choose-plan` depois de confirmado.
  */
 export function useRegisterForm() {
   const router = useRouter()
@@ -68,7 +75,7 @@ export function useRegisterForm() {
 
       authStore.setUser(toAuthUser(user), { requiresSubscription: true })
       toast.success(t('identity.register.success'))
-      await router.push({ name: 'choose-plan' })
+      await router.push({ name: 'verify-email' })
     } catch (caughtError) {
       const apiError = parseApiError(caughtError)
       toast.error(resolveMessage(apiError.messageKey))

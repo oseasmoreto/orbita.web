@@ -234,6 +234,31 @@ ficado desligado desde o CRUD de Produtos da Fase 3).
   sempre pro dashboard; só aceita caminho relativo, nunca uma URL
   absoluta da query string (evita redirect aberto).
 
+**Bug real corrigido em 2026-08-30, reportado pelo usuário**: um usuário
+mandado pra `/choose-plan` (sem assinatura ou com e-mail não verificado)
+conseguia editar a URL pra `/` e cair direto no dashboard — nada além do
+redirect logo após cadastro/login checava isso, o guard só sabia de
+`requiresAuth`. Corrigido em `core/router/guards.ts`: além de
+`requiresAuth`/`requiresGuest`/`roles`, toda rota `requiresAuth` (exceto
+as marcadas `skipOnboardingChecks: true` — `verify-email`, `choose-plan`,
+`billing-success`/`pending`/`failure`, que SÃO esse fluxo) agora também
+exige `authStore.user.emailVerifiedAt` preenchido e uma assinatura ativa
+(`modules/billing/composables/useSubscriptionStatus.hasActiveSubscription()`,
+via `GET /subscriptions` — não existe campo pronto tipo
+`LoginResultResource.requires_subscription` fora do momento do login,
+então essa checagem replica `UserSubscriptionStatus::isActive()`
+(backend) client-side, testada). `admin_master` fica de fora dos dois
+checks (conta de admin não é assinante). Resultado da checagem de
+assinatura fica em cache por `user.id` (`checkHasActiveSubscription`,
+`guards.ts`) — não bate `/subscriptions` a cada navegação dentro do app,
+só uma vez por usuário por carregamento de página; invalida sozinho se
+outro usuário logar na mesma aba sem reload. Verificado em Playwright:
+usuário sem assinatura editando a URL pra `/` continua preso em
+`/choose-plan`; usuário com assinatura ativa acessa `/` normalmente;
+e-mail não verificado vai pra `/verify-email`; `admin_master` nunca é
+barrado; navegação subsequente na mesma sessão não repete a chamada de
+`/subscriptions`.
+
 **Gap de backend resolvido em 2026-08-30** (histórico, mantido por
 contexto): o endpoint de logout não existia em `orbita.api` até
 2026-08-27 (reportado à sessão do backend na época). Implementado desde
@@ -251,10 +276,27 @@ segue a mesma exceção já usada em `core/router/guards.ts`
 não um módulo de negócio comum.
 
 **Pendências reais** (fora do escopo do pedido "telas de login/cadastro/
-recuperação de senha"): `/verify-email` (`VerifyEmailView`, endpoint
-`verification.verify`/`emailVerification.resend` já existem no backend,
-tela ainda não construída), `/account` (perfil —
+recuperação de senha"): `/account` (perfil —
 `userProfile.show`/`update`/`destroy` já existem no backend).
+
+**`VerifyEmailView` implementado em 2026-08-30** (pedido direto do
+usuário — "pequeno gap", cadastro normal precisa confirmar e-mail antes
+de assinar). `useRegisterForm.ts` manda pra `verify-email` em vez de
+direto pra `choose-plan` (cadastro via SSO nunca passa por essa tela —
+`createVerified()`, backend, já vem verificado pelo provider). Tela
+mostra o e-mail cadastrado, botão "Reenviar" (`POST /auth/email/verification-notification`)
+e "Já verifiquei, continuar" (`useVerifyEmail.checkVerification`, refaz
+`GET /auth/me` e só avança pra `choose-plan` se `email_verified_at` vier
+preenchido). O link do e-mail em si não volta pra essa tela — o backend
+(`EmailVerificationController::verify`, achado real: SEM `auth:sanctum`,
+resolve o usuário pelo `{id}` assinado na própria URL, não pela sessão)
+redireciona direto pra `/choose-plan` no sucesso, ou
+`/login?error=email_verification_failed` na falha — `LoginView.vue`
+ganhou tratamento genérico de `?error=` na query (toast + limpa o
+parâmetro), cobrindo esse caso e o `sso_failed` do `SsoCallbackView` (que
+também nunca tinha sido tratado, gap pré-existente fechado de brinde).
+Sem polling automático de verificação — foi decisão deliberada não
+adiantar isso, o botão manual já cobre o pedido.
 
 **`SsoCallbackView` implementado em 2026-08-30** (pedido direto do
 usuário, com exemplo real de URL do Google) — achado real, confirmado
@@ -290,32 +332,74 @@ aqui por ser mudança de backend, fora do escopo deste repositório.
 Planos e assinatura — obrigatório antes de liberar o resto do sistema
 (jornada: `ChoosePlan → Payment → Dashboard`).
 
-**Atenção ao começar esta fase**: `/choose-plan` (`modules/billing/routes.ts`,
-`ChoosePlanView.vue`) já existe como CASCA — criada em 2026-08-30 só pra
-dar um destino real ao redirect pós-cadastro/pós-login-sem-assinatura (ver
-Fase 1). Decidir aqui se essa rota vira a tela real de seleção de plano
-(reaproveitando o nome `choose-plan`) ou se `/plans` (abaixo) é uma rota
-separada e `/choose-plan` continua só como gate — não duplicar sem
-resolver essa sobreposição primeiro.
+**Listagem de plano + assinatura implementadas em 2026-08-30** — pedido
+direto do usuário, com referência visual (mockup de outro produto,
+"se inspire no modelo"). `/choose-plan` deixou de ser casca: passou a
+listar planos reais e a criar a assinatura de verdade. Duas divergências
+deliberadas da referência: sem seletor de marketplace nem plano "combo"
+limitado a canal — `PLAN` não tem esse conceito
+(`docs/negocio/contexto-plataforma-precificacao.md` seção 2.2).
 
-**Rotas:** `/plans`, `/checkout`, `/checkout/pix`, `/billing` (histórico de
-transações + status da assinatura).
+**Entregue:**
+- `modules/billing/types/plan.type.ts` — `Plan` (camelCase, em cima do
+  `PlanResource` gerado) + `toPlan()`.
+- `modules/billing/services/billingApi.ts` — `listPlans()` (`GET /plans`,
+  pública, só planos ativos) e `subscribeToPlan()` (`POST /subscriptions`,
+  cria assinatura + preferência de checkout no Mercado Pago na mesma
+  chamada, devolve `checkout_url`).
+- `modules/billing/composables/usePlanPricing.ts` — `getMonthlyEquivalent`/
+  `getYearlySavings`/`findMostEconomicalPlan`, regra de negócio real
+  (compara plano anual contra o mensal mais barato da mesma lista),
+  test-first (`tests/modules/billing/composables/usePlanPricing.test.ts`).
+- `modules/billing/composables/useChoosePlan.ts` — fetch simples da lista
+  (sem paginação/busca, mostra todos os planos ativos de uma vez).
+- `modules/billing/composables/useSubscribeToPlan.ts` — orquestra
+  `POST /subscriptions` e o único desvio real de negócio no caminho:
+  `errorMessageDocumentRequired` (usuário sem CPF/CNPJ) abre
+  `DocumentPromptModal` em vez de falhar, reenvia a mesma assinatura
+  assim que confirmado. Sucesso é sempre `window.location.href` pro
+  `checkout_url` (Checkout Pro do Mercado Pago, hospedado — nunca
+  renderizamos QR code/formulário de cartão nós mesmos).
+- `modules/billing/schemas/documentFormSchema.ts` +
+  `composables/useDocumentPromptForm.ts` — valida só a CONTAGEM de
+  dígitos (11/14), test-first; checksum real fica pro 422 do backend.
+- `modules/billing/components/blocks/PlanCard.vue` e
+  `DocumentPromptModal.vue` — ver `docs/design/design-system.md` seção
+  Components pro detalhe de cada um (incluindo por que `PlanCard` fica em
+  `modules/billing/` e não `shared/` por enquanto — sem segundo
+  consumidor real ainda).
+- `modules/billing/views/ChoosePlanView.vue` — reescrita da casca:
+  heading + selos de confiança + grid de `PlanCard`.
+- `modules/billing/views/BillingCheckoutResultView.vue` + 3 rotas
+  (`/billing/success`/`/pending`/`/failure`) — `back_urls` REAIS do
+  Checkout Pro (`MercadoPagoGateway::createCheckout`, backend); sem essa
+  view, o retorno do pagamento caía num 404. Mesmo componente pras 3,
+  variando só `route.meta.checkoutResult`.
+- `errorMessageDocumentRequired`/`errorMessageEmailNotVerified`/
+  `errorMessageSubscriptionAlreadyActive` — primeiras entradas reais do
+  registro de `ApiMessageKey` em `pt-BR.ts` (`useApiMessage.resolveMessage()`
+  existia desde a Fase 1 mas nunca tinha uma chave real cadastrada; um
+  erro de backend sem entrada aqui ainda cai no texto cru da chave,
+  gap sistêmico que continua existindo pras chaves não cadastradas).
 
-**Services:** `billingApi.ts` — `listPlans`, `subscribe`, `changePlan`
-(prorata), `cancelAtPeriodEnd`, `listTransactions`.
-
-**Composables:**
-- `usePlanSelection` — lista planos, marca o atual.
-- `useCheckout` — orquestra criação de assinatura/troca de plano, Pix (QR
-  code via `qrcode`) ou cartão via Mercado Pago; precisa de polling ou
-  webhook-driven refresh do `SUBSCRIPTION.status` (checkout não é síncrono).
-- `useSubscriptionStatus` — deriva `requiresSubscription`/limites de plano
-  pro guard de rota (router já expõe o campo, mas a leitura de
-  `max_products`/`max_marketplaces` pro aviso de upgrade mora aqui).
-
-**Guard novo:** rota que exige assinatura ativa checa
-`authStore.requiresSubscription` — redireciona pra `/checkout` em vez de
-`/login`.
+**Pendências reais desta fase** (fora do escopo do pedido "listagem de
+planos"):
+- Troca de plano (`PATCH /subscriptions/{id}`, upgrade/downgrade com
+  prorata), cancelamento (`DELETE /subscriptions/{id}`), histórico de
+  transações (`GET /transactions`) — endpoints já existem no backend,
+  telas ainda não construídas.
+- Polling/webhook-driven refresh de status em tempo real
+  (`useSubscriptionStatus`) — hoje o webhook confirma o pagamento de
+  forma assíncrona, mas nada na UI reflete isso automaticamente; usuário
+  só vê o status atualizado num próximo carregamento de página.
+- `EmailNotVerifiedException` — **resolvido em 2026-08-30**: cadastro
+  normal agora passa por `/verify-email` (Fase 1) antes de chegar em
+  `choose-plan`, então na prática esse erro só apareceria se o usuário
+  navegasse direto pra `/choose-plan` sem passar pela tela de verificação
+  — caso residual, ainda cai no toast genérico (`errorMessageEmailNotVerified`).
+- Gap de SSO + `choose-plan` já registrado na Fase 1 continua aberto:
+  cadastro novo via SSO não é mandado pra `/choose-plan` (falta sinal do
+  backend nesse retorno específico).
 
 ---
 

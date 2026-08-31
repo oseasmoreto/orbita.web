@@ -26,11 +26,65 @@
  */
 export default {
   billing: {
+    checkoutResult: {
+      failure: {
+        cta: 'Tentar novamente',
+        description: 'Não foi possível confirmar seu pagamento. Nenhuma cobrança foi feita.',
+        title: 'Pagamento não aprovado',
+      },
+      pending: {
+        cta: 'Ir para o dashboard',
+        description:
+          'Recebemos seu pagamento e estamos aguardando a confirmação (comum em Pix/boleto). Sua assinatura ativa assim que for aprovado.',
+        title: 'Pagamento em análise',
+      },
+      success: {
+        cta: 'Ir para o dashboard',
+        description: 'Sua assinatura foi confirmada. Bem-vindo(a) ao Orbita!',
+        title: 'Pagamento aprovado',
+      },
+    },
     choosePlan: {
-      pendingDescription:
-        'A escolha de plano ainda está em construção — sua conta já foi criada, mas por enquanto não há nenhum plano pra selecionar aqui.',
-      subtitle: 'Sua conta foi criada. Falta só escolher um plano pra continuar.',
+      card: {
+        cta: 'Começar agora',
+        ctaHighlighted: 'Assinar com desconto',
+        equivalentNote: '*Valor equivalente para comparação.',
+        maxMarketplaces: 'Até {count} marketplaces conectados',
+        maxProducts: 'Até {count} produtos cadastrados',
+        monthlyDescription: 'Tenha acesso a todos os recursos pagando mensalmente.',
+        mostEconomical: 'Mais econômico',
+        payUpfront: 'Pagamento anual à vista de {price}.',
+        perMonth: '/mês',
+        savings: 'Economize {amount}/ano',
+        yearlyDescription: 'Mesmo conjunto de recursos do plano mensal, com melhor preço efetivo.',
+      },
+      empty: 'Nenhum plano disponível no momento.',
+      error: 'Não foi possível carregar os planos agora.',
+      heading: 'Escolha o melhor plano para a sua operação',
+      pageDescription:
+        'Todos os planos incluem acesso completo à plataforma. Cobrança recorrente e automática, cancele quando quiser.',
+      retry: 'Tentar de novo',
       title: 'Escolha um plano',
+      trust: {
+        humanSupport: 'Suporte humano',
+        recurringBilling: 'Cobrança recorrente e automática',
+        secureCheckout: 'Checkout seguro',
+      },
+    },
+    documentPrompt: {
+      description: 'Precisamos desse dado pra emitir a cobrança da sua assinatura.',
+      errors: {
+        invalid: 'Informe um CPF ou CNPJ válido.',
+        required: 'CPF ou CNPJ é obrigatório.',
+      },
+      fields: {
+        document: 'CPF ou CNPJ',
+      },
+      placeholders: {
+        document: '000.000.000-00',
+      },
+      submit: 'Confirmar',
+      title: 'Confirme seu CPF ou CNPJ',
     },
   },
   catalog: {
@@ -150,6 +204,19 @@ export default {
     },
     title: 'Dashboard',
   },
+  /**
+   * Registro de `ApiMessageKey` reais do backend (`Domain/Shared/Enums/ApiMessageKey.php`)
+   * — chave FLAT (sem ponto), porque é literalmente a string que o
+   * backend manda em `message` (`useApiMessage.resolveMessage()` resolve
+   * por igualdade exata, `te()`/`t()` do vue-i18n tratam ponto como
+   * caminho de objeto aninhado, então essas chaves não podem ser
+   * namespaced). Só as que a Fase 2 (assinatura) realmente usa — não
+   * adiantar o catálogo inteiro de erros do backend sem uma tela que
+   * dispare cada um (seção 6.3 de `docs/infra/convencoes-frontend-infra.md`).
+   */
+  errorMessageDocumentRequired: 'Informe um CPF ou CNPJ válido pra continuar.',
+  errorMessageEmailNotVerified: 'Confirme seu e-mail antes de assinar um plano.',
+  errorMessageSubscriptionAlreadyActive: 'Você já tem uma assinatura ativa.',
   errors: {
     unknown: 'Ocorreu um erro inesperado. Tente novamente.',
   },
@@ -175,7 +242,10 @@ export default {
       errors: {
         emailInvalid: 'Informe um e-mail válido.',
         emailRequired: 'E-mail é obrigatório.',
+        emailVerificationFailed:
+          'Este link de verificação é inválido ou expirou. Faça login novamente para solicitar um novo.',
         passwordRequired: 'Senha é obrigatória.',
+        ssoFailed: 'Não foi possível concluir o login com esse provedor. Tente novamente.',
       },
       fields: {
         email: 'E-mail',
@@ -255,6 +325,15 @@ export default {
       connecting: 'Conectando sua conta...',
       errorDescription: 'Não foi possível concluir o login com esse provedor. Tente novamente.',
       errorTitle: 'Falha ao conectar',
+    },
+    verifyEmail: {
+      continueCta: 'Já verifiquei, continuar',
+      notReceived: 'Não recebeu o e-mail?',
+      resendCta: 'Reenviar',
+      resendSuccess: 'E-mail de verificação reenviado.',
+      stillNotVerified: 'Seu e-mail ainda não foi verificado.',
+      subtitle: 'Enviamos um link de confirmação para {email}. Clique nele para continuar.',
+      title: 'Verifique seu e-mail',
     },
   },
   showcase: {

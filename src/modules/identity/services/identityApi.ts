@@ -71,6 +71,16 @@ export async function logout(): Promise<void> {
   await apiClient.post('/auth/logout')
 }
 
+/**
+ * `POST /auth/email/verification-notification` (`emailVerification.resend`,
+ * `auth:sanctum`) — reenvia o e-mail de verificação pro usuário logado.
+ * `ResendEmailVerificationAction` (backend) já é um no-op se o e-mail já
+ * estiver verificado, então não precisa checar isso aqui antes de chamar.
+ */
+export async function resendEmailVerification(): Promise<void> {
+  await apiClient.post('/auth/email/verification-notification')
+}
+
 export async function requestPasswordReset(payload: RequestPasswordResetRequest): Promise<void> {
   await apiClient.post('/auth/password/forgot', payload)
 }

@@ -14,7 +14,17 @@
  * - SSO é Google + Microsoft, não Google + Apple: `SSO_ACCOUNT.provider`
  *   só aceita `google`/`microsoft` (`docs/negocio/contexto-plataforma-precificacao.md`
  *   seção 2.1) — Apple não existe no domínio.
+ *
+ * `?error=` na query: o backend redireciona de volta pra cá em 2 casos
+ * reais (nunca navegação normal da SPA) — `sso_failed`
+ * (`SsoController::callback`, troca com o Google falhou) e
+ * `email_verification_failed` (`EmailVerificationController::verify`,
+ * link de verificação adulterado/inválido). Mostra um toast e limpa o
+ * parâmetro da URL (`router.replace`) pra não reaparecer num F5.
  */
+import { onMounted } from 'vue'
+import { useI18n } from 'vue-i18n'
+import { useRoute, useRouter } from 'vue-router'
 import {
   EnvelopeSimple,
   GoogleLogo,
@@ -26,9 +36,20 @@ import FormGroup from '@/shared/components/blocks/FormGroup.vue'
 import Button from '@/shared/components/ui/Button.vue'
 import Input from '@/shared/components/ui/Input.vue'
 import AuthLayout from '@/core/layouts/AuthLayout.vue'
+import { useToast } from '@/shared/composables/useToast'
 import { useLoginForm } from '../composables/useLoginForm'
 import type { LoginFormValues } from '../schemas/loginFormSchema'
 import { buildSsoRedirectUrl, type SsoProvider } from '../services/identityApi'
+
+const LOGIN_ERROR_KEYS: Record<string, string> = {
+  email_verification_failed: 'identity.login.errors.emailVerificationFailed',
+  sso_failed: 'identity.login.errors.ssoFailed',
+}
+
+const route = useRoute()
+const router = useRouter()
+const toast = useToast()
+const { t } = useI18n()
 
 const { errors, isSubmitting, submit, values } = useLoginForm()
 
@@ -39,6 +60,20 @@ function fieldError(key: keyof LoginFormValues): string | undefined {
 function signInWithSso(provider: SsoProvider): void {
   window.location.href = buildSsoRedirectUrl(provider)
 }
+
+onMounted(() => {
+  const error = route.query.error
+
+  if (typeof error !== 'string' || !LOGIN_ERROR_KEYS[error]) {
+    return
+  }
+
+  toast.error(t(LOGIN_ERROR_KEYS[error]))
+
+  const query = { ...route.query }
+  delete query.error
+  void router.replace({ query })
+})
 </script>
 
 <template>

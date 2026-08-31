@@ -299,6 +299,16 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
+        /**
+         * Chamado pelo próprio navegação real do browser (clique no link do
+         *     e-mail) — nunca devolve JSON aqui, sempre redireciona pro front, mesmo
+         *     padrão de SsoController::callback. Sucesso manda pro ChoosePlan da
+         *     jornada (jornada-usuario.mmd: EmailVerified → ChoosePlan); hash
+         *     inválido ou id inexistente (link adulterado) manda pro login com sinal
+         *     de erro. Assinatura expirada/inválida (middleware "signed") ainda
+         *     escapa pra esse try/catch — acontece antes do Controller rodar,
+         *     continua devolvendo o 403 JSON genérico por enquanto
+         */
         get: operations["verification.verify"];
         put?: never;
         post?: never;
@@ -2531,17 +2541,9 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        success: boolean;
-                        message: string;
-                        data: null;
-                        errors: null;
-                    };
+                    "application/json": Record<string, never>;
                 };
             };
-            401: components["responses"]["AuthenticationException"];
-            403: components["responses"]["AuthorizationException"];
-            422: components["responses"]["ValidationException"];
         };
     };
     "emailVerification.resend": {

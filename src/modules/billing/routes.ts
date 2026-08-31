@@ -9,12 +9,57 @@ import type { RouteRecordRaw } from 'vue-router'
  * Fora de `AppLayout` de propósito (não entra em `catalogRoutes`/`children`
  * do layout com sidebar/header) — é um passo de onboarding, não uma tela
  * do app principal.
+ *
+ * `skipOnboardingChecks: true` nas 4 — sem isso, o guard de assinatura
+ * ativa (`core/router/guards.ts`, achado real reportado pelo usuário em
+ * 2026-08-30) redirecionaria `/choose-plan` pra ELA MESMA (usuário sem
+ * assinatura navegando pra `/choose-plan` seria barrado por... não ter
+ * assinatura, indo parar de novo em `/choose-plan`) e bloquearia as 3
+ * telas de retorno do checkout, que existem justamente pra quem ainda
+ * está finalizando a assinatura.
  */
 export const billingRoutes: RouteRecordRaw[] = [
   {
     component: () => import('./views/ChoosePlanView.vue'),
-    meta: { requiresAuth: true, title: 'billing.choosePlan.title' },
+    meta: { requiresAuth: true, skipOnboardingChecks: true, title: 'billing.choosePlan.title' },
     name: 'choose-plan',
     path: '/choose-plan',
+  },
+  // `back_urls` reais do Checkout Pro do Mercado Pago
+  // (`MercadoPagoGateway::createCheckout`, backend) — paths exatos,
+  // ditados pelo gateway, não convenção nossa. As 3 rotas compartilham
+  // `BillingCheckoutResultView.vue`, só variando `meta.checkoutResult`.
+  {
+    component: () => import('./views/BillingCheckoutResultView.vue'),
+    meta: {
+      checkoutResult: 'success',
+      requiresAuth: true,
+      skipOnboardingChecks: true,
+      title: 'billing.checkoutResult.success.title',
+    },
+    name: 'billing-success',
+    path: '/billing/success',
+  },
+  {
+    component: () => import('./views/BillingCheckoutResultView.vue'),
+    meta: {
+      checkoutResult: 'pending',
+      requiresAuth: true,
+      skipOnboardingChecks: true,
+      title: 'billing.checkoutResult.pending.title',
+    },
+    name: 'billing-pending',
+    path: '/billing/pending',
+  },
+  {
+    component: () => import('./views/BillingCheckoutResultView.vue'),
+    meta: {
+      checkoutResult: 'failure',
+      requiresAuth: true,
+      skipOnboardingChecks: true,
+      title: 'billing.checkoutResult.failure.title',
+    },
+    name: 'billing-failure',
+    path: '/billing/failure',
   },
 ]
