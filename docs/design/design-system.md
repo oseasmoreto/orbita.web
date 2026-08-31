@@ -2978,6 +2978,42 @@ desde a rodada original da Fase 2, telas nunca construídas até aqui.
   tempo, os 2 avisos empilham e o botão de cancelar (correto — já
   cancelado) some.
 
+**Filtro de ciclo de cobrança, 2026-08-31, pedido direto do usuário**
+("nas telas de planos tanto no choose-plan quanto na meu plano adicione o
+filtro por `?filter[billing_cycle]=monthly` como um seletor em cima dos
+cards") — a API (`GET /plans`) já suportava o filtro, só não existia
+seletor nenhum: as duas telas sempre buscavam TODOS os planos misturados
+(mensal + anual na mesma grade). Adicionado um `BlockTab` "Mensal"/"Anual"
+acima da grade, tanto aqui quanto em `ChoosePlanView.vue` (que não tem
+seção própria neste documento — mesmo padrão de `PlanCard`, ver acima).
+
+- **`useChoosePlan.ts` reescrito pra manter DUAS listas** —
+  `plans` (universo completo, sem filtro, buscada 1x) e `visiblePlans`
+  (só o ciclo selecionado, refeita via `GET /plans?filter[billing_cycle]=...`
+  de verdade a cada troca). Necessário porque `usePlanPricing.ts`
+  (`getYearlySavings`/`findMostEconomicalPlan`) precisa do universo
+  INTEIRO pra comparar ciclos entre si (ex.: "economize R$X/ano" compara
+  o anual contra o mensal mais barato — que só existe fora do filtro
+  atual), mas a grade renderizada usa só `visiblePlans`. Mesma dualidade
+  replicada aqui (`plans.plans`/`plans.visiblePlans`, mesma composable
+  reaproveitada) — o resumo de "Meu plano atual" continua resolvendo
+  contra `plans.plans` (universo completo), nunca contra o filtro
+  selecionado, senão trocar de aba faria o plano atual "sumir" do resumo
+  se ele não fosse do ciclo visível no momento.
+- **A seção "Trocar de plano" (com o seletor dentro) fica visível mesmo
+  quando o ciclo atual não tem nenhum plano pra trocar** —
+  `hasPendingPlanChange` continua sendo o gate real da seção
+  (não `otherPlans.length`), com uma mensagem nova
+  (`billing.mySubscription.changePlan.emptyForCycle`) no lugar da grade
+  vazia; sem isso, o usuário ficaria sem nenhuma forma de descobrir que o
+  outro ciclo tem opções.
+- Verificado em browser real contra o backend de verdade (2 planos
+  mensais + 2 anuais seedados): alternar Mensal/Anual dispara o `GET`
+  real com `filter[billing_cycle]` correto nos 2 componentes; badge "Mais
+  econômico" recalcula só dentro do ciclo visível; o caso de economia
+  ZERO (yearly = 12× o mensal exato nos dados de seed) corretamente não
+  mostra nenhum badge de economia (nunca um valor zerado/negativo).
+
 ### TransactionsView (`modules/billing/views/TransactionsView.vue`)
 
 "Faturas" — histórico próprio via `GET /transactions`
@@ -3114,6 +3150,16 @@ pra "Regras de comissão" (`AdminPricingRuleList.vue`, dentro de um
 critério já registrado na seção StatusDot (ponto colorido, não pill, pra
 esse tipo de indicador binário simples).
 
+**Correção de escopo de rota, 2026-08-31, pedida direto pelo usuário**:
+"admin deve ver a tela de link do produto e mktplace" — `pricing.routes.ts`
+tinha `meta.roles: ['user']` nesta rota E em `product-marketplaces`, e
+`navigation.ts` tinha o mesmo `roles: ['user']` no grupo "Marketplaces" da
+sidebar — herdado do momento em que a Fase 4 nasceu como feature só do
+vendedor comum, sem motivo de negócio real pra bloquear `admin_master`
+(que já é isento do guard de assinatura ativa no backend). Removido dos 3
+lugares. Coluna "Nome" também ganhou `MarketplaceLogo` (ver seção própria
+abaixo) no mesmo dia.
+
 ### AdminMarketplaceForm (`modules/pricing/components/AdminMarketplaceForm.vue`)
 
 **Primeiro upload de arquivo do projeto** — mudança de contrato pedida
@@ -3148,6 +3194,37 @@ antes de entrar em `values.logoBase64`.
   escolher o arquivo, submit grava no backend, `logo_url` resultante
   aponta pro storage do próprio backend (`/storage/marketplaces/logos/<uuid>.<ext>`),
   card em `MarketplacesView.vue` exibe a imagem real servida.
+
+### MarketplaceLogo (`modules/pricing/components/MarketplaceLogo.vue`)
+
+**Extraído em 2026-08-31**, pedido direto do usuário ("adicione os logos
+a todas as listagens de mktplace") — o markup ícone-ou-imagem que já
+existia solto dentro de `MarketplacesView.vue` (fallback `IconTile`/
+`Storefront` em `@error`) virou componente próprio no momento em que um
+2º e 3º consumidor real precisaram do mesmo comportamento
+(`AdminMarketplacesView.vue`, `ProductMarketplacesView.vue`) — mesmo
+critério de promoção já usado no resto do projeto (só sobe/vira
+componente quando um consumidor adicional de verdade aparece).
+
+- Só 2 props (`logoUrl`, `name` pro `alt`) + `size` opcional (default 24,
+  usado em 24px nas duas tabelas e 48px no card grid) — sem decisão de
+  negócio, só "mostra a imagem ou o fallback".
+- Estado de falha (`hasFailed`) é local ao componente (`ref` interno),
+  não mais um `Set` de ids mantido pela view como na primeira versão
+  dentro de `MarketplacesView.vue` — cada instância cuida do próprio
+  estado de erro, sem precisar de uma chave externa.
+- Reaproveitado com `IconText.vue` nas duas tabelas (`AdminMarketplacesView`/
+  `ProductMarketplacesView`, célula `#cell-name`/`#cell-marketplaceName`)
+  — mesmo padrão "ícone/imagem + texto" já documentado na seção IconText.
+- **Escopo explicitamente NÃO estendido ao `Select` de "vincular
+  marketplace"** (`ProductMarketplacesView.vue`, modal de vínculo) — é
+  texto puro do Reka UI sem suporte a conteúdo rico por opção; adaptar um
+  átomo compartilhado pra um único consumidor contrariaria a régua de
+  promoção ao contrário (desceria complexidade pro genérico por causa de
+  1 caso). Revisitável se pedido explicitamente.
+- Verificado em browser real contra o backend de verdade: 2 marketplaces
+  reais renderizando `<img>` (não fallback) no grid, na tabela admin e na
+  tabela de vínculo produto↔marketplace, todas as 3 telas juntas.
 
 ### MarketplacesView (`modules/pricing/views/MarketplacesView.vue`)
 
@@ -3224,6 +3301,14 @@ precisou de `FormGroup`/`useResourceForm` — não há o que validar além de
 `Button` `variant="ghost"` com `icon-before` (`ArrowLineLeft`), não um
 `<a>`/`<button>` cru — nunca reinventar estilo de botão fora do design
 system, mesmo pra um link de navegação simples.
+
+**2 ajustes pedidos direto pelo usuário em 2026-08-31**: a rota deixou
+de exigir `role: 'user'` (mesmo motivo da correção em
+`AdminMarketplacesView` acima — admin também pode gerenciar vínculo de
+qualquer produto seu) e a coluna "Marketplace" ganhou `MarketplaceLogo`
+(ver seção própria acima) via `ProductMarketplaceRow.marketplaceLogoUrl`,
+campo novo resolvido em `useProductMarketplaces.ts` cruzando
+`UserMarketplace`→`Marketplace`, mesmo caminho que já resolvia o nome.
 
 ## Do's and Don'ts
 

@@ -1277,6 +1277,66 @@ real: clicar em "Recentes" pra uma rota parametrizada navega certo pro
 mesmo registro visitado; botão de favoritar some em `product-marketplaces`,
 continua em `/products`. Regra geral documentada em `.ai/rules/app-shell.md`.
 
+**3 ajustes pedidos direto pelo usuário no mesmo dia (2026-08-31)**:
+
+1. **Admin não conseguia acessar `/marketplaces` nem
+   `/products/:id/marketplaces`** — as duas rotas (`pricing.routes.ts`) e o
+   grupo "Marketplaces" da sidebar (`navigation.ts`) tinham
+   `meta.roles: ['user']`/`roles: ['user']` puramente por serem, no
+   momento em que a Fase 4 nasceu, telas só do vendedor comum — sem
+   motivo de negócio real pra excluir `admin_master`, que já passa pelo
+   mesmo middleware `subscription.active` (o guard de assinatura ativa já
+   isenta admin no backend). Removido o `roles` das duas entradas de rota
+   e do grupo de navegação. Verificado em browser real: `admin_master`
+   navega pra `/marketplaces` e `/products/:id/marketplaces` sem redirect,
+   sidebar mostra o grupo normalmente.
+2. **Logo do marketplace só aparecia no card grid (`MarketplacesView.vue`),
+   não nas outras listagens** — extraído `MarketplaceLogo.vue`
+   (`modules/pricing/components/`, `<img>` real com fallback `IconTile`/
+   `Storefront` em `@error`) do markup que já existia solto ali, e
+   reaproveitado nos 2 lugares que ainda mostravam só o nome cru:
+   `AdminMarketplacesView.vue` (`#cell-name`, via `IconText`) e
+   `ProductMarketplacesView.vue` (`#cell-marketplaceName`, idem). Exigiu
+   um campo novo, `marketplaceLogoUrl`, em `ProductMarketplaceRow`
+   (`useProductMarketplaces.ts`) — TDD confirmou o gap primeiro (fixture
+   de teste com o campo esperado, `toEqual` falhando antes da mudança na
+   função `buildProductMarketplaceRows`, verde depois). **Decisão de
+   escopo, não comunicada como pedido explícito**: o `Select` de "vincular
+   marketplace" (dropdown de texto puro do Reka UI) NÃO ganhou logo — é um
+   átomo compartilhado (`shared/components/ui/Select.vue`) sem suporte a
+   conteúdo rico por opção hoje, mudar isso pra um único consumidor
+   contrariaria a régua de "sobe pra shared/blocks só com um 2º consumidor
+   real" ao contrário (desceria complexidade nova pro átomo genérico por 1
+   caso). Revisitável se o usuário confirmar que quer isso também.
+3. **Filtro de ciclo de cobrança (`?filter[billing_cycle]=`) em
+   `ChoosePlanView.vue`/`MySubscriptionView.vue`** — a API já suportava o
+   filtro (`GET /plans`), só não tinha seletor nenhum na UI; o front
+   sempre buscava a lista inteira (mensal + anual misturados). Adicionado
+   um `BlockTab` "Mensal"/"Anual" acima da grade nos 2 lugares.
+   `useChoosePlan.ts` reescrito pra manter DUAS listas — `plans` (todos os
+   planos, sem filtro, buscada uma vez) e `visiblePlans` (só o ciclo
+   selecionado, refeita a cada troca via `GET /plans?filter[billing_cycle]=...`
+   de verdade) — necessário porque `usePlanPricing.ts`
+   (`getYearlySavings`/`findMostEconomicalPlan`) precisa comparar contra o
+   universo INTEIRO de planos (ex.: "economize R$X/ano" compara o anual
+   contra o mensal mais barato, que só existe na lista sem filtro), mas a
+   grade renderizada usa só `visiblePlans`. Mesmo padrão replicado em
+   `MySubscriptionView.vue` (`plans.plans`/`plans.visiblePlans` da mesma
+   composable), com um cuidado extra: a seção "Trocar de plano" (que
+   contém o próprio seletor) fica visível mesmo quando o ciclo
+   selecionado não tem nenhum plano pra trocar (`hasPendingPlanChange`
+   continua sendo o gate real, não `otherPlans.length`) — senão o usuário
+   ficaria preso sem conseguir descobrir que o outro ciclo tem opções,
+   mostrando em vez disso a mensagem `changePlan.emptyForCycle`.
+   Verificado em browser real contra o backend de verdade (2 planos
+   mensais + 2 anuais seedados): alternar Mensal/Anual dispara o `GET`
+   real com o `filter[billing_cycle]` certo nos 2 componentes, grade troca
+   de conteúdo, resumo de "Meu plano" (plano atual/status/datas) não muda
+   com o filtro, badge "Mais econômico" calcula só dentro do ciclo
+   visível, e o caso de "economia zero" (yearly = 12× o mensal exato nos
+   dados de seed) corretamente NÃO mostra nenhum badge de economia (nunca
+   um valor zerado/negativo).
+
 ---
 
 ## Fase 5 — Platform
