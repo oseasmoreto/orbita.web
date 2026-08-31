@@ -6,9 +6,17 @@ pedido direto do usuário: "vamos já criar um padrão pra reutilizarmos nos
 cruds, tudo abstraído, todos os composables envolvidos". Todo CRUD novo
 (ex.: Marketplaces conectados, Fase 4) segue esta forma — não reinventa.
 
-## As 3 peças genéricas (`shared/composables/`)
+## As 5 peças genéricas (`shared/composables/` + `shared/components/blocks/`)
 
-Nenhuma delas sabe o nome de nenhuma entidade de domínio. Todas test-first.
+Nenhuma delas sabe o nome de nenhuma entidade de domínio. Todas test-first
+(exceto `CrudFormActions.vue`, puramente visual — ver seção própria
+abaixo). As 2 últimas (`useResourceForm`, `useNumberFieldModel`) foram
+extraídas em 2026-08-31, pedido direto do usuário depois de notar que
+`useProductForm.ts`/`useProductLaunchForm.ts` (as duas únicas
+implementações de form de CRUD até então) eram praticamente idênticas —
+"vamos ter composables e componentes abstraídos pra evitar essa
+duplicidade... com menos arquivos duplicados conseguimos gerar novos
+módulos".
 
 - **`useResourceList<T>`** — paginação + busca + ordenação + loading/erro.
   Recebe só `fetchPage({ page, perPage, search, sortKey, sortDirection })`.
@@ -27,6 +35,30 @@ Nenhuma delas sabe o nome de nenhuma entidade de domínio. Todas test-first.
   `request(item)`/`cancel()`/`confirm(handler)`. `confirm()` propaga erro
   do `handler` e só fecha/limpa no sucesso — permite tentar de novo sem
   perder o alvo.
+- **`useResourceForm<TValues, TResource, TPayload>`** — motor genérico de
+  "formulário único cria/edita 1 recurso": `values`/`errors`/
+  `isSubmitting`, `reset(existing?)`, `submit(existing?)`. Recebe um
+  objeto de config com as peças que REALMENTE variam por entidade —
+  `schema` (já com `t` aplicado, é o próprio `createXFormSchema(t)`),
+  `emptyValues`, `toFormValues`, `toRequestPayload`, `create`, `update`
+  (`(existing, payload) => Promise<TResource>` — quem já tem o id/rota
+  aninhada resolvida, ex.: `updateProductLaunch(productId, existing.id,
+  payload)`, mora no `update` do config, nunca dentro de
+  `useResourceForm`), `successMessage(mode)`. Todo o resto (`validate()`,
+  o fluxo completo de `submit()` — valida → create-ou-update conforme
+  `existing` → toast de sucesso → em erro, `parseApiError` + toast +
+  `resolveFieldError` campo a campo) é idêntico em qualquer CRUD e mora
+  só aqui. `TPayload` é inferido do retorno de `toRequestPayload` — só
+  tipa certo (sem `as`) quando o objeto de config inteiro é passado
+  inline pro `useResourceForm(...)` dentro do `use<Recurso>Form.ts`
+  (tipagem contextual do TS).
+- **`useNumberFieldModel<T>(values, key, { nullable? })`** — ponte
+  string↔number pro `v-model` de `Input.vue` (átomo genérico, só expõe
+  `string`). `nullable: true` faz string vazia virar `null` (campo
+  opcional, ex.: `PRODUCT.weight`) em vez de `0`. Recebe o objeto reativo
+  inteiro (`values` de `useResourceForm`) + a chave, não um `Ref<number>`
+  isolado — escreve de volta na MESMA propriedade que `useResourceForm`
+  valida/envia.
 
 ## A forma de um módulo CRUD (`modules/<contexto>/`)
 
@@ -36,10 +68,31 @@ modules/<contexto>/
   services/<contexto>Api.ts      # list/create/update/delete reais, via apiClient
   schemas/<recurso>FormSchema.ts # createXFormSchema(t) — FÁBRICA, nunca schema estático
   composables/use<Recurso>List.ts   # wraps useResourceList + mapeia sort da UI -> API
-  composables/use<Recurso>Form.ts   # valida com o schema, chama o service, toast i18n
+  composables/use<Recurso>Form.ts   # config de useResourceForm (schema/payload/service) — sem lógica própria
   components/<Recurso>Form.vue      # form único: create E edit (prop `mode`)
   views/<Recurso>sView.vue          # a página inteira
 ```
+
+`use<Recurso>Form.ts` fica pequeno de propósito: só `emptyValues`/
+`toFormValues`/`toRequestPayload` (conversão de/pra shape de domínio,
+sempre específica da entidade — nunca some) + a chamada de
+`useResourceForm({ ...config })`. Ver `useProductForm.ts`/
+`useProductLaunchForm.ts` como referência de forma mínima.
+
+## A forma do componente `<Recurso>Form.vue`
+
+- Campo numérico sempre via `useNumberFieldModel(values, 'campo')` (ou
+  `{ nullable: true }` pro opcional) — nunca um `computed({ get, set })`
+  escrito à mão de novo.
+- Rodapé Cancelar/Submit sempre `CrudFormActions.vue`
+  (`shared/components/blocks/`) — `cancel-label`/`submit-label`/
+  `is-submitting` como prop, `@cancel`. Nunca reescrever a marcação/CSS
+  de `.xxx-form__actions` à mão — era exatamente essa duplicação (mesmo
+  markup+CSS em `ProductForm.vue`/`ProductLaunchForm.vue`) que motivou a
+  extração.
+- `fieldError(key)` (`errors.value[key]`) continua um helper local do
+  componente — é só 2 linhas e cada form tem um `keyof XFormValues`
+  diferente, não vale a pena abstrair.
 
 **Regra não-negociável, herdada de `.ai/rules/i18n.md`**: schema Zod de
 formulário nunca é um objeto estático exportado com mensagem hardcoded —
@@ -101,3 +154,10 @@ Nenhum CRUD novo deve importar `AppFooter` na própria view.
 - Não hardcodar texto de botão/coluna/mensagem — toda string visível
   passa por `$t()`/`t()` (`.ai/rules/i18n.md`), incluindo dentro do
   schema Zod (fábrica, não objeto estático).
+- Não reescrever `validate()`/`submit()`/error-handling à mão num
+  `use<Recurso>Form.ts` novo — sempre `useResourceForm`, só o objeto de
+  config muda.
+- Não reescrever o par `get`/`set` string↔number à mão num campo
+  numérico novo — sempre `useNumberFieldModel`.
+- Não reescrever o rodapé Cancelar/Submit à mão num form novo — sempre
+  `CrudFormActions.vue`.

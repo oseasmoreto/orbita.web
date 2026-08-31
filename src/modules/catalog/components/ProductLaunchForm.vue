@@ -7,18 +7,19 @@
  * ficaria estranho; `Modal.vue` sobrepõe em vez de deslizar).
  *
  * `purchasePrice`/`quantity` (`Input.vue` só expõe `v-model` de
- * `string`) usam o mesmo `computed` de conversão string↔number na borda
- * do componente, mesmo raciocínio de `ProductForm.vue`. `date` não
- * precisa dessa ponte — `DatePicker.vue` já expõe `v-model` de `string`
- * (ISO `YYYY-MM-DD`), igual ao tipo do próprio campo do formulário.
+ * `string`) usam `useNumberFieldModel` (`shared/composables/`, mesmo
+ * raciocínio de `ProductForm.vue` — extraído em 2026-08-31 porque o par
+ * `get`/`set` estava duplicado à mão nos dois forms). `date` não precisa
+ * dessa ponte — `DatePicker.vue` já expõe `v-model` de `string` (ISO
+ * `YYYY-MM-DD`), igual ao tipo do próprio campo do formulário.
  */
-import { computed } from 'vue'
+import { useNumberFieldModel } from '@/shared/composables/useNumberFieldModel'
 import DatePicker from '@/shared/components/ui/DatePicker.vue'
 import { useProductLaunchForm } from '../composables/useProductLaunchForm'
 import type { ProductLaunchFormValues } from '../schemas/productLaunchFormSchema'
 import type { ProductLaunch } from '../types/productLaunch.type'
+import CrudFormActions from '@/shared/components/blocks/CrudFormActions.vue'
 import FormGroup from '@/shared/components/blocks/FormGroup.vue'
-import Button from '@/shared/components/ui/Button.vue'
 import Input from '@/shared/components/ui/Input.vue'
 
 const props = defineProps<{
@@ -36,19 +37,8 @@ const { errors, isSubmitting, reset, submit, values } = useProductLaunchForm(pro
 
 reset(props.launch ?? undefined)
 
-const purchasePriceInput = computed<string>({
-  get: () => String(values.purchasePrice),
-  set: (raw) => {
-    values.purchasePrice = raw === '' ? 0 : Number(raw)
-  },
-})
-
-const quantityInput = computed<string>({
-  get: () => String(values.quantity),
-  set: (raw) => {
-    values.quantity = raw === '' ? 0 : Number(raw)
-  },
-})
+const purchasePriceInput = useNumberFieldModel(values, 'purchasePrice')
+const quantityInput = useNumberFieldModel(values, 'quantity')
 
 function fieldError(key: keyof ProductLaunchFormValues): string | undefined {
   return errors.value[key]
@@ -89,18 +79,16 @@ async function handleSubmit(): Promise<void> {
       </FormGroup>
     </div>
 
-    <div class="product-launch-form__actions">
-      <Button type="button" variant="outline" @click="emit('cancel')">
-        {{ $t('common.actions.cancel') }}
-      </Button>
-      <Button :disabled="isSubmitting" type="submit" variant="primary">
-        {{
-          props.mode === 'create'
-            ? $t('catalog.products.launches.form.submitCreate')
-            : $t('catalog.products.launches.form.submitEdit')
-        }}
-      </Button>
-    </div>
+    <CrudFormActions
+      :cancel-label="$t('common.actions.cancel')"
+      :is-submitting="isSubmitting"
+      :submit-label="
+        props.mode === 'create'
+          ? $t('catalog.products.launches.form.submitCreate')
+          : $t('catalog.products.launches.form.submitEdit')
+      "
+      @cancel="emit('cancel')"
+    />
   </form>
 </template>
 
@@ -111,12 +99,5 @@ async function handleSubmit(): Promise<void> {
   display: flex;
   flex-direction: column;
   gap: $spacing-16;
-}
-
-.product-launch-form__actions {
-  display: flex;
-  justify-content: flex-end;
-  gap: $spacing-8;
-  padding-top: $spacing-16;
 }
 </style>

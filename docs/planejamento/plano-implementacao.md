@@ -694,17 +694,22 @@ test-first:
 
 Um CRUD novo (`Marketplaces conectados`, Fase 4) repete exatamente a
 forma de `ProductsView.vue`, só troca `service`/`type`/`schema`/
-`colunas`/`form` — ver `.ai/rules/crud-pattern.md`.
+`colunas`/`form` — ver `.ai/rules/crud-pattern.md`. **Extensão pro lado
+do FORMULÁRIO em 2026-08-31** — ver seção "Padrão de CRUD, lado do
+formulário" abaixo: as 3 peças acima cobrem só listagem/Drawer/
+confirmação; `useResourceForm`/`useNumberFieldModel`/`CrudFormActions.vue`
+fecham o mesmo padrão pro `use<Recurso>Form.ts`/`<Recurso>Form.vue`.
 
 **Pendências reais desta fase** (não implementadas ainda, fora do escopo
-do pedido "montar o CRUD de exemplo"):
-- Rotas `/products/new`/`/products/:id/edit` dedicadas — o form atual só
-  existe dentro do Drawer, nunca como página própria (decisão explícita
-  do usuário: "renderizarão no modal lateral direito").
-- `usePlanLimit` — depende de `SUBSCRIPTION`/`PLAN` (Fase 2, Billing).
-  **Fase 2 concluída em 2026-08-31** — deixou de ser um bloqueio real,
-  só não foi pedido ainda nesta rodada de Catalog; candidato natural pra
-  entrar quando alguém pedir "limite de plano no cadastro de produto".
+do pedido "montar o CRUD de exemplo") — **as duas ficaram resolvidas em
+2026-08-31**, ver seção "Rotas diretas + limite de plano do Catalog"
+abaixo:
+- ~~Rotas `/products/new`/`/products/:id/edit` dedicadas~~ — **resolvido**,
+  mas não como página própria: continuam abrindo o MESMO `Drawer`
+  (decisão original do usuário permanece — "renderizarão no modal lateral
+  direito"), só ganharam deep link.
+- ~~`usePlanLimit`~~ — **resolvido**, checagem proativa de
+  `PLAN.max_products` antes de submeter.
 - ~~Guard de rota real (`requiresAuth`)~~ — **resolvido em 2026-08-28**,
   ver Fase 1 acima (`meta.requiresAuth: true` no `AppLayout` pai).
 
@@ -829,6 +834,196 @@ chave crua aparecia direto na tela.
   `ProductForm.vue` agora mostra "EAN inválido — deve ser um código de
   barras EAN-8/12/13/14 válido." sob o campo, e o toast geral mostra
   "Confira os campos destacados abaixo." em vez das chaves cruas.
+
+---
+
+## Rotas diretas + limite de plano do Catalog (2026-08-31)
+
+Pedido direto do usuário ("pode implementar os itens 1 e 2"), fechando as
+2 pendências reais que restavam da Fase 3.
+
+**Item 1 — `/products/new`/`/products/:id/edit` abrindo o `Drawer` já
+existente.** Continua não sendo página própria (decisão original do
+usuário permanece) — as 2 rotas novas (`routes.ts`) apontam pro MESMO
+`ProductsView.vue`, e um `watch(() => [route.name, route.params.id])`
+(`{ immediate: true }`) decide abrir `drawer.openCreate()`/`openEdit()`
+reagindo à rota, nunca o inverso. Fechar por QUALQUER caminho (Cancelar,
+salvar, `Esc`, clique fora, arrastar no mobile) navega de volta pra
+`/products` via um segundo `watch`, só em `drawer.isOpen.value` — única
+fonte de verdade, sem `router.push` espalhado em cada handler de
+fechamento. `/products/:id/edit` acessado direto (F5, link
+compartilhado) busca o produto via `GET /products/{product}`
+(`getProduct()`, endpoint real já existente no backend, nunca consumido
+antes) quando ele não está na página da listagem já carregada; ID
+inexistente mostra o erro e volta pra `/products`.
+
+- **Achado real, reportado pelo usuário durante a implementação**: o
+  breadcrumb regredia de "Catálogo / Produtos" pra só "Produtos" nas 2
+  rotas novas — `useBreadcrumb.ts`/`resolveBreadcrumbItems` casava só por
+  `route.name === item.to.name` exato, e `products-new`/`products-edit`
+  têm nome de rota diferente do item de navegação (`to.name: 'products'`),
+  então nunca achava o item na árvore e caía no fallback (só o título da
+  rota, sem o grupo). Corrigido com `NavItem.relatedRouteNames?: string[]`
+  (`navigation.type.ts`) — a "Produtos" da sidebar ganhou
+  `relatedRouteNames: ['products-new', 'products-edit']`
+  (`navigation.ts`) — e `resolveBreadcrumbItems` passou a: (a) casar
+  também por `relatedRouteNames`, (b) acrescentar um 3º segmento (o
+  título da própria rota atual) quando a rota casada é "relacionada", não
+  a exata do item. Resultado: "Catálogo / Produtos / Novo produto" e
+  "Catálogo / Produtos / Editar produto" — exatamente o pedido do
+  usuário. TDD: 3 testes novos escritos primeiro (`useBreadcrumb.test.ts`),
+  vermelhos, depois a implementação.
+
+**Item 2 — `usePlanLimit`, checagem proativa de `PLAN.max_products`.** A
+validação REAL e reativa já existia no backend
+(`CreateProductAction`/`ProductLimitReachedException` →
+`errorMessageProductLimitReached`) — só a mensagem nunca tinha sido
+cadastrada em `pt-BR.ts` (cadastrada agora). O pedido era ir além do
+reativo: avisar o vendedor ANTES de ele preencher o formulário todo pra
+só então levar um 422.
+
+- **Backend**: pedido pra sessão `backend-c5` denormalizar
+  `plan_limits: { max_products, max_marketplaces } | null` direto em
+  `LoginResultResource` (mesmo padrão já usado pra `favorites`,
+  seção acima) — especificamente pra `modules/catalog` nunca precisar
+  importar `modules/billing` só pra achar o plano ativo (regra de
+  fronteira de módulo, `docs/infra/convencoes-frontend-infra.md` seção
+  2). `null` pra `admin_master`/sem plano; calculado com a MESMA lógica
+  de `CreateProductAction` (não uma reimplementação "mais correta") —
+  garante que `usePlanLimit` nunca diverge do que acontece de verdade no
+  submit. Implementado e confirmado pela sessão de backend no mesmo dia.
+- **Frontend**: `PlanLimits`/`toPlanLimits()` (`core/store/types/auth.type.ts`),
+  campo `planLimits` em `AuthUser`, propagado pelos 3 pontos que recebem
+  `LoginResultResource` (`useLoginForm`/`guards.ts`'s `bootstrapSession()`/
+  `useVerifyEmail`) e preservado por `useUpdateProfileForm` (mesmo padrão
+  já usado pra `favorites`). `modules/catalog/composables/usePlanLimit.ts`:
+  `isProductLimitReached(planLimits, currentCount)` — função pura,
+  testada primeiro (`usePlanLimit.test.ts`) — `false` quando não há
+  limite conhecido (`admin_master`/sessão ainda não carregada) ou o plano
+  não limita esse recurso (`maxProducts: null`), `true` quando a
+  contagem atual já bateu ou passou do limite. `usePlanLimit(currentCount)`
+  é o wrapper reativo, lendo `useAuthStore()` + a contagem já carregada
+  por `useProductList` (`list.total`, nunca uma segunda busca).
+- **UI** (`ProductsView.vue`): `ListToolbar` ganhou `addDisabled` (nova
+  prop, bloco continua sem regra de negócio própria — só repassa o
+  booleano decidido pelo consumidor) — desabilita "Novo produto" quando o
+  limite é atingido. Indicador "`{total}` de `{max}` produtos
+  cadastrados" sempre visível quando o plano tem limite conhecido, e um
+  aviso (mesma linguagem visual do banner de erro, mas em
+  `$color-accent-yellow`) quando o limite já foi atingido. **Só a UI é
+  bloqueada, nunca a rota** — acessar `/products/new` direto por URL
+  continua abrindo o form normalmente mesmo com o limite atingido; o
+  backend continua sendo a trava real no submit.
+- **Achado colateral, ao registrar a mensagem do limite**: praticamente
+  TODAS as 9 chaves genéricas/infra de `ApiMessageKey` (`ErrorUnauthorized`/
+  `ErrorForbidden`/`ErrorAccountNotActive`/`ErrorCannotModifyOwnAccount`/
+  `ErrorNotFound`/`ErrorTooManyRequests`/`ErrorCsrfTokenMismatch`/
+  `ErrorServer`/`ErrorInvalidCredentials`) nunca tinham sido cadastradas
+  em `pt-BR.ts` — todo 401/403/404/429/CSRF/500/login inválido do app
+  inteiro, desde sempre, mostrava a chave crua em vez de uma mensagem de
+  verdade (mesma classe de gap já encontrada uma vez pra
+  `errorMessageValidation`, seção "Bugs de formulário" acima — dessa vez
+  o gap era sistêmico, não uma chave isolada). Cadastradas as 9. A regra
+  de "só cataloga quando um consumidor real existe" (seção 6.3 de
+  `docs/infra/convencoes-frontend-infra.md`) foi revisada no comentário
+  de `pt-BR.ts`: chaves genéricas/infra (usáveis por QUALQUER endpoint)
+  agora são cadastradas de forma antecipada; chaves de negócio específicas
+  continuam esperando um consumidor real.
+- Verificado em browser real contra o backend local (usuário/plano de
+  teste com `max_products: 2`, criado e removido via tinker): com 2/2
+  produtos, indicador mostra "2 de 2 produtos cadastrados", aviso de
+  limite aparece, botão "Novo produto" fica desabilitado; com 1/2,
+  indicador mostra "1 de 2", sem aviso, botão habilitado.
+
+---
+
+## Padrão de CRUD, lado do formulário (2026-08-31)
+
+Pedido direto do usuário ("temos um padrão abstraído de CRUD?... vi
+muito código duplicado nos arquivos algumaCoisaForm, precisamos ter
+composables e componentes abstraídos... com menos arquivos duplicados
+conseguimos gerar novos módulos, antes da Fase 4 vamos mexer com isso").
+O padrão de CRUD original (Fase 3) só cobria listagem/Drawer/confirmação
+(`useResourceList`/`useCrudDrawer`/`useConfirmAction`) — comparando
+`useProductForm.ts`/`useProductLaunchForm.ts` lado a lado, a estrutura
+era praticamente idêntica: `values`/`errors`/`isSubmitting`, `reset()`,
+`validate()` (corpo byte-a-byte igual) e `submit()` com a mesma forma
+(`validate → try { payload, create/update, toast } catch { parseApiError,
+toast.error, loop de resolveFieldError } finally`). No componente
+(`ProductForm.vue`/`ProductLaunchForm.vue`), o rodapé Cancelar/Submit e a
+ponte string↔number de campo numérico também se repetiam.
+
+**Escopo confirmado com o usuário antes de mexer** (pergunta direta,
+trade-off real): só CRUD de entidade (Catalog agora, Pricing na Fase 4)
+— Identity (login/registro/perfil/senha) fica de fora, são fluxos de
+auth com regras próprias (redirect, sessão), não "criar/editar 1
+recurso"; forçar no mesmo molde geraria abstração menos natural.
+
+**3 peças novas, todas test-first (exceto o bloco, puramente visual)**,
+somando às 3 já existentes — `.ai/rules/crud-pattern.md` atualizado com
+a forma completa:
+
+- **`useResourceForm<TValues, TResource, TPayload>`**
+  (`shared/composables/`) — motor genérico de "formulário único cria/
+  edita 1 recurso". Recebe um objeto de config com só o que REALMENTE
+  varia por entidade (`schema`, `emptyValues`, `toFormValues`,
+  `toRequestPayload`, `create`, `update`, `successMessage`) e devolve
+  `{ values, errors, isSubmitting, reset, submit }` — todo o resto
+  (`validate`, o fluxo inteiro de `submit`) passa a existir numa única
+  cópia, testada de verdade pela primeira vez (`useProductForm.ts`/
+  `useProductLaunchForm.ts` nunca tinham teste próprio — só os schemas
+  Zod eram testados). `TPayload` é inferido do retorno de
+  `toRequestPayload` — `create`/`update` tipam certo sem nenhum `as`
+  quando o objeto de config é passado inline (tipagem contextual do TS,
+  confirmado no typecheck: zero cast novo precisou entrar nos módulos).
+  Testado em `tests/shared/composables/useResourceForm.test.ts` (8 casos
+  — estado inicial, `reset()` com e sem recurso, validação falha não
+  chama API, cria vs. atualiza, `isSubmitting` true durante a chamada,
+  falha de API não propaga exceção).
+- **`useNumberFieldModel<T>(values, key, { nullable? })`**
+  (`shared/composables/`) — ponte string↔number pro `v-model` de
+  `Input.vue`. `ProductForm.vue` tinha 2 factories locais quase
+  idênticas (`numericField`/`nullableNumericField`) pra resolver isso
+  DENTRO do próprio arquivo; `ProductLaunchForm.vue` reimplementava o
+  mesmo par `get`/`set` de novo, sem reaproveitar nada — a duplicação era
+  ENTRE arquivos, não só dentro de um. Testado em
+  `tests/shared/composables/useNumberFieldModel.test.ts` (6 casos —
+  leitura/escrita normal, default pra `0` vs. `null` conforme
+  `nullable`).
+- **`CrudFormActions.vue`** (`shared/components/blocks/`) — rodapé
+  Cancelar/Submit (mesma marcação+CSS que estava duplicada nos 2 forms).
+  Puramente de apresentação (emite só `cancel`, o submit já é o próprio
+  `@submit.prevent` do `<form>` pai) — não exige test-first (sem lógica
+  de estado interno), verificado em browser real.
+
+**Retrofit dos 2 forms existentes**, sem mudar nenhum comportamento
+observável: `useProductForm.ts`/`useProductLaunchForm.ts` ficaram
+reduzidos a só `emptyValues`/`toFormValues`/`toRequestPayload` + a
+chamada de `useResourceForm({ ...config })` (perderam completamente
+`validate()`/o corpo de `submit()`, que agora moram só no composable
+genérico); `ProductForm.vue`/`ProductLaunchForm.vue` trocaram os campos
+numéricos por `useNumberFieldModel` e o rodapé por `CrudFormActions`,
+removendo o CSS `__actions` duplicado dos 2 arquivos.
+
+**Verificado em browser real contra o backend local** (usuário/plano de
+teste, removidos depois): criar produto → editar produto (form
+pré-preenchido corretamente) → erro de validação do CLIENTE ("Nome é
+obrigatório.", confirma que `validate()` do composable genérico continua
+funcionando) → cancelar fecha o Drawer → aba "Lançamentos" → criar
+lançamento (incluindo o atalho "Hoje" do `DatePicker`) — todos os toasts
+de sucesso corretos. Testado à parte também o erro de CAMPO vindo do
+BACKEND (EAN inválido, `closure_validation_rule`): segue resolvendo pra
+"EAN inválido — deve ser um código de barras EAN-8/12/13/14 válido."
+(confirma que `resolveFieldError` dentro do `useResourceForm` genérico
+continua no mesmo pipeline de antes). Suíte completa (28 arquivos, 165
+testes) + typecheck/eslint/biome verdes.
+
+**Ganho concreto pra Fase 4**: um CRUD novo (`Marketplace`/
+`ProductMarketplace`/`PricingRule`) agora só precisa escrever o objeto de
+config de `use<Recurso>Form.ts` (schema + as 3 conversões + as 2
+chamadas de service) — zero lógica de validação/submissão/error-handling
+pra reescrever, e campo numérico novo (ex.: `PricingRule.percentage`/
+`fixed_fee`) é um `useNumberFieldModel(values, 'campo')` de uma linha.
 
 ---
 

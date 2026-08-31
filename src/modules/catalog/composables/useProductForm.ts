@@ -1,8 +1,5 @@
-import { reactive, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { useApiMessage } from '@/shared/composables/useApiMessage'
-import { useToast } from '@/shared/composables/useToast'
-import { parseApiError } from '@/shared/services/parseApiError'
+import { useResourceForm } from '@/shared/composables/useResourceForm'
 import { createProductFormSchema, type ProductFormValues } from '../schemas/productFormSchema'
 import { createProduct, updateProduct } from '../services/catalogApi'
 import type { Product } from '../types/product.type'
@@ -59,79 +56,27 @@ function toRequestPayload(values: ProductFormValues) {
 /**
  * Formulário único pra criar E editar (pedido direto do usuário,
  * 2026-08-28: "os formulários de criação e edição serão os mesmos") —
- * `reset(product?)` monta os valores iniciais conforme o modo
- * (`useCrudDrawer`, `shared/composables/`, é quem decide create-vs-edit;
- * este composable só reage ao registro que vier ou não).
- *
- * Validação via `productFormSchema.safeParse` ANTES de chamar a API
- * (seção 6.2/4 de `docs/infra/convencoes-frontend-infra.md` — nunca
- * confia só no 422 de volta). Erro de campo devolvido pelo backend
- * (`ApiError.fieldErrors`) também popula `errors`, sobrepondo a
- * validação do cliente pra qualquer regra que só o servidor conhece.
+ * todo o "encanamento" (`values`/`errors`/`isSubmitting`, `reset`,
+ * `validate`, fluxo de `submit`) mora em `useResourceForm`
+ * (`shared/composables/`, pedido do usuário em 2026-08-31 depois de notar
+ * que este arquivo e `useProductLaunchForm.ts` eram praticamente
+ * idênticos) — aqui só ficam as peças que realmente variam por entidade:
+ * schema, conversão de/pra valores de formulário, payload de request, as
+ * 2 chamadas de API.
  */
 export function useProductForm() {
-  const toast = useToast()
-  const { resolveFieldError, resolveMessage } = useApiMessage()
   const { t } = useI18n()
-  const schema = createProductFormSchema(t)
 
-  const values = reactive<ProductFormValues>(emptyFormValues())
-  const errors = ref<Partial<Record<keyof ProductFormValues, string>>>({})
-  const isSubmitting = ref(false)
-
-  function reset(product?: Product): void {
-    Object.assign(values, product ? toFormValues(product) : emptyFormValues())
-    errors.value = {}
-  }
-
-  function validate(): boolean {
-    const result = schema.safeParse(values)
-
-    if (result.success) {
-      errors.value = {}
-      return true
-    }
-
-    errors.value = Object.fromEntries(
-      result.error.issues.map((issue) => [issue.path[0], issue.message]),
-    )
-    return false
-  }
-
-  async function submit(existing?: Product): Promise<Product | null> {
-    if (!validate()) {
-      return null
-    }
-
-    isSubmitting.value = true
-
-    try {
-      const payload = toRequestPayload(values)
-      const product = existing
-        ? await updateProduct(existing.id, payload)
-        : await createProduct(payload)
-
-      toast.success(
-        existing
-          ? t('catalog.products.form.updateSuccess')
-          : t('catalog.products.form.createSuccess'),
-      )
-      return product
-    } catch (caughtError) {
-      const apiError = parseApiError(caughtError)
-      toast.error(resolveMessage(apiError.messageKey))
-
-      if (apiError.fieldErrors) {
-        for (const [field, messages] of Object.entries(apiError.fieldErrors)) {
-          errors.value[field as keyof ProductFormValues] = resolveFieldError(field, messages[0])
-        }
-      }
-
-      return null
-    } finally {
-      isSubmitting.value = false
-    }
-  }
-
-  return { errors, isSubmitting, reset, submit, values }
+  return useResourceForm<ProductFormValues, Product, ReturnType<typeof toRequestPayload>>({
+    create: createProduct,
+    emptyValues: emptyFormValues,
+    schema: createProductFormSchema(t),
+    successMessage: (mode) =>
+      mode === 'create'
+        ? t('catalog.products.form.createSuccess')
+        : t('catalog.products.form.updateSuccess'),
+    toFormValues,
+    toRequestPayload,
+    update: (existing, payload) => updateProduct(existing.id, payload),
+  })
 }

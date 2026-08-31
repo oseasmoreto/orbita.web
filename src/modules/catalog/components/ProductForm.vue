@@ -8,16 +8,18 @@
  * `useProductForm.ts` (se `product` existe, é update).
  *
  * Campos numéricos (`Input.vue` só expõe `v-model` de `string`, é um
- * átomo genérico — não vale mudar o contrato dele só pra este form)
- * usam um `computed` local por campo, convertendo string↔number na
- * borda deste componente, sem vazar essa conversão pro composable.
+ * átomo genérico — não vale mudar o contrato dele só pra este form) usam
+ * `useNumberFieldModel` (`shared/composables/`, extraído em 2026-08-31 —
+ * o mesmo par `get`/`set` estava duplicado à mão aqui e em
+ * `ProductLaunchForm.vue`), convertendo string↔number na borda deste
+ * componente, sem vazar essa conversão pro composable.
  */
-import { computed } from 'vue'
+import { useNumberFieldModel } from '@/shared/composables/useNumberFieldModel'
 import { useProductForm } from '../composables/useProductForm'
 import type { ProductFormValues } from '../schemas/productFormSchema'
 import type { Product } from '../types/product.type'
+import CrudFormActions from '@/shared/components/blocks/CrudFormActions.vue'
 import FormGroup from '@/shared/components/blocks/FormGroup.vue'
-import Button from '@/shared/components/ui/Button.vue'
 import Input from '@/shared/components/ui/Input.vue'
 
 const props = defineProps<{
@@ -34,34 +36,13 @@ const { errors, isSubmitting, reset, submit, values } = useProductForm()
 
 reset(props.product ?? undefined)
 
-type NumericField = 'fullSalePrice' | 'purchasePrice' | 'targetMargin'
-type NullableNumericField = 'height' | 'length' | 'weight' | 'width'
-
-function numericField(key: NumericField) {
-  return computed<string>({
-    get: () => String(values[key]),
-    set: (raw) => {
-      values[key] = raw === '' ? 0 : Number(raw)
-    },
-  })
-}
-
-function nullableNumericField(key: NullableNumericField) {
-  return computed<string>({
-    get: () => (values[key] === null ? '' : String(values[key])),
-    set: (raw: string) => {
-      values[key] = raw === '' ? null : Number(raw)
-    },
-  })
-}
-
-const fullSalePriceInput = numericField('fullSalePrice')
-const purchasePriceInput = numericField('purchasePrice')
-const targetMarginInput = numericField('targetMargin')
-const weightInput = nullableNumericField('weight')
-const heightInput = nullableNumericField('height')
-const widthInput = nullableNumericField('width')
-const lengthInput = nullableNumericField('length')
+const fullSalePriceInput = useNumberFieldModel(values, 'fullSalePrice')
+const purchasePriceInput = useNumberFieldModel(values, 'purchasePrice')
+const targetMarginInput = useNumberFieldModel(values, 'targetMargin')
+const weightInput = useNumberFieldModel(values, 'weight', { nullable: true })
+const heightInput = useNumberFieldModel(values, 'height', { nullable: true })
+const widthInput = useNumberFieldModel(values, 'width', { nullable: true })
+const lengthInput = useNumberFieldModel(values, 'length', { nullable: true })
 
 function fieldError(key: keyof ProductFormValues): string | undefined {
   return errors.value[key]
@@ -149,18 +130,16 @@ async function handleSubmit(): Promise<void> {
       </div>
     </div>
 
-    <div class="product-form__actions">
-      <Button type="button" variant="outline" @click="emit('cancel')">
-        {{ $t('common.actions.cancel') }}
-      </Button>
-      <Button :disabled="isSubmitting" type="submit" variant="primary">
-        {{
-          props.mode === 'create'
-            ? $t('catalog.products.form.submitCreate')
-            : $t('catalog.products.form.submitEdit')
-        }}
-      </Button>
-    </div>
+    <CrudFormActions
+      :cancel-label="$t('common.actions.cancel')"
+      :is-submitting="isSubmitting"
+      :submit-label="
+        props.mode === 'create'
+          ? $t('catalog.products.form.submitCreate')
+          : $t('catalog.products.form.submitEdit')
+      "
+      @cancel="emit('cancel')"
+    />
   </form>
 </template>
 
@@ -192,12 +171,5 @@ async function handleSubmit(): Promise<void> {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: $spacing-16;
-}
-
-.product-form__actions {
-  display: flex;
-  justify-content: flex-end;
-  gap: $spacing-8;
-  padding-top: $spacing-16;
 }
 </style>

@@ -829,6 +829,32 @@ mensagem de erro, nunca decide regra de validação (isso é do composable
 - `error` (opcional): mensagem abaixo do controle, `{colors.accent-red}`,
   `role="alert"`.
 
+### CrudFormActions (`shared/components/blocks/CrudFormActions.vue`)
+
+**Sem frame próprio no Figma** (mesma categoria de `FormGroup`/`Modal` —
+composição nossa, não do design source) — extraído em 2026-08-31, pedido
+direto do usuário ("composables e componentes abstraídos pra evitar
+duplicidade"), depois de notar que `ProductForm.vue`/
+`ProductLaunchForm.vue` (`.product-form__actions`/
+`.product-launch-form__actions`) tinham exatamente a mesma marcação+CSS:
+rodapé com 2 `Button` (Cancelar `outline`, Submit `primary`), alinhados
+à direita, `gap: {spacing.8}`, `padding-top: {spacing.16}`.
+
+- Props: `cancelLabel`/`submitLabel` (textos já traduzidos pelo
+  consumidor — bloco nunca decide texto de UI) + `isSubmitting?`
+  (desabilita o botão de submit, mesmo tratamento que os 2 forms já
+  faziam). Emite só `cancel` — o submit continua sendo o próprio
+  `@submit.prevent` do `<form>` pai, este bloco não precisa saber disso
+  (o `<button type="submit">` já dispara o evento nativo do form).
+- Puramente de apresentação, sem estado interno — não exige test-first
+  (seção 11.2 de `docs/infra/convencoes-frontend-infra.md`), verificado
+  em browser real via o fluxo completo de criar/editar/cancelar produto
+  e lançamento (`docs/planejamento/plano-implementacao.md`, seção "Padrão
+  de CRUD, lado do formulário").
+- Ver `.ai/rules/crud-pattern.md` pra quando usar — todo `<Recurso>Form.vue`
+  novo (Fase 4 em diante) usa este bloco pro rodapé, nunca reescreve a
+  marcação/CSS à mão de novo.
+
 ### Modal (`shared/components/ui/Modal.vue`)
 
 **Sem frame próprio no Figma** (gap já registrado em
@@ -1191,6 +1217,15 @@ Title/Assigned to/Time Spend/Status) **não exigiu nenhuma mudança de
 código** — já é coberta pela API genérica do `DataTable` (`selectable`
 omitido, colunas sem `sortable`), confirmado renderizando o mesmo
 componente com esse conjunto de colunas.
+
+**Prop `addDisabled`, pedida direto pelo usuário em 2026-08-31**
+(`usePlanLimit`, `docs/planejamento/plano-implementacao.md` — checagem
+proativa de `PLAN.max_products`) — `ProductsView.vue` desabilita o botão
+"Novo produto" quando o limite do plano já foi atingido, em vez de deixar
+o usuário só descobrir isso no 422 do backend. Bloco continua sem regra
+de negócio própria: só repassa o booleano já decidido pelo consumidor
+pro `Button` interno (`disabled`, nas duas variantes — com ou sem
+`addLabel`).
 
 ### DropdownMenu (`shared/components/ui/DropdownMenu.vue`)
 
