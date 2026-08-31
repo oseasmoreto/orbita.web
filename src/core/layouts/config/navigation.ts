@@ -70,9 +70,17 @@ export const catalogGroup: NavGroup = {
       id: 'catalog-products',
       label: t('sidebar.nav.products'),
       // `products-new`/`products-edit` são deep link pro MESMO Drawer
-      // desta página (`routes.ts`) — sem isso o breadcrumb
-      // (`useBreadcrumb.ts`) não achava o item pra essas 2 rotas.
-      relatedRouteNames: ['products-new', 'products-edit'],
+      // desta página (`routes.ts`); `product-marketplaces` (Pricing,
+      // alcançada só pela ação de linha "Marketplaces" desta listagem,
+      // nunca um item de sidebar próprio) é uma rota FILHA de verdade —
+      // sem os 3 aqui, o breadcrumb (`useBreadcrumb.ts`) não achava
+      // nenhum deles na árvore e caía só no título da própria rota
+      // ("Marketplaces do produto" sozinho, sem "Catálogo / Produtos /").
+      // Achado real, reportado pelo usuário em 2026-08-31 — mesmo bug já
+      // corrigido uma vez pras 2 primeiras, repetido aqui por esquecer de
+      // extender a lista pra rota nova de outro módulo. Regra geral pra
+      // toda tela nova: `.ai/rules/app-shell.md`.
+      relatedRouteNames: ['products-new', 'products-edit', 'product-marketplaces'],
       to: { name: 'products' },
     },
     // Lançamentos (PRODUCT_LAUNCH) não é item de topo — é sempre uma aba

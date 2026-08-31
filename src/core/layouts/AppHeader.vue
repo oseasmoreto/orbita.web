@@ -55,11 +55,21 @@ const { hasUnreadNotifications, toggleDesktopSidebar, toggleMobileNav, toggleNot
   useAppShell()
 const { isFavorite, toggleFavorite } = useFavorites()
 
+// `favoriteApi.ts`/`UserFavoriteResource` só guarda `route_name` (string),
+// sem params — favoritar uma rota com segmento dinâmico (`products-edit`,
+// `product-marketplaces`) persistiria um alvo incompleto: reabrir esse
+// favorito tentaria resolver a rota sem o `id` que ela exige e quebraria
+// com "Missing required param" (achado real, mesma causa do bug já
+// corrigido em `recordVisit()`/"Recentes", `core/router/guards.ts`).
+// `Object.keys(route.params).length === 0` exclui qualquer rota com
+// segmento dinâmico já resolvido — mais robusto que checar por nome de
+// rota específico, cobre toda rota parametrizada futura de graça.
 const isCurrentRouteFavoritable = computed(
   () =>
     Boolean(route.name && route.meta.title) &&
     !route.meta.requiresGuest &&
-    !route.meta.skipOnboardingChecks,
+    !route.meta.skipOnboardingChecks &&
+    Object.keys(route.params).length === 0,
 )
 const isCurrentRouteFavorite = computed(
   () => isCurrentRouteFavoritable.value && isFavorite(String(route.name)),

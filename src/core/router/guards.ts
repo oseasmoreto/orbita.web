@@ -144,11 +144,19 @@ export function setupRouterGuards(router: Router): void {
     // recuperação, ninguém "revisita" essas) nem de onboarding
     // (`skipOnboardingChecks` — verify-email/choose-plan/billing-result
     // são passos de um fluxo, não páginas que fazem sentido re-visitar).
+    //
+    // Achado real, reportado pelo usuário em 2026-08-31: `to: { name:
+    // to.name }` SEM `params` quebrava com "Missing required param 'id'"
+    // (erro do vue-router, não capturado por try/catch nenhum — derruba
+    // o `RouterLink` inteiro) pra toda rota com segmento dinâmico
+    // (`product-marketplaces`, `products-edit`) — clicar em "Recentes"
+    // depois de visitar uma dessas tentava resolver a rota sem o `id`
+    // que ela exige. Corrigido propagando `to.params` junto.
     if (to.name && to.meta.title && !to.meta.requiresGuest && !to.meta.skipOnboardingChecks) {
       useAppShell().recordVisit({
         id: String(to.name),
         label: i18n.global.t(to.meta.title),
-        to: { name: to.name },
+        to: { name: to.name, params: to.params },
       })
     }
   })

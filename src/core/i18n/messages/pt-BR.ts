@@ -654,10 +654,19 @@ export default {
           editTitle: 'Editar marketplace',
           errors: {
             nameRequired: 'Nome é obrigatório.',
+            websiteUrlInvalid: 'Informe uma URL válida.',
           },
           fields: {
             active: 'Marketplace ativo',
+            chooseLogo: 'Escolher arquivo',
+            description: 'Descrição',
+            logo: 'Logo',
             name: 'Nome',
+            tags: 'Tags',
+            websiteUrl: 'Site',
+          },
+          placeholders: {
+            websiteUrl: 'https://exemplo.com',
           },
           submitCreate: 'Criar marketplace',
           submitEdit: 'Salvar alterações',

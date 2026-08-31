@@ -161,3 +161,9 @@ Nenhum CRUD novo deve importar `AppFooter` na própria view.
   numérico novo — sempre `useNumberFieldModel`.
 - Não reescrever o rodapé Cancelar/Submit à mão num form novo — sempre
   `CrudFormActions.vue`.
+- **Não esquecer o breadcrumb de rota nova.** Toda rota nova (inclusive
+  deep link tipo `<recurso>-new`/`<recurso>-edit`, ou uma rota filha
+  alcançada só por ação de linha, ex.: `product-marketplaces`) precisa
+  entrar no `relatedRouteNames` do item de nav mais próximo em
+  `core/layouts/config/navigation.ts` — já regrediu 3 vezes por
+  esquecimento. Checklist completo em `.ai/rules/app-shell.md`.

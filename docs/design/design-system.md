@@ -3114,6 +3114,41 @@ pra "Regras de comissão" (`AdminPricingRuleList.vue`, dentro de um
 critério já registrado na seção StatusDot (ponto colorido, não pill, pra
 esse tipo de indicador binário simples).
 
+### AdminMarketplaceForm (`modules/pricing/components/AdminMarketplaceForm.vue`)
+
+**Primeiro upload de arquivo do projeto** — mudança de contrato pedida
+pelo usuário em 2026-08-31 ("não podemos ficar dependendo de links
+externos"): a 1ª rodada dos campos de marketplace tinha `logo_url` como
+texto colado; nesta 2ª rodada o backend trocou o campo de ENTRADA pra
+`logo_base64` (a resposta continua `logo_url`, agora sempre um link do
+próprio storage). Sem componente `FileInput` no design system ainda
+(nenhum outro form do projeto precisou de upload até aqui) — resolvido
+com um `<input type="file">` NATIVO, visualmente escondido (técnica
+padrão de "visually hidden", não `display:none` — teria tirado do fluxo
+de tab/foco de teclado) e disparado por um `Button` normal
+(`fileInputRef.click()`), convertido pra `data:` URI via `FileReader`
+antes de entrar em `values.logoBase64`.
+
+- **Preview de 3 estados**: arquivo recém-escolhido (`values.logoBase64`)
+  → `logo_url` já existente, se estiver editando e nenhum arquivo novo
+  foi escolhido ainda → `IconTile`/`Storefront` de fallback (mesmo
+  fallback visual de `MarketplacesView.vue`, quando não há nenhum dos
+  dois). Um `computed` simples resolve a prioridade.
+- **`logo_base64` só entra no payload quando o admin escolhe um arquivo
+  novo** — omitido (nunca mandado como `null`) em qualquer edição que
+  não mexeu nisso, pra não implicitamente "limpar" o logo em todo PATCH
+  de rotina. Mesmo padrão já usado pra senha opcional em
+  `useUpdateProfileForm.ts` (Identity) — `...(values.logoBase64 ? {...}
+  : {})`.
+- `accept="image/png,image/jpeg,image/webp,image/svg+xml"` no input —
+  restringe o tipo de arquivo antes mesmo de chegar no form; validação
+  de verdade (tamanho, se é imagem de fato) é do backend.
+- Verificado em browser real com upload de arquivo de verdade
+  (`page.setInputFiles`, Playwright): preview aparece imediatamente após
+  escolher o arquivo, submit grava no backend, `logo_url` resultante
+  aponta pro storage do próprio backend (`/storage/marketplaces/logos/<uuid>.<ext>`),
+  card em `MarketplacesView.vue` exibe a imagem real servida.
+
 ### MarketplacesView (`modules/pricing/views/MarketplacesView.vue`)
 
 **Grid de cards, pedido direto do usuário com referência visual real de
@@ -3130,12 +3165,51 @@ fabricar conteúdo). Cartão: `{colors.bg-1}` + borda `{colors.ink-10}` +
 (`grid-template-columns: repeat(auto-fill, minmax(260px, 1fr))`) em vez
 de empilhada verticalmente.
 
-`Toggle.vue` (variante solta, não "boxed") no canto do card — liga/
-desliga `active` de uma conexão já existente, `disabled` quando o
-marketplace ainda não foi conectado (não existe "meio-termo" pra
-`active` sem uma conexão criada primeiro). Estado desabilitado do
-`Toggle` já herda o tratamento visual do próprio componente, sem CSS
-extra aqui.
+`Toggle.vue` (variante solta, não "boxed") — liga/desliga `active` de
+uma conexão já existente, `disabled` quando o marketplace ainda não foi
+conectado (não existe "meio-termo" pra `active` sem uma conexão criada
+primeiro). Estado desabilitado do `Toggle` já herda o tratamento visual
+do próprio componente, sem CSS extra aqui.
+
+**Correção pixel-perfect, 2026-08-31, reportada pelo usuário comparando
+lado a lado com a captura de referência** — a v1 tinha 2 erros estruturais
+reais, não só estéticos: (1) `Toggle` morava no CABEÇALHO do card, ao
+lado do `IconTile`; a referência mostra o toggle na mesma LINHA do botão
+"Connect", rodapé do card, não no topo. (2) botão de conectar era
+`variant="primary"` (preto sólido, sem ícone); a referência mostra
+`outline` com um ícone de "trocar/sincronizar" antes do texto. Os dois
+corrigidos: `Toggle` movido pro rodapé (`.marketplaces-view__card-footer`,
+`justify-content: space-between` — ações à esquerda, toggle à direita,
+`margin-top: auto` no footer pra alinhar a base de todos os cards mesmo
+quando um tem `card-subtitle` — nome da loja — e outro não), botão
+"Conectar"/"Gerenciar" trocado pra `variant="outline"` +
+`icon-before="ArrowsDownUp"` (mesmo ícone já usado em `ListToolbar.vue`
+pro botão "Ordenar" — par de setas verticais, o mais próximo do "⇅" da
+referência no conjunto de ícones gerado). Reconfirmado em browser real
+(screenshot lado a lado): estrutura ícone→título→[subtítulo]→rodapé
+(botão+toggle) bate com a referência nos dois estados (conectado/não
+conectado), rodapé alinhado na mesma altura nos dois cards.
+
+**Gap fechado, mesmo dia, em duas rodadas** — backend implementou os 4
+campos pedidos acima (`logo_url`/`description`/`tags`/`website_url`,
+nullable, em `MarketplaceResource`/`AdminMarketplaceResource`).
+Atualizado aqui: cabeçalho do card ganhou `<img>` de verdade quando
+`logoUrl` existe (`IconTile`/`Storefront` continua sendo o fallback
+quando não há logo, ou quando a imagem falha ao carregar — `@error` no
+`<img>` marca o id como "falhou" e troca pro fallback, defesa contra URL
+morta que o cadastro não teria como validar sozinho) + link externo
+(`hostnameOf()`, só o domínio via `URL().hostname`, mesmo formato
+"webflow.com" da referência — ícone `ArrowSquareOut`), descrição (parágrafo
+simples abaixo do título) e tags (`Badge` `variant="gray"`, um por tag).
+
+**Segunda rodada, mesmo dia — `logo_url` deixou de aceitar link
+externo.** Pedido direto do usuário depois da 1ª entrega ("não podemos
+ficar dependendo de links externos"): o CAMPO DE ENTRADA virou
+`logo_base64` (upload real, `AdminMarketplaceForm.vue` — ver seção
+própria abaixo), mas o campo de LEITURA continua `logo_url` — agora
+sempre um link do próprio storage do backend, nunca mais externo. Zero
+mudança nesta view: ela só lê `card.marketplace.logoUrl` pra exibir,
+nunca soube ou precisou saber de onde a imagem veio.
 
 ### ProductMarketplacesView (`modules/pricing/views/ProductMarketplacesView.vue`)
 

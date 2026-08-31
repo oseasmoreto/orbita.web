@@ -1202,6 +1202,81 @@ API atual** — só dá pra construir o vínculo puro, já feito acima.
 Revisitar esta fase quando o backend expuser o endpoint de sugestão de
 preço.
 
+**Correção pixel-perfect do grid de cards, 2026-08-31** — usuário comparou
+lado a lado com a captura de referência ("não está pixel perfect"). 2
+erros estruturais reais corrigidos (`Toggle` que morava no cabeçalho
+movido pro rodapé, ao lado do botão; botão "Conectar" trocado de
+`primary` sólido pra `outline` + ícone `ArrowsDownUp`) — detalhe completo
+em `docs/design/design-system.md`, seção MarketplacesView. **Gap real que
+persiste**: a referência tem logo por marca, descrição, tags e link
+externo — `MARKETPLACE` só tem `id`/`name`/`active` hoje, nenhum desses 4
+é implementável só no frontend. Pedido enviado pra sessão de backend
+(`logo_url`/`description`/`tags`/`website_url`, nullable, em
+`MarketplaceResource`/`AdminMarketplaceResource` +
+`CreateMarketplaceRequest`/`UpdateMarketplaceRequest`).
+
+**Gap fechado, mesmo dia, em duas rodadas.** 1ª rodada: backend
+implementou os 4 campos exatamente como pedido (`logo_url` ainda como
+link colado nesse momento). `AdminMarketplaceForm.vue` ganhou os 4
+campos de cadastro (`Input` pra descrição/site, `TagsInput` pra tags);
+`MarketplacesView.vue`/card ganhou `<img>` real (fallback `IconTile` sem
+logo ou se a imagem falhar ao carregar), link externo (`hostnameOf()`,
+ícone `ArrowSquareOut`), descrição e tags (`Badge`). Verificado em
+browser real com dado de teste (`logo_url` externo, descrição, 3 tags,
+site) — bate com a referência.
+
+**2ª rodada, mesmo dia — mudança de contrato pedida pelo usuário direto
+pro backend**: "não podemos ficar dependendo de links externos" —
+`logo_url` deixou de ser aceito como ENTRADA; o campo de escrita virou
+`logo_base64` (upload real, até 2MB, backend hospeda e serve). `logo_url`
+continua existindo, só que agora só do lado da RESPOSTA, sempre um link
+do próprio storage. `AdminMarketplaceForm.vue` reescrito: primeiro upload
+de arquivo do projeto — `<input type="file">` nativo escondido +
+`Button` disparando `.click()`, `FileReader` convertendo pra base64.
+`logo_base64` só entra no payload quando um arquivo novo é escolhido
+(nunca `null` implícito numa edição de rotina — mesmo padrão de senha
+opcional já usado em `useUpdateProfileForm.ts`). Detalhe completo em
+`docs/design/design-system.md`, seção AdminMarketplaceForm. Verificado
+em browser real com upload de arquivo de verdade (`page.setInputFiles`):
+preview aparece na hora, submit grava, `logo_url` resultante aponta pro
+storage do backend, card exibe a imagem real servida. Suíte completa (37
+arquivos, 210 testes) + typecheck/eslint/biome verdes nas duas rodadas.
+
+**Bug de breadcrumb em `product-marketplaces`, corrigido no mesmo dia** —
+reportado pelo usuário: clicar "Marketplaces" na listagem de produtos
+levava pra `/products/:id/marketplaces` com o breadcrumb mostrando só
+"Marketplaces do produto", sem "Catálogo / Produtos /" na frente. Mesma
+causa raiz já corrigida uma vez pra `products-new`/`products-edit`
+(seção "Rotas diretas..." acima) — `product-marketplaces` nunca tinha
+sido adicionada ao `relatedRouteNames` do item "Produtos"
+(`core/layouts/config/navigation.ts`), então `useBreadcrumb.ts` não
+achava a rota na árvore de navegação e caía no fallback (só
+`route.meta.title`). Corrigido estendendo o array pra incluir
+`'product-marketplaces'`, verificado em browser real (breadcrumb
+completo "Catálogo / Produtos / Marketplaces do produto"; reconfirmado
+que `/products/new` não regrediu). **Terceira vez que esse exato padrão
+regride** — usuário pediu pra formalizar como regra, feito em
+`.ai/rules/app-shell.md` (checklist de 4 passos pra toda rota nova) e
+`.ai/rules/crud-pattern.md` (item novo em "O que NÃO fazer").
+
+**Bug relacionado, mesmo dia — crash real (não só visual) ao clicar em
+"Recentes"**: `Error: Missing required param "id"`, não capturável por
+try/catch (quebra o `RouterLink` no render). Causa: `router.afterEach`
+(`core/router/guards.ts`) gravava `to: { name: to.name }` sem `params` —
+qualquer rota com segmento dinâmico já visitada (`product-marketplaces`,
+`products-edit`) virava um item de "Recentes" impossível de resolver de
+volta. Corrigido propagando `to.params` junto. Mesma classe de bug
+existia (ainda não reportada, corrigida proativamente) no botão de
+favoritar página atual — `UserFavoriteResource` só persiste `route_name`
+no backend, sem params, então a correção ali é diferente: impedir CRIAR
+favorito de rota com param (`isCurrentRouteFavoritable` checa
+`route.params` vazio) + filtrar defensivamente na lista da sidebar
+qualquer favorito já persistido de antes dessa correção
+(`routeRequiresParams()`, `AppSidebarContent.vue`). Verificado em browser
+real: clicar em "Recentes" pra uma rota parametrizada navega certo pro
+mesmo registro visitado; botão de favoritar some em `product-marketplaces`,
+continua em `/products`. Regra geral documentada em `.ai/rules/app-shell.md`.
+
 ---
 
 ## Fase 5 — Platform

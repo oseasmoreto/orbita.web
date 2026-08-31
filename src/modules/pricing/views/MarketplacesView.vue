@@ -1,13 +1,20 @@
 <script setup lang="ts">
 /**
  * "Canais de venda" — grid de cards pedido direto pelo usuário (2026-08-31,
- * referência visual de outro produto: ícone + nome + toggle + botão),
- * adaptado aos campos reais de `MARKETPLACE`/`USER_MARKETPLACE` (sem os
- * badges/tags e o link externo da referência — não existe dado análogo
- * no domínio da Orbita). Um único card por marketplace cobre os 2 nós do
- * fluxo original ("Canais disponíveis" + "Minhas conexões",
- * `core/layouts/config/navigation.ts`): sem conexão → botão "Conectar";
- * conectado → nome da loja + toggle de `active` + "Gerenciar"/desconectar.
+ * referência visual de outro produto: logo + link do site + nome +
+ * descrição + tags + botão + toggle). Um único card por marketplace
+ * cobre os 2 nós do fluxo original ("Canais disponíveis" + "Minhas
+ * conexões", `core/layouts/config/navigation.ts`): sem conexão → botão
+ * "Conectar"; conectado → nome da loja + toggle de `active` +
+ * "Gerenciar"/desconectar.
+ *
+ * `logoUrl`/`description`/`tags`/`websiteUrl` — pedidos pro backend no
+ * mesmo dia pra fechar o gap real de "pixel perfect" que a v1 tinha
+ * (`{colors.tint-1}` + ícone `Storefront` genérico igual pra todo card,
+ * sem descrição/tags/link — não existia dado nenhum pra isso).
+ * `logoUrl` renderiza um `<img>` de verdade quando existe; `IconTile` +
+ * `Storefront` continua sendo o fallback pra marketplace sem logo
+ * cadastrado (nunca inventar um logo/cor que não existe).
  *
  * `active` (toggle) e desconectar (`DELETE`) são ações DIFERENTES de
  * propósito — `active: false` só pausa (bloqueia NOVOS vínculos de
@@ -18,9 +25,16 @@
  */
 import { onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { Storefront, Trash } from '@/shared/components/icons/regular.generated'
+import {
+  ArrowsDownUp,
+  ArrowSquareOut,
+  Storefront,
+  Trash,
+} from '@/shared/components/icons/regular.generated'
+import Badge from '@/shared/components/ui/Badge.vue'
 import ConfirmDialog from '@/shared/components/blocks/ConfirmDialog.vue'
 import Button from '@/shared/components/ui/Button.vue'
+import Icon from '@/shared/components/ui/Icon.vue'
 import IconTile from '@/shared/components/ui/IconTile.vue'
 import Toggle from '@/shared/components/ui/Toggle.vue'
 import { useApiMessage } from '@/shared/composables/useApiMessage'
@@ -36,12 +50,40 @@ import { useMarketplaceLimit } from '../composables/useMarketplaceLimit'
 import { deleteUserMarketplace, updateUserMarketplace } from '../services/pricingApi'
 import type { UserMarketplace } from '../types/userMarketplace.type'
 
+/**
+ * Só o hostname (`"shopee.com.br"`, não a URL inteira) pro link externo
+ * do card — mesmo formato "webflow.com" da referência. `URL` nativa,
+ * sem lib externa; `try/catch` porque `website_url` vem de fora
+ * (cadastro do admin) e não passa por validação de novo aqui.
+ */
+function hostnameOf(url: string): string {
+  try {
+    return new URL(url).hostname
+  } catch {
+    return url
+  }
+}
+
 const { t } = useI18n()
 const toast = useToast()
 const { resolveMessage } = useApiMessage()
 
 const connections = useMarketplaceConnections()
 onMounted(connections.refresh)
+
+/**
+ * `logo_url` é um link colado pelo admin pra uma imagem já hospedada em
+ * outro lugar (sem pipeline de upload no projeto, decisão registrada em
+ * `pricingApi.ts`) — pode ficar quebrado (404, domínio fora do ar) sem
+ * que o cadastro tenha como validar isso além do formato de URL. `@error`
+ * marca o id como "falhou" e o template cai pro fallback `IconTile`, em
+ * vez de deixar o ícone de imagem quebrada do browser aparecer no card.
+ */
+const failedLogoIds = ref(new Set<string>())
+
+function handleLogoError(marketplaceId: string): void {
+  failedLogoIds.value.add(marketplaceId)
+}
 
 const marketplaceLimit = useMarketplaceLimit(() => connections.connectedCount.value)
 
@@ -113,40 +155,72 @@ async function handleDisconnect(): Promise<void> {
     <div class="marketplaces-view__grid">
       <div v-for="card in connections.cards.value" :key="card.marketplace.id" class="marketplaces-view__card">
         <div class="marketplaces-view__card-header">
-          <IconTile :icon="Storefront" :icon-size="24" :size="48" tint="blue" />
+          <img
+            v-if="card.marketplace.logoUrl && !failedLogoIds.has(card.marketplace.id)"
+            :alt="card.marketplace.name"
+            class="marketplaces-view__card-logo"
+            :src="card.marketplace.logoUrl"
+            @error="handleLogoError(card.marketplace.id)"
+          />
+          <IconTile v-else :icon="Storefront" :icon-size="24" :size="48" tint="blue" />
+
+          <a
+            v-if="card.marketplace.websiteUrl"
+            class="marketplaces-view__card-link"
+            :href="card.marketplace.websiteUrl"
+            rel="noopener noreferrer"
+            target="_blank"
+          >
+            {{ hostnameOf(card.marketplace.websiteUrl) }}
+            <Icon :icon="ArrowSquareOut" :size="12" />
+          </a>
+        </div>
+
+        <p class="marketplaces-view__card-title">{{ card.marketplace.name }}</p>
+        <p v-if="card.marketplace.description" class="marketplaces-view__card-description">
+          {{ card.marketplace.description }}
+        </p>
+        <p v-if="card.connection" class="marketplaces-view__card-subtitle">
+          {{ card.connection.storeName }}
+        </p>
+
+        <div
+          v-if="card.marketplace.tags && card.marketplace.tags.length > 0"
+          class="marketplaces-view__card-tags"
+        >
+          <Badge v-for="tag in card.marketplace.tags" :key="tag" variant="gray">{{ tag }}</Badge>
+        </div>
+
+        <div class="marketplaces-view__card-footer">
+          <div class="marketplaces-view__card-actions">
+            <Button
+              v-if="!card.connection"
+              :disabled="marketplaceLimit.isLimitReached.value"
+              :icon-before="ArrowsDownUp"
+              variant="outline"
+              @click="openConnect(card)"
+            >
+              {{ $t('pricing.marketplaces.connectButton') }}
+            </Button>
+            <template v-else>
+              <Button :icon-before="ArrowsDownUp" variant="outline" @click="openManage(card)">
+                {{ $t('pricing.marketplaces.manageButton') }}
+              </Button>
+              <Button
+                :icon-before="Trash"
+                variant="ghost"
+                @click="disconnectConfirmation.request(card.connection)"
+              >
+                {{ $t('common.actions.delete') }}
+              </Button>
+            </template>
+          </div>
+
           <Toggle
             :disabled="!card.connection"
             :model-value="card.connection?.active ?? false"
             @update:model-value="(active) => handleToggleActive(card, active)"
           />
-        </div>
-
-        <p class="marketplaces-view__card-title">{{ card.marketplace.name }}</p>
-        <p v-if="card.connection" class="marketplaces-view__card-subtitle">
-          {{ card.connection.storeName }}
-        </p>
-
-        <div class="marketplaces-view__card-actions">
-          <Button
-            v-if="!card.connection"
-            :disabled="marketplaceLimit.isLimitReached.value"
-            variant="primary"
-            @click="openConnect(card)"
-          >
-            {{ $t('pricing.marketplaces.connectButton') }}
-          </Button>
-          <template v-else>
-            <Button variant="outline" @click="openManage(card)">
-              {{ $t('pricing.marketplaces.manageButton') }}
-            </Button>
-            <Button
-              :icon-before="Trash"
-              variant="ghost"
-              @click="disconnectConfirmation.request(card.connection)"
-            >
-              {{ $t('common.actions.delete') }}
-            </Button>
-          </template>
         </div>
       </div>
     </div>
@@ -220,8 +294,29 @@ async function handleDisconnect(): Promise<void> {
 
 .marketplaces-view__card-header {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: space-between;
+  margin-bottom: $spacing-4;
+}
+
+.marketplaces-view__card-logo {
+  width: $size-48;
+  height: $size-48;
+  object-fit: cover;
+  border-radius: $radius-8;
+}
+
+.marketplaces-view__card-link {
+  display: flex;
+  align-items: center;
+  gap: $spacing-4;
+  font-size: $font-size-xs;
+  color: $color-ink-40;
+  text-decoration: none;
+
+  &:hover {
+    color: $color-ink;
+  }
 }
 
 .marketplaces-view__card-title {
@@ -230,14 +325,35 @@ async function handleDisconnect(): Promise<void> {
   color: $color-ink;
 }
 
+.marketplaces-view__card-description {
+  font-size: $font-size-sm;
+  color: $color-ink-40;
+}
+
 .marketplaces-view__card-subtitle {
   font-size: $font-size-sm;
   color: $color-ink-40;
 }
 
+.marketplaces-view__card-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: $spacing-4;
+}
+
+// `margin-top: auto` — dentro do card `flex-direction: column`, empurra
+// o rodapé (botão + toggle) sempre pra base, alinhando os cards entre si
+// mesmo quando um tem `card-subtitle` (nome da loja) e outro não.
+.marketplaces-view__card-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: auto;
+  padding-top: $spacing-16;
+}
+
 .marketplaces-view__card-actions {
   display: flex;
   gap: $spacing-8;
-  margin-top: $spacing-8;
 }
 </style>

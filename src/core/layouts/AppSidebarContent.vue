@@ -37,6 +37,7 @@
  * (só `USER.role`, sem granularidade extra).
  */
 import { computed, ref } from 'vue'
+import { useRouter } from 'vue-router'
 import { SignOut, X } from '@/shared/components/icons/regular.generated'
 import { useAuthStore } from '@/core/store/useAuthStore'
 import Avatar from '@/shared/components/ui/Avatar.vue'
@@ -49,10 +50,31 @@ import AppSidebarNavItem from './AppSidebarNavItem.vue'
 import { navGroups } from './config/navigation'
 
 const authStore = useAuthStore()
+const router = useRouter()
 const { isLoggingOut, logout } = useLogout()
 const { recentPages } = useAppShell()
 const { removeFavorite } = useFavorites()
 const activeFavoritesTab = ref<'favorites' | 'recently'>('favorites')
+
+/**
+ * Defesa contra um favorito já persistido pra uma rota com segmento
+ * dinâmico (`products-edit`, `product-marketplaces`) — `UserFavoriteResource`
+ * só guarda `route_name`, sem `params` (achado real, mesma causa do bug
+ * já corrigido em `recordVisit()`/"Recentes", `core/router/guards.ts`).
+ * `AppHeader.vue` já impede CRIAR um favorito assim
+ * (`isCurrentRouteFavoritable`); isto cobre um registro que já existisse
+ * de antes dessa correção — sem esse filtro, o `RouterLink` quebraria com
+ * "Missing required param" ao tentar resolver a rota sem o `id` que ela
+ * exige.
+ */
+function routeRequiresParams(routeName: string): boolean {
+  const record = router.getRoutes().find((route) => route.name === routeName)
+  return Boolean(record?.path.includes(':'))
+}
+
+const safeFavorites = computed(
+  () => authStore.user?.favorites.filter((item) => !routeRequiresParams(item.routeName)) ?? [],
+)
 
 const visibleNavGroups = computed(() =>
   navGroups.filter(
@@ -103,12 +125,9 @@ const visibleNavGroups = computed(() =>
         </div>
 
         <template v-if="activeFavoritesTab === 'favorites'">
-          <ul
-            v-if="authStore.user && authStore.user.favorites.length > 0"
-            class="app-sidebar-content__favorites-list"
-          >
+          <ul v-if="safeFavorites.length > 0" class="app-sidebar-content__favorites-list">
             <li
-              v-for="item in authStore.user.favorites"
+              v-for="item in safeFavorites"
               :key="item.id"
               class="app-sidebar-content__favorite-item"
             >

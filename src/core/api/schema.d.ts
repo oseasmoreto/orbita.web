@@ -921,6 +921,10 @@ export interface components {
             id: string;
             name: string;
             active: boolean;
+            logo_url: string | null;
+            description: string | null;
+            tags: unknown[] | null;
+            website_url: string | null;
             /** Format: date-time */
             created_at: string | null;
         };
@@ -1014,6 +1018,15 @@ export interface components {
         CreateMarketplaceRequest: {
             name: string;
             active?: boolean;
+            /**
+             * @description Nunca URL externa (decisão 2026-08-31) — o admin manda a
+             *     imagem em base64, nós hospedamos.
+             */
+            logo_base64?: string | null;
+            description?: string | null;
+            tags?: string[] | null;
+            /** Format: uri */
+            website_url?: string | null;
         };
         /** CreatePlanRequest */
         CreatePlanRequest: {
@@ -1120,6 +1133,10 @@ export interface components {
         MarketplaceResource: {
             id: string;
             name: string;
+            logo_url: string | null;
+            description: string | null;
+            tags: unknown[] | null;
+            website_url: string | null;
         };
         /** NotificationResource */
         NotificationResource: {
@@ -1363,6 +1380,11 @@ export interface components {
         UpdateMarketplaceRequest: {
             name?: string;
             active?: boolean;
+            logo_base64?: string | null;
+            description?: string | null;
+            tags?: string[] | null;
+            /** Format: uri */
+            website_url?: string | null;
         };
         /** UpdatePlanRequest */
         UpdatePlanRequest: {
