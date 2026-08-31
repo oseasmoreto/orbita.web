@@ -3,6 +3,7 @@ import AppLayout from '@/core/layouts/AppLayout.vue'
 import { billingAppRoutes, billingRoutes } from '@/modules/billing/routes'
 import { catalogRoutes } from '@/modules/catalog/routes'
 import { identityAppRoutes, identityRoutes } from '@/modules/identity/routes'
+import { pricingRoutes } from '@/modules/pricing/routes'
 import { setupRouterGuards } from './guards'
 
 const routes: RouteRecordRaw[] = [
@@ -23,6 +24,7 @@ const routes: RouteRecordRaw[] = [
       ...catalogRoutes,
       ...identityAppRoutes,
       ...billingAppRoutes,
+      ...pricingRoutes,
     ],
     component: AppLayout,
     meta: { requiresAuth: true },

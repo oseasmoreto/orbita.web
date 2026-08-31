@@ -50,6 +50,17 @@ export const identityRoutes: RouteRecordRaw[] = [
     path: '/v1/auth/sso/:provider/callback',
   },
   {
+    // Segundo hop, novo em 2026-08-31 (proteção anti-bounce-tracking do
+    // browser, ver `useSsoExchange.ts`) — destino real do redirect final
+    // do backend (`{FRONTEND_URL}/sso/callback?token=...`), path fixo
+    // ditado pelo contrato do backend, não uma convenção nossa. Mesma
+    // ausência de guard de `SsoCallbackView.vue`: não há sessão ainda
+    // quando esta navegação chega, é o próprio ponto onde ela nasce.
+    component: () => import('./views/SsoExchangeView.vue'),
+    name: 'sso-exchange',
+    path: '/sso/callback',
+  },
+  {
     // `requiresAuth`, não `requiresGuest` — quem chega aqui já tem sessão
     // (cadastro já loga via `Auth::login()`, `RegisterUserAction`), só
     // falta confirmar o e-mail. O link do e-mail em si não volta pra cá

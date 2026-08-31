@@ -695,12 +695,41 @@ export interface paths {
         };
         /**
          * Chamado pelo próprio Google via navegação real do browser — nunca
-         *     devolve JSON aqui, sempre redireciona de volta pro front (com o cookie
-         *     de sessão httpOnly já setado no sucesso, decisão #7 — sem token em URL)
+         *     devolve JSON aqui, sempre redireciona de volta pro front. NÃO autentica
+         *     a sessão desta request (ver AuthenticateWithSsoAction) — gera um token
+         *     de troca de USO ÚNICO e curta duração (60s) e manda o browser pro front
+         *     com ele na URL. Não é o "token em URL" que a decisão #7 proíbe (Bearer
+         *     token persistente, guardado pelo front): esse aqui nunca é armazenado,
+         *     é consumido uma única vez pelo front via fetch (POST /auth/sso/exchange)
+         *     assim que a página carrega, e só ENTÃO o cookie httpOnly de sessão de
+         *     verdade é criado — a credencial de longo prazo continua sendo só o
+         *     cookie, exatamente como decidido
          */
         get: operations["sso.callback"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/auth/sso/exchange": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Chamado pelo front via fetch normal (Origin bate SANCTUM_STATEFUL_DOMAINS,
+         *     mesma pipeline confiável de register/login) — nunca uma navegação de
+         *     topo, então nunca é vítima de proteção anti-bounce-tracking do browser.
+         *     É aqui que a sessão de verdade é criada
+         */
+        post: operations["sso.exchange"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1066,6 +1095,10 @@ export interface components {
             /** Format: uuid */
             marketplace_id: string;
             store_name: string;
+        };
+        /** ExchangeSsoLoginTokenRequest */
+        ExchangeSsoLoginTokenRequest: {
+            token: string;
         };
         /** LoginRequest */
         LoginRequest: {
@@ -3753,6 +3786,35 @@ export interface operations {
                     "application/json": Record<string, never>;
                 };
             };
+        };
+    };
+    "sso.exchange": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ExchangeSsoLoginTokenRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        success: boolean;
+                        message: string;
+                        data: components["schemas"]["LoginResultResource"];
+                        errors: null;
+                    };
+                };
+            };
+            422: components["responses"]["ValidationException"];
         };
     };
     "ssoAccount.index": {

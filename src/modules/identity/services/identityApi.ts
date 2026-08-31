@@ -152,6 +152,36 @@ export async function disconnectSsoAccount(ssoAccountId: string): Promise<void> 
 }
 
 /**
+ * `POST /auth/sso/exchange` (`sso.exchange`) — segundo hop do fluxo SSO,
+ * introduzido em 2026-08-31 pra contornar proteção de rastreamento de
+ * redirecionamento do browser (Firefox Redirect Tracking Protection,
+ * Safari ITP): o cookie de sessão setado no meio de uma cadeia
+ * "app → terceiro → app → outra origem" era descartado de forma
+ * consistente, não intermitente — achado real da sessão de backend,
+ * confirmado com a suíte completa simulando os 2 hops reais.
+ *
+ * O callback do backend (`SsoCallbackView.vue`, `sso-callback`) NÃO
+ * autentica mais direto — agora redireciona pra
+ * `{FRONTEND_URL}/sso/callback?token=...` (token opaco, 60s de validade,
+ * uso único). Esta função troca esse token por uma sessão de verdade via
+ * fetch normal (`withCredentials`, como qualquer chamada da API) — como
+ * essa chamada roda numa origem "parada" (não no meio de um bounce), o
+ * `Set-Cookie` funciona. Devolve o MESMO shape de `login()`/
+ * `fetchCurrentUser()` (`LoginResultResource` — `user`/
+ * `requires_subscription`/`favorites`/`plan_limits`), então
+ * `useSsoExchange.ts` não precisa de uma segunda chamada a `/auth/me`
+ * depois. Erro real: 422 `errorMessageInvalidSsoLoginToken` (token
+ * inexistente, expirado, ou já usado — é single-use, proteção contra
+ * reload/double-fetch acidental da página).
+ */
+export async function exchangeSsoLoginToken(token: string): Promise<LoginResultResource> {
+  const { data } = await apiClient.post<ApiResponse<LoginResultResource>>('/auth/sso/exchange', {
+    token,
+  })
+  return data.data
+}
+
+/**
  * `GET /auth/sso/{provider}/redirect` é navegação de browser de verdade
  * (o backend redireciona pro provider OAuth), nunca uma chamada `apiClient`
  * — só a URL de destino, montada com a mesma env var que `client.ts` usa

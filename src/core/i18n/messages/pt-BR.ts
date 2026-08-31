@@ -232,6 +232,7 @@ export default {
           updateSuccess: 'Lançamento atualizado com sucesso.',
         },
       },
+      marketplacesButton: 'Marketplaces',
       planLimit: {
         reached:
           'Você atingiu o limite de produtos do seu plano. Faça upgrade para cadastrar mais.',
@@ -342,9 +343,47 @@ export default {
   errorMessageForbidden: 'Você não tem permissão para fazer isso.',
   errorMessageIncorrectPassword: 'Senha incorreta.',
   errorMessageInvalidCredentials: 'E-mail ou senha incorretos.',
+  /**
+   * `ApiMessageKey::ErrorInvalidPricingRuleRange` — achado ao implementar
+   * o CRUD de `PricingRule` (Fase 4): backend revalida `range_max >=
+   * range_min` na Action com a combinação FINAL mergeada (não só no
+   * `CreatePricingRuleRequest`, que só vale quando os dois campos vêm
+   * juntos no corpo) — o `.refine()` do schema Zod
+   * (`pricingRuleFormSchema.ts`) cobre o caso comum, esta mensagem cobre
+   * o resto que só o backend consegue revalidar (ex.: PATCH parcial que
+   * o cliente nem tenta simular).
+   */
+  errorMessageInvalidPricingRuleRange: 'Faixa final deve ser maior ou igual à faixa inicial.',
+  /**
+   * `ApiMessageKey::ErrorInvalidSsoLoginToken` — token do 2º hop do fluxo
+   * SSO (`useSsoExchange.ts`) inexistente, expirado (60s) ou já usado
+   * (single-use, proteção contra reload/double-fetch acidental da
+   * página `/sso/callback`).
+   */
+  errorMessageInvalidSsoLoginToken:
+    'Esse link de login expirou ou já foi usado. Tente entrar de novo.',
+  /**
+   * As 6 chaves abaixo (`ErrorMarketplace*`/`ErrorNoPricingRuleAvailable`/
+   * `ErrorProductAlreadyLinkedToMarketplace`/`ErrorUserMarketplaceNotActive`)
+   * são do Bounded Context Pricing (Fase 4, 2026-08-31) — cadastradas
+   * juntas na primeira rodada de implementação (CRUD admin de
+   * Marketplace/PricingRule + conectar/gerenciar `USER_MARKETPLACE`),
+   * cada uma com um consumidor real desde já (mesmo critério de "cataloga
+   * quando o consumidor existe", seção 6.3 de
+   * `docs/infra/convencoes-frontend-infra.md`).
+   */
+  errorMessageMarketplaceAlreadyConnected: 'Você já conectou esse marketplace.',
+  errorMessageMarketplaceHasConnections:
+    'Esse marketplace tem conexões de usuários — desative em vez de excluir.',
+  errorMessageMarketplaceLimitReached:
+    'Você atingiu o limite de marketplaces do seu plano. Faça upgrade para conectar mais.',
+  errorMessageNoPricingRuleAvailable:
+    'Esse marketplace ainda não tem regra de comissão cadastrada.',
   errorMessageNotFound: 'Não encontramos o que você estava procurando.',
   errorMessagePlanChangeAlreadyPending:
     'Você já tem uma troca de plano aguardando confirmação de pagamento.',
+  errorMessageProductAlreadyLinkedToMarketplace:
+    'Esse produto já está vinculado a esse marketplace.',
   /**
    * `ApiMessageKey::ErrorProductLimitReached` — `CreateProductAction`
    * (backend) já bloqueia a criação quando `PRODUCT.count() >= PLAN.max_products`,
@@ -360,6 +399,8 @@ export default {
   errorMessageSubscriptionNotActive: 'Sua assinatura não está ativa no momento.',
   errorMessageTooManyRequests: 'Muitas tentativas. Aguarde um momento e tente de novo.',
   errorMessageUnauthorized: 'Sua sessão expirou. Faça login novamente.',
+  errorMessageUserMarketplaceNotActive:
+    'Essa conexão está pausada — reative antes de vincular um produto.',
   /**
    * `ApiMessageKey::ErrorValidation` (backend) — achado real, 2026-08-31:
    * nunca tinha sido cadastrada aqui, então TODO 422 de validação em
@@ -592,6 +633,146 @@ export default {
       title: 'Verifique seu e-mail',
     },
   },
+  pricing: {
+    admin: {
+      marketplaces: {
+        columns: {
+          active: 'Status',
+          createdAt: 'Cadastrado em',
+          name: 'Nome',
+        },
+        createButton: 'Novo marketplace',
+        deleteConfirm: {
+          description: 'Essa ação não pode ser desfeita.',
+          title: 'Excluir marketplace?',
+        },
+        deleteSuccess: 'Marketplace excluído com sucesso.',
+        empty: 'Nenhum marketplace cadastrado ainda.',
+        form: {
+          createSuccess: 'Marketplace criado com sucesso.',
+          createTitle: 'Novo marketplace',
+          editTitle: 'Editar marketplace',
+          errors: {
+            nameRequired: 'Nome é obrigatório.',
+          },
+          fields: {
+            active: 'Marketplace ativo',
+            name: 'Nome',
+          },
+          submitCreate: 'Criar marketplace',
+          submitEdit: 'Salvar alterações',
+          tabs: {
+            details: 'Dados do marketplace',
+            pricingRules: 'Regras de comissão',
+          },
+          updateSuccess: 'Marketplace atualizado com sucesso.',
+        },
+        status: {
+          active: 'Ativo',
+          inactive: 'Inativo',
+        },
+        title: 'Marketplaces',
+      },
+      pricingRules: {
+        columns: {
+          fixedFee: 'Taxa fixa',
+          order: 'Ordem',
+          percentage: 'Percentual',
+          rangeMax: 'Faixa até',
+          rangeMin: 'Faixa a partir de',
+        },
+        createButton: 'Nova regra',
+        deleteConfirm: {
+          description: 'Essa ação não pode ser desfeita.',
+          title: 'Excluir regra de comissão?',
+        },
+        deleteSuccess: 'Regra de comissão excluída com sucesso.',
+        empty: 'Nenhuma regra de comissão cadastrada ainda.',
+        form: {
+          createSuccess: 'Regra de comissão criada com sucesso.',
+          createTitle: 'Nova regra de comissão',
+          editTitle: 'Editar regra de comissão',
+          errors: {
+            fixedFeeMin: 'Taxa fixa não pode ser negativa.',
+            orderInteger: 'Ordem deve ser um número inteiro.',
+            orderMin: 'Ordem não pode ser negativa.',
+            percentageMax: 'Percentual não pode passar de 100%.',
+            percentageMin: 'Percentual não pode ser negativo.',
+            rangeMaxBelowMin: 'Faixa final deve ser maior ou igual à faixa inicial.',
+            rangeMaxMin: 'Faixa final não pode ser negativa.',
+            rangeMinMin: 'Faixa inicial não pode ser negativa.',
+          },
+          fields: {
+            fixedFee: 'Taxa fixa (R$)',
+            order: 'Ordem',
+            percentage: 'Percentual (%)',
+            rangeMax: 'Faixa até (R$)',
+            rangeMin: 'Faixa a partir de (R$)',
+          },
+          submitCreate: 'Criar regra',
+          submitEdit: 'Salvar alterações',
+          updateSuccess: 'Regra de comissão atualizada com sucesso.',
+        },
+      },
+    },
+    marketplaces: {
+      activateSuccess: 'Conexão reativada com sucesso.',
+      connectButton: 'Conectar',
+      connectModal: {
+        connectSuccess: 'Marketplace conectado com sucesso.',
+        connectTitle: 'Conectar {name}',
+        editTitle: 'Editar conexão — {name}',
+        errors: {
+          storeNameRequired: 'Nome da loja é obrigatório.',
+        },
+        fields: {
+          storeName: 'Nome da loja',
+        },
+        submitConnect: 'Conectar',
+        submitSave: 'Salvar alterações',
+        updateSuccess: 'Conexão atualizada com sucesso.',
+      },
+      disconnectConfirm: {
+        description:
+          'Essa ação remove a conexão e também os vínculos de produto já feitos com ela. Não pode ser desfeita.',
+        title: 'Desconectar marketplace?',
+      },
+      disconnectSuccess: 'Marketplace desconectado com sucesso.',
+      manageButton: 'Gerenciar',
+      pauseSuccess: 'Conexão pausada com sucesso.',
+      title: 'Canais de venda',
+      usage: '{total} de {max} marketplaces conectados',
+    },
+    productMarketplaces: {
+      backToProducts: 'Voltar para Produtos',
+      columns: {
+        createdAt: 'Vinculado em',
+        marketplace: 'Marketplace',
+        storeName: 'Loja',
+      },
+      empty: 'Nenhum marketplace vinculado ainda.',
+      linkButton: 'Vincular marketplace',
+      linkModal: {
+        fields: {
+          connection: 'Conexão',
+        },
+        placeholder: 'Selecione uma conexão',
+        submit: 'Vincular',
+        title: 'Vincular marketplace',
+      },
+      linkSuccess: 'Marketplace vinculado com sucesso.',
+      noAvailableConnectionsHint:
+        'Nenhuma conexão ativa disponível — conecte um marketplace antes de vincular.',
+      title: 'Marketplaces do produto',
+      titleWithProduct: 'Marketplaces de {product}',
+      unlinkButton: 'Desvincular',
+      unlinkConfirm: {
+        description: 'Essa ação não pode ser desfeita.',
+        title: 'Desvincular marketplace?',
+      },
+      unlinkSuccess: 'Marketplace desvinculado com sucesso.',
+    },
+  },
   showcase: {
     title: 'Vitrine de componentes',
   },
@@ -612,10 +793,9 @@ export default {
       dashboards: 'Dashboards',
       invoices: 'Faturas',
       marketplaces: 'Marketplaces',
-      marketplacesAvailable: 'Canais disponíveis',
-      marketplacesConnected: 'Minhas conexões',
       myPlan: 'Meu plano',
       products: 'Produtos',
+      salesChannels: 'Canais de venda',
       subscription: 'Assinatura',
     },
     noFavorites: 'Nenhum favorito ainda.',

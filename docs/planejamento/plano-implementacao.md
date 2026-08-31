@@ -388,6 +388,51 @@ extra do backend além do que `/me` já passou a expor. Verificado em
 Playwright: usuário SSO novo (e-mail verificado,
 zero assinaturas) pousando em `/` termina em `/choose-plan`.
 
+**Contrato quebrado e corrigido em 2026-08-31 — login via Google estava
+GENUINAMENTE quebrado, não intermitente.** Achado pela sessão de backend:
+o redirect final do fluxo antigo (`SsoController::callback` autenticava
+direto e redirecionava pra raiz do `FRONTEND_URL`) forma a cadeia
+"app → Google → backend → front, outra origem" — exatamente o padrão que
+proteção anti-bounce-tracking de browser (Firefox Redirect Tracking
+Protection, Safari ITP) existe pra quebrar: o cookie de sessão setado
+nesse hop intermediário era descartado de forma CONSISTENTE. Corrigido
+com um 2º hop: o backend agora redireciona pra
+`{FRONTEND_URL}/sso/callback?token=...` (token opaco, 60s de validade,
+uso único, `Cache::pull` atômico) em vez de autenticar direto — o front
+troca esse token por sessão de verdade via um `POST /auth/sso/exchange`
+comum (`fetch`/`axios`, não navegação de página), que roda numa origem
+"parada" (fora de qualquer bounce), então o `Set-Cookie` funciona de
+verdade.
+
+- **`identityApi.ts`**: `exchangeSsoLoginToken(token)` — devolve o MESMO
+  shape de `login()`/`fetchCurrentUser()` (`LoginResultResource`), sem
+  precisar de uma segunda chamada a `/auth/me` depois.
+- **`useSsoExchange.ts`** (novo composable) — mesmo critério de
+  `useLoginForm.ts`: `requires_subscription: true` vai pra `choose-plan`,
+  senão pro dashboard. Diferente do login manual, sem `?redirect=`
+  (não sobrevive à ida-e-volta com o provider OAuth).
+- **`SsoExchangeView.vue`** (novo, rota `sso-exchange`, path fixo
+  `/sso/callback` — ditado pelo contrato do backend). `SsoCallbackView.vue`
+  (`sso-callback`, `/v1/auth/sso/:provider/callback`) continua existindo
+  tal como está — Google ainda navega pra lá, o backend ainda processa o
+  código com o provider; só o que acontece DEPOIS mudou. Mesmo esqueleto
+  visual de `SsoCallbackView.vue` (spinner/erro), reaproveitando as
+  mesmas chaves `identity.ssoCallback.*` em vez de duplicar cópia
+  idêntica.
+- `errorMessageInvalidSsoLoginToken` cadastrada (token inexistente,
+  expirado ou já usado).
+- Tipos regenerados (`npm run generate:api-types`) — `sso.exchange`/
+  `ExchangeSsoLoginTokenRequest` já vieram prontos do OpenAPI do backend
+  (implementado e testado do lado de lá com a suíte completa, 579
+  testes, simulando os 2 hops reais).
+- **Verificado em browser real contra o backend local**, token
+  fabricado via `Cache::put('sso-login-token:...', $userId, 60)`
+  (tinker, mesmo mecanismo real): token válido → exchange → redirect
+  correto (`choose-plan` pra usuário sem assinatura); reuso do MESMO
+  token (single-use) → erro correto; token ausente/inválido → erro
+  correto; sessão confirmada persistente via cookie (navegação +
+  reload duro mantêm a mesma página, sem bounce pro login).
+
 ---
 
 ## Navegação da sidebar (transversal, 2026-08-31)
@@ -1027,43 +1072,135 @@ pra reescrever, e campo numérico novo (ex.: `PricingRule.percentage`/
 
 ---
 
-## Fase 4 — Pricing
+## Fase 4 — Pricing (primeira rodada concluída, 2026-08-31)
 
 Conexão com marketplace e vínculo produto↔marketplace. **Sem dashboard de
-preço sugerido nesta fase** — ver gap abaixo.
+preço sugerido nesta fase** — ver gap abaixo, continua de pé.
 
-**Rotas:** `/marketplaces` (conectados pelo usuário), `/marketplaces/connect`,
-`/products/:id/marketplaces` (vínculo produto↔marketplace).
+Pedido direto do usuário: "vamos primeiro implementar os CRUDs que são do
+admin (cadastro de marketplace e regras do marketplace) e pra role user
+apenas as ações de marketplace x product" — confirmado por pergunta direta
+que "ações de marketplace x product" incluía TANTO conectar/gerenciar
+`USER_MARKETPLACE` QUANTO o vínculo `PRODUCT_MARKETPLACE` (sem o primeiro,
+o segundo não teria marketplace nenhum pra escolher). Primeiro módulo novo
+desde a separação em Bounded Contexts (`modules/pricing/`) e primeira tela
+admin do projeto inteiro.
 
-**Services:** `pricingApi.ts` — `listConnectedMarketplaces` (via
-`USER_MARKETPLACE`), `connectMarketplace`, `disconnectMarketplace`,
-`linkProductToMarketplace`, `unlinkProductFromMarketplace`.
+**Módulo `modules/pricing/` — tipos/serviço únicos pras 4 entidades**
+(`marketplace.type.ts`, `pricingRule.type.ts`, `userMarketplace.type.ts`,
+`productMarketplace.type.ts`, todos em cima do schema OpenAPI gerado;
+`services/pricingApi.ts` com as ~20 funções das 4 entidades, mesmo padrão
+de 1 arquivo de service por módulo já usado em `catalogApi.ts`/`billingApi.ts`).
 
-**Composables:**
-- `useMarketplaceConnection` — bloqueia conectar um marketplace já conectado
-  como validação de UI (unique `(user_id, marketplace_id)`), não só espera o
-  422.
-- `useMarketplaceLimit` — mesmo padrão de `usePlanLimit` (Fase 3), agora pra
-  `max_marketplaces`.
-- `useProductMarketplaceLink` — lista só `USER_MARKETPLACE` ativos como
-  opção de vínculo (nunca `MARKETPLACE` direto — regra não-negociável do
-  `CLAUDE.md`).
+### 1. Admin — CRUD de `Marketplace` + `PricingRule` aninhada
 
-**Gap de backend confirmado (bloqueia a tela de "preço sugerido"):**
-`PricingCalculator`/`PriceRange`/`SuggestedPrice` existem na camada de
-Domain do backend, testados isoladamente, mas **nunca foram conectados a
-nenhuma rota**. `PRODUCT_MARKETPLACE` é vínculo puro (sem
+`AdminMarketplacesView.vue` (`/admin/marketplaces`, `meta.roles:
+['admin_master']`) — MESMA forma exata de `ProductsView.vue`
+(`.ai/rules/crud-pattern.md`): `useResourceList`/`useCrudDrawer`/
+`useConfirmAction` pro CRUD principal (nome + toggle `active`), `TabBar`
+dentro do Drawer de edição pra "Regras de comissão" (só em modo `edit`),
+mesmo padrão de "Lançamentos" da Fase 3 — `AdminPricingRuleList.vue`
+(`components/blocks/`) + `AdminPricingRuleForm.vue`, ambos usando
+`useResourceForm`/`useNumberFieldModel`/`CrudFormActions` (o padrão
+abstraído na rodada anterior, primeiro reaproveitado de verdade num
+módulo novo). Leitura de regras via endpoint COMPARTILHADO (`GET
+/marketplaces/{id}/pricing-rules`, `auth:sanctum` só — funciona pro admin
+igual pra qualquer usuário), escrita só pelo admin (`/admin/marketplaces/{id}/pricing-rules`).
+Sem `ListToolbar` em nenhuma das duas listas — a API admin não tem
+filtro de texto (só `filter[active]`), mesmo raciocínio já registrado em
+`ProductLaunchList.vue`.
+
+### 2. User — conectar/gerenciar `USER_MARKETPLACE`
+
+`MarketplacesView.vue` (`/marketplaces`, `meta.roles: ['user']`) — **grid
+de cards**, pedido explícito do usuário com referência visual real de
+outro produto (ícone + nome + toggle + botão), adaptado aos campos reais
+da Orbita (sem badges/tags/link externo — não existe dado análogo em
+`MARKETPLACE`). Um único card por marketplace cobre os 2 nós do fluxo
+original ("Canais disponíveis" + "Minhas conexões", consolidados num só
+item de sidebar): sem conexão → botão "Conectar" (abre
+`ConnectMarketplaceModal.vue`, pede `store_name`); conectado → nome da
+loja + `Toggle` de `active` + "Gerenciar"/"Excluir". `active`
+(pausa — bloqueia novos vínculos, mantém os existentes) e `DELETE`
+(remove a conexão E cascade-deleta os vínculos de produto já feitos,
+`DeleteUserMarketplaceAction`) são ações DIFERENTES de propósito — só o
+`DELETE` pede confirmação. `useMarketplaceLimit` (proativo, `max_marketplaces`)
+desabilita "Conectar" quando o limite é atingido, mesmo padrão de
+`usePlanLimit` (Fase 3) — os dois agora delegam pra um
+`usePlanResourceLimit` genérico novo (`shared/composables/`), extraído
+nesta rodada pra não recriar o mesmo par função-pura/wrapper-reativo uma
+segunda vez.
+
+**Achado real, corrigido**: no PRIMEIRO clique em "Conectar" de toda a
+sessão, `POST /user-marketplaces` saía com `marketplace_id: ""` (422).
+Causa: `ConnectMarketplaceModal.vue` é montado (`v-if="activeCard"`) com
+a prop `open` já `true` (setada na MESMA função síncrona que define
+`activeCard`) — um `watch(open, ...)` sem `immediate: true` só dispara
+numa MUDANÇA de valor, e nesse primeiro mount não há mudança nenhuma pra
+ele ver, então `values.marketplaceId` nunca era setado. Reaberturas
+seguintes funcionavam (componente já montado, `open` realmente
+transiciona false→true). Corrigido com `{ immediate: true }` no watch —
+confirmado inspecionando o payload real da requisição antes/depois do
+fix (Playwright + interceptação de request).
+
+### 3. User — vínculo `PRODUCT_MARKETPLACE`
+
+`ProductMarketplacesView.vue`, rota PRÓPRIA `/products/:id/marketplaces`
+(`meta.roles: ['user']`) — **não** uma aba dentro do Drawer de edição de
+`ProductsView.vue`, de propósito: `PRODUCT_MARKETPLACE` é do Bounded
+Context Pricing no backend (`Api/Pricing/ProductMarketplaceController`,
+mesmo com a URL aninhada sob `/products`), e um módulo nunca importa de
+outro diretamente (seção 2 de `docs/infra/convencoes-frontend-infra.md`)
+— `ProductsView.vue` (Catalog) só ganhou um 3º botão de ação de linha
+("Marketplaces") que NAVEGA por nome de rota (`router.push({ name:
+'product-marketplaces', ... })`), nunca um import de `modules/pricing/*`
+(mesmo mecanismo já usado entre Identity→Billing). Cabeçalho mostra o
+nome do produto via `getProductName()` (`pricingApi.ts`, lê só o campo
+necessário do mesmo `GET /products/{id}` que Catalog já consome, sem
+duplicar `Product`/`toProduct()` inteiro).
+
+Lista (`DataTable`, sem paginação de UI) resolve nome do marketplace/loja
+cruzando as 3 listas (`ProductMarketplace`+`UserMarketplace`+`Marketplace`)
+client-side — `buildProductMarketplaceRows`/`buildAvailableConnectionOptions`
+(funções puras, testadas primeiro). "Vincular marketplace" abre um
+`Modal` com `Select` — opções são só conexões ATIVAS e ainda não
+vinculadas a ESTE produto (validação de UI, não só espera o 422 de
+`UserMarketplaceNotActiveException`/`ProductAlreadyLinkedToMarketplaceException`).
+Sem update — trocar de canal é sempre `DELETE` + `POST` de novo (vínculo
+puro, sem campo mutável). "Desvincular" pede confirmação
+(`ConfirmDialog`), mesmo padrão de exclusão do resto do app.
+
+### i18n
+
+7 novas chaves genéricas/infra de `ApiMessageKey` do Bounded Context
+Pricing cadastradas de uma vez (mesmo critério já usado nas 9 chaves de
+infra da rodada anterior — cada uma já tem consumidor real nesta
+implementação): `errorMessageMarketplaceAlreadyConnected`,
+`errorMessageMarketplaceHasConnections`, `errorMessageMarketplaceLimitReached`,
+`errorMessageNoPricingRuleAvailable`, `errorMessageInvalidPricingRuleRange`,
+`errorMessageProductAlreadyLinkedToMarketplace`,
+`errorMessageUserMarketplaceNotActive`.
+
+### Verificado em browser real, ponta a ponta, contra o backend local
+
+Usuários/planos de teste criados e removidos via tinker pra cada rodada:
+CRUD admin de marketplace + regra de comissão (criar/editar/excluir os
+dois); grid de conexão (conectar → limite atingido bloqueia o botão →
+pausar → editar nome da loja → desconectar → limite libera de novo); e o
+fluxo completo produto→conectar→vincular→desvincular. Suíte completa (37
+arquivos, 206 testes) + typecheck/eslint/biome verdes.
+
+**Gap de backend confirmado (continua bloqueando a tela de "preço
+sugerido")**: `PricingCalculator`/`PriceRange`/`SuggestedPrice` existem
+na camada de Domain do backend, testados isoladamente, mas **nunca foram
+conectados a nenhuma rota**. `PRODUCT_MARKETPLACE` é vínculo puro (sem
 `suggested_price`/`is_approximated` — migration
 `2026_08_26_145617_remove_suggested_price_and_is_approximated_from_product_marketplaces_table`
 confirma a remoção). A tela "Dashboard de precificação com preço sugerido
-por canal" do diagrama de jornada **não é implementável no contrato de API
-atual** — só dá pra construir o vínculo puro (conectar marketplace, linkar
-produto). Revisitar esta fase quando o backend expuser o endpoint de
-sugestão de preço.
-
-**Admin (`role: admin_master`):** `/admin/marketplaces`,
-`/admin/marketplaces/:id/pricing-rules` — CRUD de `Marketplace`/`PricingRule`,
-guard de rota por `roles: ['admin_master']`.
+por canal" do diagrama de jornada **não é implementável no contrato de
+API atual** — só dá pra construir o vínculo puro, já feito acima.
+Revisitar esta fase quando o backend expuser o endpoint de sugestão de
+preço.
 
 ---
 

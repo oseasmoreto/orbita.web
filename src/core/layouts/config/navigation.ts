@@ -6,7 +6,6 @@ import {
   Gear,
   Package,
   Receipt,
-  ShoppingBagOpen,
   Storefront,
   Tag,
   UsersThree,
@@ -84,24 +83,33 @@ export const catalogGroup: NavGroup = {
 }
 
 /**
- * Pricing (Bounded Context) — backend 100% pronto (`pricing.php`:
- * `GET /marketplaces`, `GET/POST/PATCH/DELETE /user-marketplaces`,
- * `GET /marketplaces/{id}/pricing-rules`), telas da Fase 4 ainda não
- * construídas no frontend.
+ * Pricing (Bounded Context) — implementado em 2026-08-31 (Fase 4,
+ * primeira rodada: CRUD admin de Marketplace/PricingRule +
+ * conectar/gerenciar `USER_MARKETPLACE`). Um único item/tela pro grid de
+ * cards (`MarketplacesView.vue`) — cobre os 2 nós do fluxo original
+ * ("Canais disponíveis" + "Minhas conexões") num só lugar, já que um
+ * card mostra os dois estados (conectado/não conectado) juntos.
+ *
+ * `roles: ['user']` — `admin_master` nunca tem assinatura própria, e
+ * `/marketplaces`/`/user-marketplaces` exigem `subscription.active` no
+ * backend (`pricing.php`) — mesmo raciocínio já usado em `billingGroup`.
+ * Vínculo produto↔marketplace (`PRODUCT_MARKETPLACE`) não é item de
+ * sidebar — acessado a partir da listagem de Produtos (Catalog), rota
+ * própria `product-marketplaces` (mesmo Bounded Context do backend,
+ * `Api/Pricing/ProductMarketplaceController`, apesar da URL aninhada sob
+ * `/products` — nunca um import direto de `modules/catalog`, só
+ * navegação via `router.push`).
  */
 export const marketplacesGroup: NavGroup = {
   items: [
     {
       icon: Storefront,
-      id: 'marketplaces-available',
-      label: t('sidebar.nav.marketplacesAvailable'),
-    },
-    {
-      icon: ShoppingBagOpen,
-      id: 'marketplaces-connected',
-      label: t('sidebar.nav.marketplacesConnected'),
+      id: 'marketplaces',
+      label: t('sidebar.nav.salesChannels'),
+      to: { name: 'marketplaces' },
     },
   ],
+  roles: ['user'],
   title: t('sidebar.nav.marketplaces'),
 }
 
@@ -153,7 +161,12 @@ export const adminGroup: NavGroup = {
   items: [
     { icon: UsersThree, id: 'admin-users', label: t('sidebar.nav.adminUsers') },
     { icon: Tag, id: 'admin-plans', label: t('sidebar.nav.adminPlans') },
-    { icon: Storefront, id: 'admin-marketplaces', label: t('sidebar.nav.adminMarketplaces') },
+    {
+      icon: Storefront,
+      id: 'admin-marketplaces',
+      label: t('sidebar.nav.adminMarketplaces'),
+      to: { name: 'admin-marketplaces' },
+    },
     { icon: Wallet, id: 'admin-subscriptions', label: t('sidebar.nav.adminSubscriptions') },
     { icon: Receipt, id: 'admin-transactions', label: t('sidebar.nav.adminTransactions') },
     { icon: Bell, id: 'admin-notifications', label: t('sidebar.nav.adminNotifications') },

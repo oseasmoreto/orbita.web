@@ -3103,6 +3103,54 @@ produto.
   dentro do `Modal`, confirmando o fix de z-index) → editar → excluir,
   ciclo completo funcionando ponta a ponta contra a API real.
 
+### AdminMarketplacesView (`modules/pricing/views/AdminMarketplacesView.vue`)
+
+Primeira tela ADMIN do projeto (Fase 4, 2026-08-31) — mesma forma visual
+exata de `ProductsView.vue` (Catalog), sem nenhum componente novo:
+`DataTable`+`PaginationNav`+`Drawer`, `TabBar` dentro do Drawer de edição
+pra "Regras de comissão" (`AdminPricingRuleList.vue`, dentro de um
+`Modal`, mesmo padrão de "Lançamentos"). Coluna "Status" usa `StatusDot`
+(`green`/`gray`) pro `active` do marketplace — não `Badge`, mesmo
+critério já registrado na seção StatusDot (ponto colorido, não pill, pra
+esse tipo de indicador binário simples).
+
+### MarketplacesView (`modules/pricing/views/MarketplacesView.vue`)
+
+**Grid de cards, pedido direto do usuário com referência visual real de
+outro produto** (captura: ícone + nome + toggle + botão "Connect", tags/
+badges e link externo que não existem no domínio da Orbita, descartados).
+Primeiro uso de `IconTile.vue` FORA de tile-pequeno-ao-lado-de-texto
+(célula de tabela, `NotificationItem`) — aqui como elemento PRINCIPAL do
+card (`size=48`, `icon-size=24`, ícone `Storefront` fixo pra todo card,
+sem distinção por marketplace — não existe campo de logo/cor em
+`MARKETPLACE`, inventar uma distinção visual sem dado real seria
+fabricar conteúdo). Cartão: `{colors.bg-1}` + borda `{colors.ink-10}` +
+`{radius.16}` — mesma receita de "seção com borda" já usada em
+`AccountView.vue`/`MySubscriptionView.vue`, aplicada num grid
+(`grid-template-columns: repeat(auto-fill, minmax(260px, 1fr))`) em vez
+de empilhada verticalmente.
+
+`Toggle.vue` (variante solta, não "boxed") no canto do card — liga/
+desliga `active` de uma conexão já existente, `disabled` quando o
+marketplace ainda não foi conectado (não existe "meio-termo" pra
+`active` sem uma conexão criada primeiro). Estado desabilitado do
+`Toggle` já herda o tratamento visual do próprio componente, sem CSS
+extra aqui.
+
+### ProductMarketplacesView (`modules/pricing/views/ProductMarketplacesView.vue`)
+
+Rota própria (`/products/:id/marketplaces`), não uma aba — decisão de
+arquitetura, não de design visual (fronteira de módulo, ver
+`docs/planejamento/plano-implementacao.md` Fase 4). Visualmente é o
+mesmo esqueleto de lista simples já usado em `ProductLaunchList.vue`
+(header + botão de ação + `DataTable` + `Modal` pro formulário), só que
+o "formulário" aqui é um único `Select` (nunca mais de 1 campo, não
+precisou de `FormGroup`/`useResourceForm` — não há o que validar além de
+"algo foi selecionado"). Link "Voltar para Produtos" no cabeçalho é
+`Button` `variant="ghost"` com `icon-before` (`ArrowLineLeft`), não um
+`<a>`/`<button>` cru — nunca reinventar estilo de botão fora do design
+system, mesmo pra um link de navegação simples.
+
 ## Do's and Don'ts
 
 ### Do
