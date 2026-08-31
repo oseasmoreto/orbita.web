@@ -11,8 +11,8 @@
  * Sem polling de status aqui de propósito: o webhook
  * (`billing.webhooks.mercadopago`) já confirma o pagamento no backend de
  * forma assíncrona, independente de o usuário estar olhando essa tela ou
- * não — refresh de status em tempo real (`useSubscriptionStatus`) é
- * escopo maior, ainda não implementado (ver `docs/planejamento/plano-implementacao.md`).
+ * não — refresh de status em tempo real é escopo maior, ainda não
+ * implementado (ver `docs/planejamento/plano-implementacao.md`).
  */
 import { computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'

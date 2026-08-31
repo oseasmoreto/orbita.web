@@ -39,7 +39,8 @@ import AuthLayout from '@/core/layouts/AuthLayout.vue'
 import { useToast } from '@/shared/composables/useToast'
 import { useLoginForm } from '../composables/useLoginForm'
 import type { LoginFormValues } from '../schemas/loginFormSchema'
-import { buildSsoRedirectUrl, type SsoProvider } from '../services/identityApi'
+import { buildSsoRedirectUrl } from '../services/identityApi'
+import type { SsoProvider } from '../types/ssoAccount.type'
 
 const LOGIN_ERROR_KEYS: Record<string, string> = {
   email_verification_failed: 'identity.login.errors.emailVerificationFailed',

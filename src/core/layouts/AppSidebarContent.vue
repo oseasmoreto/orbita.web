@@ -40,10 +40,10 @@ const activeFavoritesTab = ref<'favorites' | 'recently'>('favorites')
   <div class="app-sidebar-content">
     <div class="app-sidebar-content__scroll">
       <div v-if="authStore.user" class="app-sidebar-content__user">
-        <div class="app-sidebar-content__user-info">
+        <RouterLink class="app-sidebar-content__user-info" :to="{ name: 'account' }">
           <Avatar :name="authStore.user.name" :size="32" />
           <span class="app-sidebar-content__user-name">{{ authStore.user.name }}</span>
-        </div>
+        </RouterLink>
         <Button
           :aria-label="$t('common.actions.logout')"
           :disabled="isLoggingOut"
@@ -150,9 +150,21 @@ const activeFavoritesTab = ref<'favorites' | 'recently'>('favorites')
 
 .app-sidebar-content__user-info {
   display: flex;
+  flex: 1;
   align-items: center;
   gap: $spacing-12;
   min-width: 0;
+  color: inherit;
+  text-decoration: none;
+  border-radius: $radius-8;
+
+  &:hover {
+    background-color: $color-ink-4;
+  }
+
+  &:focus-visible {
+    @include focus-ring;
+  }
 }
 
 .app-sidebar-content__user-name {

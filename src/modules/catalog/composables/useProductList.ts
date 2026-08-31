@@ -2,9 +2,7 @@ import { refDebounced } from '@vueuse/core'
 import { ref, watch } from 'vue'
 import type { DataTableSortDirection } from '@/shared/components/ui/types/dataTable.type'
 import { useResourceList } from '@/shared/composables/useResourceList'
-// MOCK TEMPORÁRIO (ver `services/catalogApi.mock.ts`) — trocar de volta pra
-// `../services/catalogApi` quando a Fase 1 (Identity/login) existir.
-import { listProducts } from '../services/catalogApi.mock'
+import { listProducts } from '../services/catalogApi'
 import type { Product } from '../types/product.type'
 
 /**

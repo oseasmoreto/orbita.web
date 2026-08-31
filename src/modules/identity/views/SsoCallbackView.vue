@@ -38,7 +38,8 @@ import { ShieldCheck, WarningCircle } from '@/shared/components/icons/regular.ge
 import AuthLayout from '@/core/layouts/AuthLayout.vue'
 import Icon from '@/shared/components/ui/Icon.vue'
 import Spinner from '@/shared/components/ui/Spinner.vue'
-import { buildSsoCallbackUrl, type SsoProvider } from '../services/identityApi'
+import { buildSsoCallbackUrl } from '../services/identityApi'
+import type { SsoProvider } from '../types/ssoAccount.type'
 
 const route = useRoute()
 

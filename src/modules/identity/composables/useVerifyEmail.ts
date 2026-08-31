@@ -47,10 +47,12 @@ export function useVerifyEmail() {
     isChecking.value = true
 
     try {
-      const user = await fetchCurrentUser()
-      authStore.setUser(toAuthUser(user), { requiresSubscription: true })
+      const result = await fetchCurrentUser()
+      authStore.setUser(toAuthUser(result.user), {
+        requiresSubscription: result.requires_subscription,
+      })
 
-      if (user.email_verified_at) {
+      if (result.user.email_verified_at) {
         await router.push({ name: 'choose-plan' })
         return
       }

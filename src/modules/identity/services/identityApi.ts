@@ -2,6 +2,7 @@ import { isAxiosError } from 'axios'
 import { apiClient } from '@/core/api/client'
 import type { components } from '@/core/api/schema'
 import type { ApiResponse } from '@/shared/types/api.type'
+import { type SsoAccount, type SsoProvider, toSsoAccount } from '../types/ssoAccount.type'
 
 type LoginRequest = components['schemas']['LoginRequest']
 type LoginResultResource = components['schemas']['LoginResultResource']
@@ -9,9 +10,8 @@ type RegisterUserRequest = components['schemas']['RegisterUserRequest']
 type UserResource = components['schemas']['UserResource']
 type RequestPasswordResetRequest = components['schemas']['RequestPasswordResetRequest']
 type ResetPasswordRequest = components['schemas']['ResetPasswordRequest']
-
-/** Providers reais de `SSO_ACCOUNT.provider` — nunca `apple`, não existe no domínio (seção 2.1 do contexto de negócio). */
-export type SsoProvider = 'google' | 'microsoft'
+type UpdateUserProfileRequest = components['schemas']['UpdateUserProfileRequest']
+type SsoAccountResource = components['schemas']['SsoAccountResource']
 
 /**
  * `GET /auth/login` real (`core/api/schema.d.ts`, `login.store`) tem uma
@@ -41,8 +41,8 @@ export async function register(payload: RegisterUserRequest): Promise<UserResour
 }
 
 /**
- * `GET /auth/me` (`userProfile.show`) — usado só pro bootstrap de sessão
- * no boot do app (`core/router/guards.ts`): a store de auth (Pinia) não
+ * `GET /auth/me` (`userProfile.show`) — usado pro bootstrap de sessão no
+ * boot do app (`core/router/guards.ts`): a store de auth (Pinia) não
  * persiste entre reloads, mas o cookie httpOnly do Sanctum sim, então sem
  * isso todo F5 derrubaria um usuário de verdade pro login. Deixa o 401
  * propagar pro `catch` de `bootstrapSession()` sem tratamento especial —
@@ -53,9 +53,21 @@ export async function register(payload: RegisterUserRequest): Promise<UserResour
  * `router.push({ name: 'login' })` por cima de rotas `requiresGuest` —
  * achado real: sem essa flag, abrir `/reset-password` sem sessão era
  * redirecionado pro login antes mesmo do guard de rota decidir algo.
+ *
+ * **Achado real, 2026-08-31**: `ShowAuthenticatedUserAction` (backend)
+ * passou a devolver `LoginResultResource` em vez de `UserResource` puro —
+ * mesmo cálculo de `requires_subscription` de `LoginUserAction`, já
+ * excluindo `admin_master`. Motivo (comentário real do backend): login
+ * via SSO nunca devolve JSON (só redireciona o browser), então `/me` é o
+ * único jeito do front saber se um usuário logado via SSO precisa
+ * assinar um plano. Isso fechou uma reimplementação client-side que
+ * existia aqui antes (`modules/billing/composables/useSubscriptionStatus`
+ * batendo em `GET /subscriptions` e replicando `UserSubscriptionStatus::isActive`)
+ * — removida, `bootstrapSession()` usa `result.requires_subscription`
+ * direto agora.
  */
-export async function fetchCurrentUser(): Promise<UserResource> {
-  const { data } = await apiClient.get<ApiResponse<UserResource>>('/auth/me', {
+export async function fetchCurrentUser(): Promise<LoginResultResource> {
+  const { data } = await apiClient.get<ApiResponse<LoginResultResource>>('/auth/me', {
     skipUnauthorizedRedirect: true,
   })
   return data.data
@@ -87,6 +99,56 @@ export async function requestPasswordReset(payload: RequestPasswordResetRequest)
 
 export async function resetPassword(payload: ResetPasswordRequest): Promise<void> {
   await apiClient.post('/auth/password/reset', payload)
+}
+
+/**
+ * `PATCH /auth/me` (`userProfile.update`, `auth:sanctum`) — os 3 únicos
+ * campos editáveis (`mapeamento-cruds-perfil.md`, P3): nome, e-mail,
+ * senha. `sometimes` no backend — manda só os campos que o usuário
+ * realmente alterou (`useUpdateProfileForm.ts` decide isso, não aqui).
+ * Trocar o e-mail zera `email_verified_at` e reenvia a verificação
+ * (`UpdateUserProfileAction`, backend) — o front não precisa fazer nada
+ * a mais por isso, o guard (`core/router/guards.ts`) já manda pro
+ * `verify-email` sozinho na próxima navegação se isso acontecer.
+ */
+export async function updateProfile(payload: UpdateUserProfileRequest): Promise<UserResource> {
+  const { data } = await apiClient.patch<ApiResponse<UserResource>>('/auth/me', payload)
+  return data.data
+}
+
+/**
+ * `DELETE /auth/me` (`userProfile.destroy`, `auth:sanctum`) —
+ * soft-delete/anonimização (`DeleteUserAccountAction`, backend), nunca
+ * hard delete. `password` é query param (não body — assim que o Scramble
+ * documentou a rota, `DeleteUserAccountRequest` lê `sometimes`), só
+ * exigido de verdade pra conta que TEM senha — conta só-SSO não manda
+ * nada aqui, a Action nem cobra confirmação nesse caso.
+ */
+export async function deleteAccount(password?: string): Promise<void> {
+  await apiClient.delete('/auth/me', { params: { password } })
+}
+
+/**
+ * `GET /auth/me/sso-accounts` (`ssoAccount.index`, `auth:sanctum`) —
+ * "quais provedores conectei", parte da mesma tela de perfil
+ * (`mapeamento-cruds-perfil.md`, P6). Sem paginação — número de provedores
+ * é sempre pequeno (no máximo `google`/`microsoft`, um de cada).
+ */
+export async function listSsoAccounts(): Promise<SsoAccount[]> {
+  const { data } = await apiClient.get<ApiResponse<SsoAccountResource[]>>('/auth/me/sso-accounts')
+  return data.data.map(toSsoAccount)
+}
+
+/**
+ * `DELETE /auth/me/sso-accounts/{ssoAccount}` (`ssoAccount.destroy`,
+ * `auth:sanctum`) — desconectar um provedor. Backend recusa
+ * (`errorMessageCannotDisconnectLastAccessMethod`) se for o único jeito
+ * de acessar a conta (sem senha E sem outro SSO conectado,
+ * `DisconnectSsoAccountAction`) — o front não tenta prever isso antes,
+ * só mostra o erro que vier.
+ */
+export async function disconnectSsoAccount(ssoAccountId: string): Promise<void> {
+  await apiClient.delete(`/auth/me/sso-accounts/${ssoAccountId}`)
 }
 
 /**

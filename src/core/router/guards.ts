@@ -2,7 +2,6 @@ import type { Router } from 'vue-router'
 import { i18n } from '@/core/i18n'
 import type { UserRole } from '@/core/store/types/auth.type'
 import { useAuthStore } from '@/core/store/useAuthStore'
-import { hasActiveSubscription } from '@/modules/billing/composables/useSubscriptionStatus'
 import { fetchCurrentUser } from '@/modules/identity/services/identityApi'
 import { toAuthUser } from '@/modules/identity/types/user.type'
 
@@ -64,32 +63,13 @@ async function bootstrapSession(): Promise<void> {
   const authStore = useAuthStore()
 
   try {
-    const user = await fetchCurrentUser()
-    authStore.setUser(toAuthUser(user))
+    const result = await fetchCurrentUser()
+    authStore.setUser(toAuthUser(result.user), {
+      requiresSubscription: result.requires_subscription,
+    })
   } catch {
     authStore.clear()
   }
-}
-
-/**
- * Cache por usuário do check de assinatura ativa (`GET /subscriptions`,
- * via `useSubscriptionStatus.hasActiveSubscription()`) — evita bater essa
- * rota de novo a cada navegação dentro do app. Chaveado pelo `id` do
- * usuário (não um booleano solto tipo `sessionBootstrapped`) justamente
- * pra invalidar sozinho se alguém deslogar e logar com outra conta na
- * MESMA aba, sem reload de página — um booleano solto ficaria com o
- * resultado do usuário anterior.
- */
-let subscriptionCheckedForUserId: string | null = null
-let cachedHasActiveSubscription = false
-
-async function checkHasActiveSubscription(userId: string): Promise<boolean> {
-  if (subscriptionCheckedForUserId !== userId) {
-    subscriptionCheckedForUserId = userId
-    cachedHasActiveSubscription = await hasActiveSubscription().catch(() => false)
-  }
-
-  return cachedHasActiveSubscription
 }
 
 /**
@@ -103,9 +83,13 @@ async function checkHasActiveSubscription(userId: string): Promise<boolean> {
  * pra `/choose-plan` (sem assinatura) conseguia editar a URL pra `/` e
  * cair direto no dashboard, porque nada aqui conferia isso além do
  * redirect logo após o cadastro/login (`useRegisterForm`/`useLoginForm`).
- * O mesmo valia pra e-mail não verificado. `admin_master` fica de fora
- * dos dois — conta de admin não é assinante, não faz sentido mandar pra
- * `choose-plan`.
+ * O mesmo valia pra e-mail não verificado.
+ *
+ * `authStore.requiresSubscription` já vem calculado pelo backend
+ * (`ShowAuthenticatedUserAction`, achado real 2026-08-31 — mesmo cálculo
+ * de `LoginUserAction`, já excluindo `admin_master`) toda vez que
+ * `bootstrapSession()` roda, então não precisa de nenhuma chamada extra
+ * nem reimplementação de regra aqui — só ler o campo.
  */
 export function setupRouterGuards(router: Router): void {
   router.beforeEach(async (to) => {
@@ -131,7 +115,7 @@ export function setupRouterGuards(router: Router): void {
         return { name: 'verify-email' }
       }
 
-      if (!(await checkHasActiveSubscription(authStore.user.id))) {
+      if (authStore.requiresSubscription) {
         return { name: 'choose-plan' }
       }
     }

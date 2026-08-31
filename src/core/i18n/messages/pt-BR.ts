@@ -214,13 +214,63 @@ export default {
    * adiantar o catálogo inteiro de erros do backend sem uma tela que
    * dispare cada um (seção 6.3 de `docs/infra/convencoes-frontend-infra.md`).
    */
+  errorMessageCannotDisconnectLastAccessMethod:
+    'Esse é seu único jeito de acessar a conta — defina uma senha antes de desconectar.',
   errorMessageDocumentRequired: 'Informe um CPF ou CNPJ válido pra continuar.',
   errorMessageEmailNotVerified: 'Confirme seu e-mail antes de assinar um plano.',
+  errorMessageIncorrectPassword: 'Senha incorreta.',
   errorMessageSubscriptionAlreadyActive: 'Você já tem uma assinatura ativa.',
   errors: {
     unknown: 'Ocorreu um erro inesperado. Tente novamente.',
   },
   identity: {
+    account: {
+      dangerZone: {
+        deleteCta: 'Excluir minha conta',
+        description:
+          'Essa ação não pode ser desfeita. Seus dados pessoais são anonimizados e o acesso à conta é encerrado imediatamente.',
+        title: 'Zona de risco',
+      },
+      deleteAccount: {
+        confirm: 'Excluir conta',
+        description:
+          'Se sua conta tiver senha, confirme abaixo. Contas conectadas só por SSO não precisam disso.',
+        passwordLabel: 'Senha',
+        passwordPlaceholder: 'Digite sua senha (se tiver uma)',
+        title: 'Excluir conta',
+      },
+      errors: {
+        emailInvalid: 'Informe um e-mail válido.',
+        emailRequired: 'E-mail é obrigatório.',
+        nameRequired: 'Nome é obrigatório.',
+        passwordConfirmationMismatch: 'As senhas não conferem.',
+        passwordMin: 'A senha precisa ter pelo menos 8 caracteres.',
+      },
+      fields: {
+        email: 'E-mail',
+        name: 'Nome',
+        password: 'Nova senha',
+        passwordConfirmation: 'Confirmar nova senha',
+      },
+      placeholders: {
+        password: 'Deixe em branco pra manter a atual',
+        passwordConfirmation: 'Repita a nova senha',
+      },
+      profile: {
+        save: 'Salvar alterações',
+        title: 'Dados da conta',
+      },
+      sso: {
+        disconnect: 'Desconectar',
+        disconnectSuccess: 'Provedor desconectado com sucesso.',
+        empty: 'Nenhum provedor de login social conectado.',
+        google: 'Google',
+        microsoft: 'Microsoft',
+        title: 'Contas conectadas',
+      },
+      title: 'Minha conta',
+      updateSuccess: 'Dados atualizados com sucesso.',
+    },
     forgotPassword: {
       errors: {
         emailInvalid: 'Informe um e-mail válido.',

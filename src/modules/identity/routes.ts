@@ -63,3 +63,21 @@ export const identityRoutes: RouteRecordRaw[] = [
     path: '/verify-email',
   },
 ]
+
+/**
+ * Diferente das rotas acima, `/account` é uma tela do APP PRINCIPAL (não
+ * um passo de auth avulso) — precisa do chrome de `AppLayout.vue`
+ * (sidebar/header), então entra como FILHA dele em `core/router/index.ts`,
+ * não espalhada solta como `identityRoutes`. `skipOnboardingChecks: true`
+ * de propósito: gestão da própria conta (inclusive excluir) não pode
+ * ficar bloqueada atrás do gate de e-mail verificado/assinatura — quem
+ * quer sair da plataforma precisa conseguir chegar aqui de qualquer jeito.
+ */
+export const identityAppRoutes: RouteRecordRaw[] = [
+  {
+    component: () => import('./views/AccountView.vue'),
+    meta: { skipOnboardingChecks: true, title: 'identity.account.title' },
+    name: 'account',
+    path: 'account',
+  },
+]

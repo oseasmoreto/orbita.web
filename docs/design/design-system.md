@@ -2628,6 +2628,38 @@ Login/Register/ResetPassword). Sem polling de status — o webhook
 forma assíncrona, independente dessa tela estar aberta ou não; refresh
 em tempo real é escopo maior, ainda não implementado.
 
+### AccountView (`modules/identity/views/AccountView.vue`)
+
+Fecha a última pendência real da Fase 1 — escopo direto de
+`mapeamento-cruds-perfil.md` (backend): editar nome/e-mail/senha, ver/
+desconectar provedores SSO, excluir a própria conta. **Diferente das
+outras telas de Identity, é uma tela do APP PRINCIPAL** — vive dentro de
+`AppLayout` (sidebar/header), não do shell split-screen de
+`AuthLayout.vue`. Sem componente de "Card" pronto no design system (só
+`{rounded.16}` reservado desde a Fase 0) — cada seção (dados da conta,
+contas conectadas, zona de risco) é uma `<section>` com borda
+`{colors.ink-10}` + `{radius.16}`, mesma receita repetida 3x; zona de
+risco usa `{colors.accent-red}` na borda.
+
+Descoberta via clique no bloco de usuário (avatar + nome) no topo do
+`AppSidebar` (`core/layouts/AppSidebarContent.vue`) — virou
+`RouterLink` pra `account` em vez de `<div>` estático, com
+`text-decoration:none; color:inherit` pra não parecer um link azul
+sublinhado tradicional, só hover/focus-ring de affordance.
+
+### DeleteAccountModal (`modules/identity/components/DeleteAccountModal.vue`)
+
+Composição de `Modal.vue` + `FormGroup` + `Input` + 2 `Button`, mesmo
+padrão de bloco de `DocumentPromptModal.vue` (Billing) — nunca decide o
+que fazer com a senha digitada, só emite `confirm`
+(`AccountView.vue`/`useDeleteAccount.ts` decidem). Sem variante
+destrutiva/vermelha no botão de confirmar — mesma decisão já registrada
+em `ConfirmDialog.vue` (Figma não define essa variante pro `Button`).
+`password` sempre opcional no campo: `UserResource` não expõe se a conta
+tem senha cadastrada (conta só-SSO não tem), então a UI nunca sabe se
+deve exigir preenchimento — manda o que foi digitado e deixa o backend
+recusar com `errorMessageIncorrectPassword` se for o caso.
+
 ## Do's and Don'ts
 
 ### Do

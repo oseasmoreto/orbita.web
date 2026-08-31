@@ -18,7 +18,8 @@ import Input from '@/shared/components/ui/Input.vue'
 import AuthLayout from '@/core/layouts/AuthLayout.vue'
 import { useRegisterForm } from '../composables/useRegisterForm'
 import type { RegisterFormValues } from '../schemas/registerFormSchema'
-import { buildSsoRedirectUrl, type SsoProvider } from '../services/identityApi'
+import { buildSsoRedirectUrl } from '../services/identityApi'
+import type { SsoProvider } from '../types/ssoAccount.type'
 
 const { errors, isSubmitting, submit, values } = useRegisterForm()
 

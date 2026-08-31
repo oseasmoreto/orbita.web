@@ -177,7 +177,7 @@ concluída.
 
 ---
 
-## Fase 1 — Identity
+## Fase 1 — Identity (concluída)
 
 Cadastro, login, sessão. Bloqueia todas as fases seguintes (tudo exige
 usuário autenticado).
@@ -241,23 +241,34 @@ redirect logo após cadastro/login checava isso, o guard só sabia de
 `requiresAuth`. Corrigido em `core/router/guards.ts`: além de
 `requiresAuth`/`requiresGuest`/`roles`, toda rota `requiresAuth` (exceto
 as marcadas `skipOnboardingChecks: true` — `verify-email`, `choose-plan`,
-`billing-success`/`pending`/`failure`, que SÃO esse fluxo) agora também
-exige `authStore.user.emailVerifiedAt` preenchido e uma assinatura ativa
-(`modules/billing/composables/useSubscriptionStatus.hasActiveSubscription()`,
-via `GET /subscriptions` — não existe campo pronto tipo
-`LoginResultResource.requires_subscription` fora do momento do login,
-então essa checagem replica `UserSubscriptionStatus::isActive()`
-(backend) client-side, testada). `admin_master` fica de fora dos dois
-checks (conta de admin não é assinante). Resultado da checagem de
-assinatura fica em cache por `user.id` (`checkHasActiveSubscription`,
-`guards.ts`) — não bate `/subscriptions` a cada navegação dentro do app,
-só uma vez por usuário por carregamento de página; invalida sozinho se
-outro usuário logar na mesma aba sem reload. Verificado em Playwright:
-usuário sem assinatura editando a URL pra `/` continua preso em
-`/choose-plan`; usuário com assinatura ativa acessa `/` normalmente;
-e-mail não verificado vai pra `/verify-email`; `admin_master` nunca é
-barrado; navegação subsequente na mesma sessão não repete a chamada de
-`/subscriptions`.
+`billing-success`/`pending`/`failure`, `account`, que SÃO esse fluxo ou
+não podem ficar presas atrás dele) agora também exige
+`authStore.user.emailVerifiedAt` preenchido e `!authStore.requiresSubscription`.
+`admin_master` fica de fora dos dois checks (conta de admin não é
+assinante). Verificado em Playwright: usuário sem assinatura editando a
+URL pra `/` continua preso em `/choose-plan`; usuário com assinatura
+ativa acessa `/` normalmente; e-mail não verificado vai pra
+`/verify-email`; `admin_master` nunca é barrado.
+
+**Simplificado em 2026-08-31** (histórico, mantido por contexto): a
+implementação original desse fix batia em `GET /subscriptions` e
+replicava `UserSubscriptionStatus::isActive()` (backend) client-side
+(`modules/billing/composables/useSubscriptionStatus.ts`, com cache por
+`user.id` pra não repetir a chamada a cada navegação) — não existia
+campo pronto tipo `LoginResultResource.requires_subscription` fora do
+momento do login. No dia seguinte, `ShowAuthenticatedUserAction`
+(backend) passou a devolver esse MESMO cálculo em `GET /auth/me`
+(`userProfile.show` retorna `LoginResultResource` agora, não
+`UserResource` puro — motivo real, comentário do backend: login via SSO
+nunca devolve JSON, só redireciona, então `/me` é o único jeito do front
+saber se um usuário logado via SSO precisa assinar). Isso fechou a
+reimplementação client-side — `useSubscriptionStatus.ts` foi removido,
+`bootstrapSession()` (`guards.ts`) usa `result.requires_subscription`
+direto, sem chamada extra nem cache manual. `fetchCurrentUser()`
+(`identityApi.ts`) e `useVerifyEmail.checkVerification()` atualizados pro
+novo shape. Reverificado em Playwright com o novo formato de resposta —
+os 4 cenários (verificado+assinante, requer assinatura, e-mail não
+verificado, admin_master) continuam corretos.
 
 **Gap de backend resolvido em 2026-08-30** (histórico, mantido por
 contexto): o endpoint de logout não existia em `orbita.api` até
@@ -275,9 +286,55 @@ segue a mesma exceção já usada em `core/router/guards.ts`
 (`fetchCurrentUser`) — sessão/Identity é infraestrutura cross-cutting,
 não um módulo de negócio comum.
 
-**Pendências reais** (fora do escopo do pedido "telas de login/cadastro/
-recuperação de senha"): `/account` (perfil —
-`userProfile.show`/`update`/`destroy` já existem no backend).
+**`/account` implementado em 2026-08-31** (pedido direto do usuário,
+"vamos finalizar a fase 01" — última pendência real da fase) — escopo
+direto de `mapeamento-cruds-perfil.md` (backend), nada além disso:
+- **Perfil** (P3): `modules/identity/schemas/updateProfileFormSchema.ts`
+  (test-first) + `composables/useUpdateProfileForm.ts` — formulário
+  sempre pré-preenchido com `authStore.user`, senha sempre em branco
+  (nunca mostra/adivinha a atual). `password`/`password_confirmation` só
+  entram no payload (`PATCH /auth/me`) quando o usuário realmente digitou
+  algo — mandar string vazia falharia a validação de tamanho mínimo do
+  backend. Trocar o e-mail zera `email_verified_at` no backend
+  (`UpdateUserProfileAction`) — o guard já existente manda pro
+  `verify-email` sozinho na próxima navegação, nada especial a fazer na
+  tela por causa disso.
+- **Contas conectadas** (P6/P7): `composables/useSsoAccounts.ts` —
+  lista (`GET /auth/me/sso-accounts`) e desconecta
+  (`DELETE /auth/me/sso-accounts/{id}`) provedores SSO. Backend recusa
+  desconectar o único jeito de acesso (`errorMessageCannotDisconnectLastAccessMethod`)
+  — o front não tenta prever isso (não sabe se o usuário tem senha), só
+  mostra o erro que vier.
+- **Excluir conta** (P5): `composables/useDeleteAccount.ts` +
+  `components/DeleteAccountModal.vue` — `password` fica sempre opcional
+  na UI (`UserResource` não expõe se a conta tem senha cadastrada), manda
+  o que foi digitado e deixa `DeleteUserAccountAction` (backend) decidir;
+  erro de senha incorreta vira `errorMessageIncorrectPassword`. Sucesso
+  limpa a store e redireciona pro login (soft-delete/anonimização no
+  backend, nunca hard delete).
+- Rota `account` entra como FILHA de `AppLayout` (`identityAppRoutes`,
+  `modules/identity/routes.ts`) — diferente das outras rotas de Identity,
+  é tela do app principal, precisa do chrome de sidebar/header. Descoberta
+  via clique no bloco de usuário (avatar+nome) no topo do
+  `AppSidebar` (`core/layouts/AppSidebarContent.vue`), que virou
+  `RouterLink` pra cá. `skipOnboardingChecks: true` de propósito — gestão
+  da própria conta (inclusive excluir) não pode ficar bloqueada atrás do
+  gate de e-mail verificado/assinatura, quem quer sair da plataforma
+  precisa conseguir chegar aqui de qualquer jeito.
+- `errorMessageIncorrectPassword`/`errorMessageCannotDisconnectLastAccessMethod`
+  — novas entradas no registro de `ApiMessageKey` (`pt-BR.ts`).
+- Verificado em Playwright: navegação pelo sidebar, formulário
+  pré-preenchido, atualização de nome (payload sem `password` quando em
+  branco), desconexão de SSO removendo da lista, exclusão de conta
+  encerrando a sessão e voltando pro login.
+
+**Mock do Catalog trocado pelo serviço real em 2026-08-31** (dívida
+técnica explicitamente marcada como bloqueada nesta fase — comentário
+original: "trocar de volta quando a Fase 1 existir"): `useProductList.ts`/
+`useProductForm.ts`/`ProductsView.vue` voltaram a importar de
+`../services/catalogApi` (real) em vez de `catalogApi.mock.ts`, que foi
+removido. Verificado em Playwright interceptando `GET /v1/products` —
+lista renderiza com dado vindo do endpoint real.
 
 **`VerifyEmailView` implementado em 2026-08-30** (pedido direto do
 usuário — "pequeno gap", cadastro normal precisa confirmar e-mail antes
@@ -315,15 +372,21 @@ Verificado com Playwright interceptando a URL do backend: a query string
 completa (incluindo `iss`/`scope`/`authuser`/`prompt`, do exemplo real
 mandado pelo usuário) chega intacta.
 
-**Gap real, ainda aberto**: diferente do login por formulário
-(`LoginResultResource.requires_subscription`), o redirect final do
-`SsoController::callback` (backend) não carrega nenhum sinal de "usuário
-novo, precisa escolher plano" — sempre `redirect(config('app.frontend_url'))`,
-sem path/query. Um cadastro novo via SSO cai no dashboard normal, não em
-`/choose-plan`, até o backend expor esse sinal (mesma computação que
-`LoginUserAction` já faz pra `requires_subscription`, replicada em
-`UserProfileController::show` ou direto no callback) — não implementado
-aqui por ser mudança de backend, fora do escopo deste repositório.
+**Gap fechado de brinde em 2026-08-30** (histórico, mantido por
+contexto): o parágrafo abaixo descrevia um gap real na época — o redirect
+final do `SsoController::callback` (backend) não carrega nenhum sinal de
+"usuário novo, precisa escolher plano", sempre `redirect(config('app.frontend_url'))`
+sem path/query, então um cadastro novo via SSO caía direto no dashboard.
+Isso deixou de ser um problema quando o guard de assinatura ativa foi
+implementado no mesmo dia (ver "Bug real corrigido" acima): a rota `/`
+agora SEMPRE confere `authStore.requiresSubscription` antes de renderizar
+(hoje vindo direto de `GET /auth/me`, ver "Simplificado em 2026-08-31"),
+pra QUALQUER caminho de chegada (formulário ou SSO) — um cadastro novo
+via SSO pousa em `/`, o guard vê que não tem assinatura nenhuma e
+redireciona sozinho pra `/choose-plan`, sem precisar de nenhum sinal
+extra do backend além do que `/me` já passou a expor. Verificado em
+Playwright: usuário SSO novo (e-mail verificado,
+zero assinaturas) pousando em `/` termina em `/choose-plan`.
 
 ---
 
@@ -415,10 +478,11 @@ listagem genérica ("Order List"). Implementado **antes** das Fases 1/2
 já existe e funciona de ponta a ponta contra o backend real. **Guard de
 autenticação ativado depois, mesmo dia** (Fase 1, `meta.requiresAuth:
 true` no `AppLayout` pai) — `/products` agora exige sessão real como
-qualquer outra rota do shell. Segue sem `usePlanLimit`/checagem de
-`max_products` (depende de Billing, Fase 2, não implementada ainda) — o
-dado do produto em si continua mockado (`catalogApi.mock.ts`), sem
-relação com o guard de auth.
+qualquer outra rota do shell. **Mock trocado pelo serviço real em
+2026-08-31** (ver Fase 1) — `catalogApi.mock.ts` removido, `/products`
+fala com o backend de verdade de ponta a ponta agora. Segue sem
+`usePlanLimit`/checagem de `max_products` (depende de Billing, Fase 2,
+não implementada ainda).
 
 **Entregue:**
 - `modules/catalog/services/catalogApi.ts` — `listProducts`/

@@ -4136,7 +4136,7 @@ export interface operations {
                     "application/json": {
                         success: boolean;
                         message: string;
-                        data: components["schemas"]["UserResource"];
+                        data: components["schemas"]["LoginResultResource"];
                         errors: null;
                     };
                 };

@@ -39,9 +39,7 @@ import PaginationNav from '@/shared/components/blocks/PaginationNav.vue'
 import Button from '@/shared/components/ui/Button.vue'
 import Drawer from '@/shared/components/ui/Drawer.vue'
 import ProductForm from '../components/ProductForm.vue'
-// MOCK TEMPORÁRIO (ver `services/catalogApi.mock.ts`) — trocar de volta pra
-// `../services/catalogApi` quando a Fase 1 (Identity/login) existir.
-import { deleteProduct } from '../services/catalogApi.mock'
+import { deleteProduct } from '../services/catalogApi'
 import { useProductList } from '../composables/useProductList'
 import type { Product } from '../types/product.type'
 import type { DataTableColumn } from '@/shared/components/ui/types/dataTable.type'

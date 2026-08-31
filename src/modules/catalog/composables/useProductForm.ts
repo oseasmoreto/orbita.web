@@ -4,9 +4,7 @@ import { useApiMessage } from '@/shared/composables/useApiMessage'
 import { useToast } from '@/shared/composables/useToast'
 import { parseApiError } from '@/shared/services/parseApiError'
 import { createProductFormSchema, type ProductFormValues } from '../schemas/productFormSchema'
-// MOCK TEMPORÁRIO (ver `services/catalogApi.mock.ts`) — trocar de volta pra
-// `../services/catalogApi` quando a Fase 1 (Identity/login) existir.
-import { createProduct, updateProduct } from '../services/catalogApi.mock'
+import { createProduct, updateProduct } from '../services/catalogApi'
 import type { Product } from '../types/product.type'
 
 function emptyFormValues(): ProductFormValues {

@@ -2,7 +2,7 @@ import { createRouter, createWebHistory, type RouteRecordRaw } from 'vue-router'
 import AppLayout from '@/core/layouts/AppLayout.vue'
 import { billingRoutes } from '@/modules/billing/routes'
 import { catalogRoutes } from '@/modules/catalog/routes'
-import { identityRoutes } from '@/modules/identity/routes'
+import { identityAppRoutes, identityRoutes } from '@/modules/identity/routes'
 import { setupRouterGuards } from './guards'
 
 const routes: RouteRecordRaw[] = [
@@ -21,6 +21,7 @@ const routes: RouteRecordRaw[] = [
         path: 'showcase',
       },
       ...catalogRoutes,
+      ...identityAppRoutes,
     ],
     component: AppLayout,
     meta: { requiresAuth: true },
