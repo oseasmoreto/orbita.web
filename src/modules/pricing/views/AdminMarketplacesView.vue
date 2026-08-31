@@ -31,6 +31,8 @@ import Button from '@/shared/components/ui/Button.vue'
 import Drawer from '@/shared/components/ui/Drawer.vue'
 import TabBar from '@/shared/components/ui/TabBar.vue'
 import AdminMarketplaceForm from '../components/AdminMarketplaceForm.vue'
+import MarketplaceLogo from '../components/MarketplaceLogo.vue'
+import IconText from '@/shared/components/ui/IconText.vue'
 import AdminPricingRuleList from '../components/blocks/AdminPricingRuleList.vue'
 import { deleteAdminMarketplace } from '../services/pricingApi'
 import { useAdminMarketplaceList } from '../composables/useAdminMarketplaceList'
@@ -114,6 +116,11 @@ function handleSaved(): void {
       row-key="id"
       @sort="(key, direction) => list.setSort(key, direction)"
     >
+      <template #cell-name="{ row }">
+        <IconText :text="row.name">
+          <MarketplaceLogo :logo-url="row.logoUrl" :name="row.name" :size="24" />
+        </IconText>
+      </template>
       <template #cell-active="{ row }">
         <StatusDot :color="row.active ? 'green' : 'gray'">
           {{

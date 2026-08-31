@@ -6,8 +6,22 @@ import type { Marketplace } from '@/modules/pricing/types/marketplace.type'
 import type { ProductMarketplace } from '@/modules/pricing/types/productMarketplace.type'
 import type { UserMarketplace } from '@/modules/pricing/types/userMarketplace.type'
 
-const shopee: Marketplace = { id: 'mkt-1', name: 'Shopee' }
-const amazon: Marketplace = { id: 'mkt-2', name: 'Amazon' }
+const shopee: Marketplace = {
+  description: null,
+  id: 'mkt-1',
+  logoUrl: 'https://example.com/shopee-logo.png',
+  name: 'Shopee',
+  tags: null,
+  websiteUrl: null,
+}
+const amazon: Marketplace = {
+  description: null,
+  id: 'mkt-2',
+  logoUrl: null,
+  name: 'Amazon',
+  tags: null,
+  websiteUrl: null,
+}
 
 const shopeeConnection: UserMarketplace = {
   active: true,
@@ -41,7 +55,7 @@ const link: ProductMarketplace = {
 }
 
 describe('buildProductMarketplaceRows', () => {
-  it('resolves the marketplace name and store name for each link', () => {
+  it('resolves the marketplace name, logo and store name for each link', () => {
     const rows = buildProductMarketplaceRows(
       [link],
       [shopeeConnection, amazonConnection],
@@ -52,6 +66,7 @@ describe('buildProductMarketplaceRows', () => {
       {
         createdAt: '2026-02-01T00:00:00Z',
         id: 'link-1',
+        marketplaceLogoUrl: 'https://example.com/shopee-logo.png',
         marketplaceName: 'Shopee',
         storeName: 'Minha Loja Shopee',
         userMarketplaceId: 'conn-1',
@@ -63,6 +78,7 @@ describe('buildProductMarketplaceRows', () => {
     const rows = buildProductMarketplaceRows([link], [], [])
 
     expect(rows[0]?.marketplaceName).toBe('—')
+    expect(rows[0]?.marketplaceLogoUrl).toBeNull()
     expect(rows[0]?.storeName).toBe('—')
   })
 })

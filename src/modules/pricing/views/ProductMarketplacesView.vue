@@ -27,12 +27,14 @@ import { ArrowLineLeft, Trash } from '@/shared/components/icons/regular.generate
 import ConfirmDialog from '@/shared/components/blocks/ConfirmDialog.vue'
 import DataTable from '@/shared/components/blocks/DataTable.vue'
 import Button from '@/shared/components/ui/Button.vue'
+import IconText from '@/shared/components/ui/IconText.vue'
 import Modal from '@/shared/components/ui/Modal.vue'
 import Select from '@/shared/components/ui/Select.vue'
 import { useApiMessage } from '@/shared/composables/useApiMessage'
 import { useConfirmAction } from '@/shared/composables/useConfirmAction'
 import { useToast } from '@/shared/composables/useToast'
 import { parseApiError } from '@/shared/services/parseApiError'
+import MarketplaceLogo from '../components/MarketplaceLogo.vue'
 import { useProductMarketplaces } from '../composables/useProductMarketplaces'
 import { getProductName } from '../services/pricingApi'
 import type { ProductMarketplaceRow } from '../composables/useProductMarketplaces'
@@ -160,6 +162,11 @@ function goBackToProducts(): void {
     </p>
 
     <DataTable :columns="columns" :rows="productMarketplaces.rows.value" row-key="id">
+      <template #cell-marketplaceName="{ row }">
+        <IconText :text="row.marketplaceName">
+          <MarketplaceLogo :logo-url="row.marketplaceLogoUrl" :name="row.marketplaceName" :size="24" />
+        </IconText>
+      </template>
       <template #cell-createdAt="{ row }">
         {{ formatCreatedAt(row.createdAt) }}
       </template>

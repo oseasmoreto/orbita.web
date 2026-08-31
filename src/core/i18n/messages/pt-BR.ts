@@ -26,6 +26,10 @@
  */
 export default {
   billing: {
+    billingCycleFilter: {
+      monthly: 'Mensal',
+      yearly: 'Anual',
+    },
     checkoutResult: {
       failure: {
         cta: 'Tentar novamente',
@@ -101,6 +105,7 @@ export default {
         currentPlanBadge: 'Plano atual',
         description:
           'A troca abre um novo checkout com o valor proporcional aos dias restantes do ciclo atual.',
+        emptyForCycle: 'Nenhum outro plano disponível neste ciclo de cobrança.',
         title: 'Trocar de plano',
       },
       empty: 'Você ainda não tem uma assinatura.',

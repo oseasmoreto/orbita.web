@@ -14,6 +14,7 @@ import type { UserMarketplace } from '../types/userMarketplace.type'
 export interface ProductMarketplaceRow {
   createdAt: string | null
   id: string
+  marketplaceLogoUrl: string | null
   marketplaceName: string
   storeName: string
   userMarketplaceId: string
@@ -21,11 +22,11 @@ export interface ProductMarketplaceRow {
 
 /**
  * `ProductMarketplaceResource` só tem `user_marketplace_id` (vínculo
- * puro, decisão 2026-08-26) — pra mostrar o NOME do marketplace/loja
- * numa linha de tabela, cruza com as 2 listas já carregadas
+ * puro, decisão 2026-08-26) — pra mostrar o NOME/LOGO do marketplace +
+ * nome da loja numa linha de tabela, cruza com as 2 listas já carregadas
  * (`UserMarketplace`, que por sua vez referencia `Marketplace`). Um
  * vínculo cujos dados relacionados não vieram na mesma busca (paginação/
- * dado obsoleto) cai no fallback "—", nunca quebra a tabela.
+ * dado obsoleto) cai no fallback "—"/`null`, nunca quebra a tabela.
  */
 export function buildProductMarketplaceRows(
   links: ProductMarketplace[],
@@ -41,6 +42,7 @@ export function buildProductMarketplaceRows(
     return {
       createdAt: link.createdAt,
       id: link.id,
+      marketplaceLogoUrl: marketplace?.logoUrl ?? null,
       marketplaceName: marketplace?.name ?? '—',
       storeName: connection?.storeName ?? '—',
       userMarketplaceId: link.userMarketplaceId,

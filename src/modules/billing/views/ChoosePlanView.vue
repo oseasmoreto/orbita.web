@@ -16,7 +16,9 @@
  * quando esse fluxo existir, sem duplicar UI de card de plano.
  */
 import { computed, onMounted } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { ArrowsClockwise, Headset, ShieldCheck } from '@/shared/components/icons/regular.generated'
+import BlockTab from '@/shared/components/ui/BlockTab.vue'
 import Button from '@/shared/components/ui/Button.vue'
 import Icon from '@/shared/components/ui/Icon.vue'
 import Spinner from '@/shared/components/ui/Spinner.vue'
@@ -29,23 +31,35 @@ import {
   getYearlySavings,
 } from '../composables/usePlanPricing'
 import { useSubscribeToPlan } from '../composables/useSubscribeToPlan'
-import type { Plan } from '../types/plan.type'
+import type { BillingCycle, Plan } from '../types/plan.type'
+import type { BlockTabOption } from '@/shared/components/ui/types/blockTab.type'
 
-const { hasError, isLoading, load, plans } = useChoosePlan()
+const { t } = useI18n()
+const { billingCycle, hasError, isLoading, load, plans, setBillingCycle, visiblePlans } =
+  useChoosePlan()
 const { confirmDocument, isDocumentPromptOpen, isSubscribing, subscribe } = useSubscribeToPlan()
 
 onMounted(load)
 
-// Badge "Mais econômico" só faz sentido comparando 2+ planos — com um só
-// na lista, destacar ele mesmo não informa nada.
+const billingCycleOptions = computed<BlockTabOption[]>(() => [
+  { key: 'monthly', label: t('billing.billingCycleFilter.monthly') },
+  { key: 'yearly', label: t('billing.billingCycleFilter.yearly') },
+])
+
+// Badge "Mais econômico" compara só entre o que está VISÍVEL agora (o
+// ciclo selecionado) — comparar contra a lista completa destacaria um
+// plano de outro ciclo, que não aparece em nenhum card da grade atual.
 const mostEconomicalPlanId = computed(() =>
-  plans.value.length > 1 ? (findMostEconomicalPlan(plans.value)?.id ?? null) : null,
+  visiblePlans.value.length > 1 ? (findMostEconomicalPlan(visiblePlans.value)?.id ?? null) : null,
 )
 
 function monthlyEquivalentFor(plan: Plan): number {
   return getMonthlyEquivalent(plan)
 }
 
+// `plans` (não `visiblePlans`) de propósito — precisa enxergar os 2
+// ciclos pra comparar um plano anual contra o mensal mais barato, mesmo
+// com o usuário filtrando a exibição só pra "Anual" (`useChoosePlan.ts`).
 function savingsFor(plan: Plan): number | null {
   return getYearlySavings(plan, plans.value)
 }
@@ -75,6 +89,14 @@ function savingsFor(plan: Plan): number | null {
       </div>
     </header>
 
+    <div class="choose-plan-view__billing-cycle">
+      <BlockTab
+        :model-value="billingCycle"
+        :options="billingCycleOptions"
+        @update:model-value="(key) => setBillingCycle(key as BillingCycle)"
+      />
+    </div>
+
     <div v-if="isLoading" class="choose-plan-view__state">
       <Spinner :size="32" />
     </div>
@@ -84,13 +106,13 @@ function savingsFor(plan: Plan): number | null {
       <Button variant="outline" @click="load">{{ $t('billing.choosePlan.retry') }}</Button>
     </div>
 
-    <p v-else-if="plans.length === 0" class="choose-plan-view__state">
+    <p v-else-if="visiblePlans.length === 0" class="choose-plan-view__state">
       {{ $t('billing.choosePlan.empty') }}
     </p>
 
     <div v-else class="choose-plan-view__grid">
       <PlanCard
-        v-for="plan in plans"
+        v-for="plan in visiblePlans"
         :key="plan.id"
         :highlighted="plan.id === mostEconomicalPlanId"
         :is-submitting="isSubscribing"
@@ -157,6 +179,12 @@ function savingsFor(plan: Plan): number | null {
   gap: $spacing-8;
   font-size: $font-size-sm;
   color: $color-ink-40;
+}
+
+.choose-plan-view__billing-cycle {
+  display: flex;
+  justify-content: center;
+  margin-top: $spacing-24;
 }
 
 .choose-plan-view__state {

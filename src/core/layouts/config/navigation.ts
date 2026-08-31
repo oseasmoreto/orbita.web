@@ -98,15 +98,19 @@ export const catalogGroup: NavGroup = {
  * ("Canais disponíveis" + "Minhas conexões") num só lugar, já que um
  * card mostra os dois estados (conectado/não conectado) juntos.
  *
- * `roles: ['user']` — `admin_master` nunca tem assinatura própria, e
- * `/marketplaces`/`/user-marketplaces` exigem `subscription.active` no
- * backend (`pricing.php`) — mesmo raciocínio já usado em `billingGroup`.
- * Vínculo produto↔marketplace (`PRODUCT_MARKETPLACE`) não é item de
- * sidebar — acessado a partir da listagem de Produtos (Catalog), rota
- * própria `product-marketplaces` (mesmo Bounded Context do backend,
- * `Api/Pricing/ProductMarketplaceController`, apesar da URL aninhada sob
- * `/products` — nunca um import direto de `modules/catalog`, só
- * navegação via `router.push`).
+ * **Sem `roles` (visível pra `user` E `admin_master`), corrigido em
+ * 2026-08-31** — pedido direto do usuário ("admin deve ver a tela de
+ * link do produto e mktplace"). A v1 restringia a `roles: ['user']` com
+ * o raciocínio de que `admin_master` "nunca tem assinatura própria" —
+ * só que o middleware `subscription.active` (backend) já EXCLUI
+ * `admin_master` dessa checagem de propósito, então a rota sempre foi
+ * acessível pra essa conta; só o frontend bloqueava sem necessidade (ver
+ * `routes.ts`). Vínculo produto↔marketplace (`PRODUCT_MARKETPLACE`) não
+ * é item de sidebar — acessado a partir da listagem de Produtos
+ * (Catalog), rota própria `product-marketplaces` (mesmo Bounded Context
+ * do backend, `Api/Pricing/ProductMarketplaceController`, apesar da URL
+ * aninhada sob `/products` — nunca um import direto de `modules/catalog`,
+ * só navegação via `router.push`).
  */
 export const marketplacesGroup: NavGroup = {
   items: [
@@ -117,7 +121,6 @@ export const marketplacesGroup: NavGroup = {
       to: { name: 'marketplaces' },
     },
   ],
-  roles: ['user'],
   title: t('sidebar.nav.marketplaces'),
 }
 

@@ -2,8 +2,22 @@ import { buildMarketplaceConnectionCards } from '@/modules/pricing/composables/u
 import type { Marketplace } from '@/modules/pricing/types/marketplace.type'
 import type { UserMarketplace } from '@/modules/pricing/types/userMarketplace.type'
 
-const shopee: Marketplace = { id: 'mkt-1', name: 'Shopee' }
-const amazon: Marketplace = { id: 'mkt-2', name: 'Amazon' }
+const shopee: Marketplace = {
+  description: null,
+  id: 'mkt-1',
+  logoUrl: null,
+  name: 'Shopee',
+  tags: null,
+  websiteUrl: null,
+}
+const amazon: Marketplace = {
+  description: null,
+  id: 'mkt-2',
+  logoUrl: null,
+  name: 'Amazon',
+  tags: null,
+  websiteUrl: null,
+}
 
 const shopeeConnection: UserMarketplace = {
   active: true,

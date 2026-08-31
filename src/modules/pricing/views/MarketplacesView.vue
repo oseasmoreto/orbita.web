@@ -11,10 +11,11 @@
  * `logoUrl`/`description`/`tags`/`websiteUrl` — pedidos pro backend no
  * mesmo dia pra fechar o gap real de "pixel perfect" que a v1 tinha
  * (`{colors.tint-1}` + ícone `Storefront` genérico igual pra todo card,
- * sem descrição/tags/link — não existia dado nenhum pra isso).
- * `logoUrl` renderiza um `<img>` de verdade quando existe; `IconTile` +
- * `Storefront` continua sendo o fallback pra marketplace sem logo
- * cadastrado (nunca inventar um logo/cor que não existe).
+ * sem descrição/tags/link — não existia dado nenhum pra isso). Logo é
+ * `MarketplaceLogo.vue` (`modules/pricing/components/`, extraído depois
+ * que este card, `AdminMarketplacesView.vue` e `ProductMarketplacesView.vue`
+ * precisaram da mesma lógica de imagem+fallback) — nunca inventar
+ * logo/cor que não existe.
  *
  * `active` (toggle) e desconectar (`DELETE`) são ações DIFERENTES de
  * propósito — `active: false` só pausa (bloqueia NOVOS vínculos de
@@ -25,23 +26,18 @@
  */
 import { onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
-import {
-  ArrowsDownUp,
-  ArrowSquareOut,
-  Storefront,
-  Trash,
-} from '@/shared/components/icons/regular.generated'
+import { ArrowsDownUp, ArrowSquareOut, Trash } from '@/shared/components/icons/regular.generated'
 import Badge from '@/shared/components/ui/Badge.vue'
 import ConfirmDialog from '@/shared/components/blocks/ConfirmDialog.vue'
 import Button from '@/shared/components/ui/Button.vue'
 import Icon from '@/shared/components/ui/Icon.vue'
-import IconTile from '@/shared/components/ui/IconTile.vue'
 import Toggle from '@/shared/components/ui/Toggle.vue'
 import { useApiMessage } from '@/shared/composables/useApiMessage'
 import { useConfirmAction } from '@/shared/composables/useConfirmAction'
 import { useToast } from '@/shared/composables/useToast'
 import { parseApiError } from '@/shared/services/parseApiError'
 import ConnectMarketplaceModal from '../components/blocks/ConnectMarketplaceModal.vue'
+import MarketplaceLogo from '../components/MarketplaceLogo.vue'
 import {
   type MarketplaceConnectionCard,
   useMarketplaceConnections,
@@ -70,20 +66,6 @@ const { resolveMessage } = useApiMessage()
 
 const connections = useMarketplaceConnections()
 onMounted(connections.refresh)
-
-/**
- * `logo_url` é um link colado pelo admin pra uma imagem já hospedada em
- * outro lugar (sem pipeline de upload no projeto, decisão registrada em
- * `pricingApi.ts`) — pode ficar quebrado (404, domínio fora do ar) sem
- * que o cadastro tenha como validar isso além do formato de URL. `@error`
- * marca o id como "falhou" e o template cai pro fallback `IconTile`, em
- * vez de deixar o ícone de imagem quebrada do browser aparecer no card.
- */
-const failedLogoIds = ref(new Set<string>())
-
-function handleLogoError(marketplaceId: string): void {
-  failedLogoIds.value.add(marketplaceId)
-}
 
 const marketplaceLimit = useMarketplaceLimit(() => connections.connectedCount.value)
 
@@ -155,14 +137,7 @@ async function handleDisconnect(): Promise<void> {
     <div class="marketplaces-view__grid">
       <div v-for="card in connections.cards.value" :key="card.marketplace.id" class="marketplaces-view__card">
         <div class="marketplaces-view__card-header">
-          <img
-            v-if="card.marketplace.logoUrl && !failedLogoIds.has(card.marketplace.id)"
-            :alt="card.marketplace.name"
-            class="marketplaces-view__card-logo"
-            :src="card.marketplace.logoUrl"
-            @error="handleLogoError(card.marketplace.id)"
-          />
-          <IconTile v-else :icon="Storefront" :icon-size="24" :size="48" tint="blue" />
+          <MarketplaceLogo :logo-url="card.marketplace.logoUrl" :name="card.marketplace.name" :size="48" />
 
           <a
             v-if="card.marketplace.websiteUrl"
@@ -297,13 +272,6 @@ async function handleDisconnect(): Promise<void> {
   align-items: flex-start;
   justify-content: space-between;
   margin-bottom: $spacing-4;
-}
-
-.marketplaces-view__card-logo {
-  width: $size-48;
-  height: $size-48;
-  object-fit: cover;
-  border-radius: $radius-8;
 }
 
 .marketplaces-view__card-link {

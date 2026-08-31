@@ -1,7 +1,7 @@
 import { apiClient } from '@/core/api/client'
 import type { components } from '@/core/api/schema'
 import type { ApiResponse, Paginated } from '@/shared/types/api.type'
-import { type Plan, toPlan } from '../types/plan.type'
+import { type BillingCycle, type Plan, toPlan } from '../types/plan.type'
 import {
   type Subscription,
   type SubscriptionCheckout,
@@ -31,6 +31,11 @@ interface TransactionsEnvelope {
   meta: { current_page: number; per_page: number; total: number }
 }
 
+export interface ListPlansParams {
+  /** `filter[billing_cycle]` real da API (`plan.index`) — pedido direto do usuário, 2026-08-31 (seletor de ciclo em `ChoosePlanView.vue`/`MySubscriptionView.vue`). */
+  billingCycle?: BillingCycle
+}
+
 /**
  * `GET /plans` (`plan.index`) é pública, sem `auth:sanctum` — lista só
  * planos ativos (`ListActivePlansAction`, backend), por isso faz sentido
@@ -39,9 +44,13 @@ interface TransactionsEnvelope {
  * de uma vez, mesmo padrão de "sem paginação ainda" já aceito noutros
  * lugares do projeto quando o volume é baixo (poucos planos cadastrados).
  */
-export async function listPlans(): Promise<Paginated<Plan>> {
+export async function listPlans(params: ListPlansParams = {}): Promise<Paginated<Plan>> {
   const { data } = await apiClient.get<ApiResponse<PlansEnvelope>>('/plans', {
-    params: { per_page: 100, sort: 'price' },
+    params: {
+      'filter[billing_cycle]': params.billingCycle,
+      per_page: 100,
+      sort: 'price',
+    },
   })
 
   return {

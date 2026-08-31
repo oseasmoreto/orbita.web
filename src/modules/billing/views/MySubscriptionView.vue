@@ -20,8 +20,10 @@
  * age direto.
  */
 import { computed, onMounted, ref } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { CalendarBlank, Tag, Warning } from '@/shared/components/icons/regular.generated'
 import ConfirmDialog from '@/shared/components/blocks/ConfirmDialog.vue'
+import BlockTab from '@/shared/components/ui/BlockTab.vue'
 import Button from '@/shared/components/ui/Button.vue'
 import Icon from '@/shared/components/ui/Icon.vue'
 import Spinner from '@/shared/components/ui/Spinner.vue'
@@ -33,7 +35,10 @@ import { useChoosePlan } from '../composables/useChoosePlan'
 import { getMonthlyEquivalent, getYearlySavings } from '../composables/usePlanPricing'
 import { canChangeToPlan, useSubscription } from '../composables/useSubscription'
 import { subscriptionStatusColor } from '../types/subscription.type'
-import type { Plan } from '../types/plan.type'
+import type { BillingCycle, Plan } from '../types/plan.type'
+import type { BlockTabOption } from '@/shared/components/ui/types/blockTab.type'
+
+const { t } = useI18n()
 
 const {
   cancel,
@@ -52,6 +57,11 @@ onMounted(() => {
   void plans.load()
 })
 
+const billingCycleOptions = computed<BlockTabOption[]>(() => [
+  { key: 'monthly', label: t('billing.billingCycleFilter.monthly') },
+  { key: 'yearly', label: t('billing.billingCycleFilter.yearly') },
+])
+
 const currentPlan = computed<Plan | undefined>(() =>
   plans.plans.value.find((plan) => plan.id === subscription.value?.planId),
 )
@@ -69,12 +79,29 @@ const pendingPlan = computed<Plan | undefined>(() =>
   plans.plans.value.find((plan) => plan.id === subscription.value?.pendingPlanId),
 )
 
+const hasPendingPlanChange = computed(() => Boolean(subscription.value?.pendingPlanId))
+
+// `plans.visiblePlans` (não `plans.plans`) — respeita o seletor de ciclo
+// de cobrança (`billingCycleOptions`/`setBillingCycle`, mesmo composable
+// de `ChoosePlanView.vue`); `currentPlan`/`pendingPlan` acima continuam
+// em `plans.plans` (lista completa) de propósito — o plano ATUAL/pendente
+// do usuário pode ser de um ciclo diferente do que ele está filtrando
+// pra olhar agora, e sumir do resumo seria um bug, não o filtro
+// funcionando.
+//
+// Achado ao adicionar o seletor: a seção inteira (título + seletor)
+// não pode ficar atrás de `otherPlans.length > 0` — se o ciclo
+// selecionado não tiver nenhum outro plano pra oferecer (ex.: só existe
+// 1 plano mensal, que já é o atual), o seletor sumiria junto e o usuário
+// nunca conseguiria trocar pra "Anual" pra ver o que tem lá. A seção
+// some só quando há troca PENDENTE (`hasPendingPlanChange`); um filtro
+// sem resultado mostra um aviso vazio, não esconde o seletor.
 const otherPlans = computed(() => {
-  if (subscription.value?.pendingPlanId) {
+  if (hasPendingPlanChange.value) {
     return []
   }
 
-  return plans.plans.value.filter((plan) => canChangeToPlan(subscription.value, plan.id))
+  return plans.visiblePlans.value.filter((plan) => canChangeToPlan(subscription.value, plan.id))
 })
 
 function formatDate(value: string | null): string {
@@ -177,7 +204,7 @@ async function handleCancelConfirm(): Promise<void> {
         </Button>
       </section>
 
-      <section v-if="otherPlans.length > 0" class="my-subscription-view__section">
+      <section v-if="!hasPendingPlanChange" class="my-subscription-view__section">
         <h2 class="my-subscription-view__section-title">
           <Icon :icon="Tag" :size="20" />
           {{ $t('billing.mySubscription.changePlan.title') }}
@@ -186,7 +213,19 @@ async function handleCancelConfirm(): Promise<void> {
           {{ $t('billing.mySubscription.changePlan.description') }}
         </p>
 
-        <div class="my-subscription-view__grid">
+        <div class="my-subscription-view__billing-cycle">
+          <BlockTab
+            :model-value="plans.billingCycle.value"
+            :options="billingCycleOptions"
+            @update:model-value="(key) => plans.setBillingCycle(key as BillingCycle)"
+          />
+        </div>
+
+        <p v-if="otherPlans.length === 0" class="my-subscription-view__section-description">
+          {{ $t('billing.mySubscription.changePlan.emptyForCycle') }}
+        </p>
+
+        <div v-else class="my-subscription-view__grid">
           <PlanCard
             v-for="plan in otherPlans"
             :key="plan.id"
@@ -308,5 +347,10 @@ async function handleCancelConfirm(): Promise<void> {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
   gap: $spacing-24;
+}
+
+.my-subscription-view__billing-cycle {
+  display: flex;
+  margin-bottom: $spacing-16;
 }
 </style>
