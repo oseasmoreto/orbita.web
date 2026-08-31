@@ -253,9 +253,35 @@ não um módulo de negócio comum.
 **Pendências reais** (fora do escopo do pedido "telas de login/cadastro/
 recuperação de senha"): `/verify-email` (`VerifyEmailView`, endpoint
 `verification.verify`/`emailVerification.resend` já existem no backend,
-tela ainda não construída), `/sso/callback` (`SsoCallbackView` — o
-redirect em si já funciona, falta a tela de retorno), `/account`
-(perfil — `userProfile.show`/`update`/`destroy` já existem no backend).
+tela ainda não construída), `/account` (perfil —
+`userProfile.show`/`update`/`destroy` já existem no backend).
+
+**`SsoCallbackView` implementado em 2026-08-30** (pedido direto do
+usuário, com exemplo real de URL do Google) — achado real, confirmado
+lendo `../backend/.env`: `GOOGLE_REDIRECT_URI` aponta pro FRONTEND
+(`http://localhost:5173/v1/auth/sso/google/callback`), não pro backend
+— só o domínio do front está autorizado no console do Google neste
+ambiente. `SsoCallbackView.vue` (rota `sso-callback`, path EXATO
+`/v1/auth/sso/:provider/callback` — ditado pelo provider, não convenção
+nossa) existe só pra repassar a query string (`code`/`state`/...) pro
+endpoint real do backend (`buildSsoCallbackUrl()`, `identityApi.ts`) via
+navegação de página inteira (`window.location.href`, nunca fetch/axios —
+o backend valida `state` contra a sessão do passo `/redirect` original,
+precisa de uma navegação top-level de verdade). `error` na query (usuário
+cancelou o consentimento) mostra uma tela de erro em vez de relayar.
+Verificado com Playwright interceptando a URL do backend: a query string
+completa (incluindo `iss`/`scope`/`authuser`/`prompt`, do exemplo real
+mandado pelo usuário) chega intacta.
+
+**Gap real, ainda aberto**: diferente do login por formulário
+(`LoginResultResource.requires_subscription`), o redirect final do
+`SsoController::callback` (backend) não carrega nenhum sinal de "usuário
+novo, precisa escolher plano" — sempre `redirect(config('app.frontend_url'))`,
+sem path/query. Um cadastro novo via SSO cai no dashboard normal, não em
+`/choose-plan`, até o backend expor esse sinal (mesma computação que
+`LoginUserAction` já faz pra `requires_subscription`, replicada em
+`UserProfileController::show` ou direto no callback) — não implementado
+aqui por ser mudança de backend, fora do escopo deste repositório.
 
 ---
 
@@ -263,6 +289,14 @@ redirect em si já funciona, falta a tela de retorno), `/account`
 
 Planos e assinatura — obrigatório antes de liberar o resto do sistema
 (jornada: `ChoosePlan → Payment → Dashboard`).
+
+**Atenção ao começar esta fase**: `/choose-plan` (`modules/billing/routes.ts`,
+`ChoosePlanView.vue`) já existe como CASCA — criada em 2026-08-30 só pra
+dar um destino real ao redirect pós-cadastro/pós-login-sem-assinatura (ver
+Fase 1). Decidir aqui se essa rota vira a tela real de seleção de plano
+(reaproveitando o nome `choose-plan`) ou se `/plans` (abaixo) é uma rota
+separada e `/choose-plan` continua só como gate — não duplicar sem
+resolver essa sobreposição primeiro.
 
 **Rotas:** `/plans`, `/checkout`, `/checkout/pix`, `/billing` (histórico de
 transações + status da assinatura).

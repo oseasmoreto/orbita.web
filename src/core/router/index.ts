@@ -1,5 +1,6 @@
 import { createRouter, createWebHistory, type RouteRecordRaw } from 'vue-router'
 import AppLayout from '@/core/layouts/AppLayout.vue'
+import { billingRoutes } from '@/modules/billing/routes'
 import { catalogRoutes } from '@/modules/catalog/routes'
 import { identityRoutes } from '@/modules/identity/routes'
 import { setupRouterGuards } from './guards'
@@ -26,6 +27,7 @@ const routes: RouteRecordRaw[] = [
     path: '/',
   },
   ...identityRoutes,
+  ...billingRoutes,
   {
     component: () => import('@/shared/views/ForbiddenView.vue'),
     name: 'forbidden',

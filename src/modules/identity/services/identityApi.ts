@@ -89,3 +89,19 @@ export function buildSsoRedirectUrl(provider: SsoProvider): string {
   const apiBaseUrl: string = import.meta.env.VITE_API_BASE_URL
   return `${apiBaseUrl}/auth/sso/${provider}/redirect`
 }
+
+/**
+ * Monta a URL de RELAY do callback OAuth pro backend real. `GOOGLE_REDIRECT_URI`
+ * (`../backend/.env`) está configurado pra apontar pro FRONTEND
+ * (`http://localhost:5173/v1/auth/sso/google/callback`), não pro backend —
+ * só o domínio do front está autorizado no console do Google neste
+ * ambiente. `SsoCallbackView.vue` é quem recebe essa navegação de verdade
+ * e repassa a query string exata (code/state/...) pra cá, via navegação de
+ * página inteira (nunca fetch/axios — ver comentário na view pro motivo:
+ * validação de `state` contra a sessão do passo `/redirect` original
+ * exige uma navegação top-level de verdade, não uma chamada cross-origin).
+ */
+export function buildSsoCallbackUrl(provider: SsoProvider): string {
+  const apiBaseUrl: string = import.meta.env.VITE_API_BASE_URL
+  return `${apiBaseUrl}/auth/sso/${provider}/callback`
+}

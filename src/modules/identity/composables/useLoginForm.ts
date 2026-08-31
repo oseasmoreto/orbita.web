@@ -17,10 +17,10 @@ function emptyValues(): LoginFormValues {
 /**
  * `login()` (`identityApi.ts`) já absorve a nuance de transporte do 402
  * (Payment Required = login válido sem assinatura ativa) — aqui só resta
- * decidir o que fazer com `requires_subscription: true`. Sem Billing
- * (Fase 2) implementado ainda, não existe tela de "escolher plano" pra
- * mandar o usuário — cai no dashboard normal com um aviso, gap real
- * documentado em `docs/planejamento/plano-implementacao.md`.
+ * decidir o que fazer com `requires_subscription: true`: manda pra
+ * `choose-plan` (casca da Fase 2, `modules/billing`) em vez de continuar
+ * pro dashboard/`?redirect=` — não faz sentido devolver o usuário pra uma
+ * rota protegida se ele ainda nem escolheu um plano.
  */
 export function useLoginForm() {
   const router = useRouter()
@@ -65,7 +65,8 @@ export function useLoginForm() {
       })
 
       if (result.requires_subscription) {
-        toast.info(t('identity.login.requiresSubscription'))
+        await router.push({ name: 'choose-plan' })
+        return
       }
 
       // `?redirect=` vem do guard (`core/router/guards.ts`) quando o

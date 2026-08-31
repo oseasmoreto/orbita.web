@@ -25,6 +25,14 @@
  * mesmo texto.
  */
 export default {
+  billing: {
+    choosePlan: {
+      pendingDescription:
+        'A escolha de plano ainda está em construção — sua conta já foi criada, mas por enquanto não há nenhum plano pra selecionar aqui.',
+      subtitle: 'Sua conta foi criada. Falta só escolher um plano pra continuar.',
+      title: 'Escolha um plano',
+    },
+  },
   catalog: {
     products: {
       columns: {
@@ -181,7 +189,6 @@ export default {
         password: 'Digite sua senha',
       },
       registerLink: 'Cadastre-se',
-      requiresSubscription: 'Sua conta ainda não tem uma assinatura ativa.',
       ssoGoogle: 'Entrar com Google',
       ssoMicrosoft: 'Entrar com Microsoft',
       submit: 'Entrar',
@@ -243,6 +250,11 @@ export default {
         title: 'Senha atualizada com sucesso',
       },
       title: 'Redefinir senha',
+    },
+    ssoCallback: {
+      connecting: 'Conectando sua conta...',
+      errorDescription: 'Não foi possível concluir o login com esse provedor. Tente novamente.',
+      errorTitle: 'Falha ao conectar',
     },
   },
   showcase: {

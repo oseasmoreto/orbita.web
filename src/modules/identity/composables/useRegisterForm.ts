@@ -16,16 +16,13 @@ function emptyValues(): RegisterFormValues {
 
 /**
  * `register.store` (`core/api/schema.d.ts`) devolve só `UserResource`
- * (201), sem `requires_subscription` — a jornada documentada
- * (`docs/negocio/jornada-usuario.mmd`) vai de Signup direto pra
- * `ChoosePlan`/`Payment`, então tecnicamente TODO cadastro novo "precisa"
- * de assinatura; sem Billing (Fase 2) implementado ainda, cai no
- * dashboard normal — mesmo gap já registrado em `useLoginForm.ts`.
- *
- * Assume que o registro já estabelece sessão (cookie Sanctum), mesmo
- * padrão do login — não confirmado contra o backend rodando de verdade
- * ainda (nenhum passo de "faça login agora" existe na jornada entre
- * Signup e ChoosePlan).
+ * (201), sem `requires_subscription` — mas isso não importa aqui: a
+ * jornada documentada (`docs/negocio/jornada-usuario.mmd`) vai de Signup
+ * direto pra `ChoosePlan`/`Payment`, e TODO cadastro novo, por definição,
+ * ainda não escolheu plano nenhum — não precisa checar campo nenhum do
+ * backend pra saber disso, é sempre verdade. `RegisterUserAction`
+ * (backend) já chama `Auth::login()` — sessão (cookie Sanctum) já existe
+ * quando a resposta volta, mesmo padrão do login.
  */
 export function useRegisterForm() {
   const router = useRouter()
@@ -69,9 +66,9 @@ export function useRegisterForm() {
         password_confirmation: values.passwordConfirmation,
       })
 
-      authStore.setUser(toAuthUser(user))
+      authStore.setUser(toAuthUser(user), { requiresSubscription: true })
       toast.success(t('identity.register.success'))
-      await router.push({ name: 'home' })
+      await router.push({ name: 'choose-plan' })
     } catch (caughtError) {
       const apiError = parseApiError(caughtError)
       toast.error(resolveMessage(apiError.messageKey))

@@ -38,4 +38,15 @@ export const identityRoutes: RouteRecordRaw[] = [
     name: 'reset-password',
     path: '/reset-password',
   },
+  {
+    // Path EXATO que o Google atinge de verdade (`GOOGLE_REDIRECT_URI`,
+    // `../backend/.env`) — não é uma convenção de rota nossa, é ditado pelo
+    // provider. Sem `requiresGuest`/`requiresAuth`: não há sessão ainda
+    // quando essa navegação chega (só o backend cria depois do relay), e um
+    // usuário já logado que caísse aqui por engano não deveria ser bloqueado
+    // — ver `SsoCallbackView.vue` pro fluxo completo.
+    component: () => import('./views/SsoCallbackView.vue'),
+    name: 'sso-callback',
+    path: '/v1/auth/sso/:provider/callback',
+  },
 ]
