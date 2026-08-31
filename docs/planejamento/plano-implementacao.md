@@ -390,6 +390,57 @@ zero assinaturas) pousando em `/` termina em `/choose-plan`.
 
 ---
 
+## Navegação da sidebar (transversal, 2026-08-31)
+
+Pedido direto do usuário, antes de fechar a Fase 2 ("organização do
+menu, hoje tá cheio de dado mockado") — 3 pontos, todos em
+`core/layouts/`, não específicos de nenhuma fase de negócio:
+
+- **Menu real, planejado pra todos os módulos**:
+  `core/layouts/config/navigation.ts` reescrito — grupos de exemplo do
+  Figma trocados pelos Bounded Contexts reais (Catálogo, Marketplaces,
+  Assinatura, Administração), com `NavGroup.roles` filtrando o grupo
+  Administração só pra `admin_master`. A maioria dos itens ainda não tem
+  `to` (backend já pronto — `pricing.php`/`platform.php`/`billing.php`/
+  `identity.php` admin — telas do frontend ainda não construídas,
+  Fases 4/5/6) — detalhe completo em `docs/design/design-system.md`
+  seção Components → AppSidebar.
+- **"Recentes" rastreia navegação real** — `useAppShell().recordVisit()`
+  via `router.afterEach`, até 5 páginas, persistido em `localStorage`.
+  Test-first.
+- **"Favoritos" pronto pro backend, endpoint ainda não existe** —
+  mensagem enviada pra sessão `backend-c5` pedindo `POST`/`DELETE` de
+  favoritos + inclusão em `GET /auth/me`. Frontend já lê
+  `authStore.user.favorites` via cast temporário
+  (`modules/identity/types/user.type.ts`); lista fica vazia até o
+  backend responder, sem affordance de "adicionar" ainda (evita botão
+  morto).
+
+**Ajustes pontuais, mesmo dia**: grupo "Dashboards" tinha ficado de fora
+do rewrite acima (item "Padrão" → `home`, reportado pelo usuário); e um
+bug real foi corrigido no destaque de item ativo — o link "Padrão"
+(`to: { name: 'home' }`, path `/`) ficava marcado como ativo em qualquer
+rota, porque `/` é ancestral de todo path do app e o CSS estilizava
+`.router-link-active` (não-exato). Corrigido pra
+`.router-link-exact-active` em `AppSidebarNavItem.vue` — detalhe completo
+em `docs/design/design-system.md` seção Components → AppSidebar.
+
+**Favoritos concluído, mesmo dia** — sessão `backend-c5` implementou
+`POST /favorites`/`DELETE /favorites/{id}` + `favorites` em `/auth/me`/
+`/auth/login`. Regenerado `schema.d.ts` e ligado o botão de estrela do
+`AppHeader` (até então casca inerte) pra favoritar/desfavoritar a página
+atual — remover também dá pra fazer direto na lista da sidebar. Corrigido
+de quebra um bug real na leitura (o mapper temporário lia o campo do
+lugar errado — `favorites` é irmão de `user` na resposta, nunca aninhado
+dentro dele — então a lista nunca teria populado mesmo com o backend
+pronto). `useFavorites`/`favoriteApi` ficaram em `core/layouts/`, não em
+`modules/platform/` (onde `USER_FAVORITE` mora no backend) — é
+conveniência de navegação da sidebar, não feature de negócio, e módulo
+nunca importa de outro módulo. Detalhe completo em
+`docs/design/design-system.md` seção Components → AppHeader.
+
+---
+
 ## Fase 2 — Billing
 
 Planos e assinatura — obrigatório antes de liberar o resto do sistema

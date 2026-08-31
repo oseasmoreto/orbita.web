@@ -148,12 +148,14 @@ export default {
       delete: 'Excluir',
       download: 'Baixar',
       edit: 'Editar',
+      favorite: 'Favoritar',
       filter: 'Filtrar',
       hidePassword: 'Ocultar senha',
       logout: 'Sair',
       save: 'Salvar',
       showPassword: 'Mostrar senha',
       sort: 'Ordenar',
+      unfavorite: 'Remover dos favoritos',
       view: 'Visualizar',
     },
     marketplaces: {
@@ -222,6 +224,13 @@ export default {
   errorMessageSubscriptionAlreadyActive: 'Você já tem uma assinatura ativa.',
   errors: {
     unknown: 'Ocorreu um erro inesperado. Tente novamente.',
+  },
+  header: {
+    goBack: 'Voltar',
+    notifications: 'Notificações',
+    toggleSidebar: 'Ocultar/exibir menu',
+    toggleTheme: 'Alternar tema',
+    unreadNotifications: 'Há notificações não lidas',
   },
   identity: {
     account: {
@@ -388,5 +397,32 @@ export default {
   },
   showcase: {
     title: 'Vitrine de componentes',
+  },
+  sidebar: {
+    favoritesTab: 'Favoritos',
+    nav: {
+      admin: 'Administração',
+      adminAuditLogs: 'Auditoria',
+      adminMarketplaces: 'Marketplaces',
+      adminNotifications: 'Notificações',
+      adminPlans: 'Planos',
+      adminSettings: 'Configurações',
+      adminSubscriptions: 'Assinaturas',
+      adminTransactions: 'Transações',
+      adminUsers: 'Usuários',
+      catalog: 'Catálogo',
+      dashboardDefault: 'Padrão',
+      dashboards: 'Dashboards',
+      invoices: 'Faturas',
+      marketplaces: 'Marketplaces',
+      marketplacesAvailable: 'Canais disponíveis',
+      marketplacesConnected: 'Minhas conexões',
+      myPlan: 'Meu plano',
+      products: 'Produtos',
+      subscription: 'Assinatura',
+    },
+    noFavorites: 'Nenhum favorito ainda.',
+    noRecent: 'Nenhuma página visitada ainda.',
+    recentTab: 'Recentes',
   },
 } as const

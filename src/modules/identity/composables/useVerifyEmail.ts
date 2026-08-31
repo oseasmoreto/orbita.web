@@ -1,6 +1,7 @@
 import { ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
+import { toFavoriteItem } from '@/core/store/types/auth.type'
 import { useAuthStore } from '@/core/store/useAuthStore'
 import { useApiMessage } from '@/shared/composables/useApiMessage'
 import { useToast } from '@/shared/composables/useToast'
@@ -48,7 +49,7 @@ export function useVerifyEmail() {
 
     try {
       const result = await fetchCurrentUser()
-      authStore.setUser(toAuthUser(result.user), {
+      authStore.setUser(toAuthUser(result.user, result.favorites.map(toFavoriteItem)), {
         requiresSubscription: result.requires_subscription,
       })
 

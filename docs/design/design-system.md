@@ -2285,6 +2285,88 @@ pelo usuário com captura de uma sidebar completa (grupos "Dashboards"/
   travado em `0`, `.ui-data-table-wrapper` com scroll próprio) continua
   passando sem regressão.
 
+**Menu real + Favoritos/Recentes de verdade, 2026-08-31** — pedido direto
+do usuário ("organização do menu, hoje tá cheio de dado mockado"):
+
+- **`core/layouts/config/navigation.ts` reescrito do zero.** Os grupos de
+  exemplo do Figma (eCommerce/Online Courses/User Profile com filhos/
+  Corporate/Blog/Social) saíram — substituídos pelos Bounded Contexts
+  reais do Orbita (`CLAUDE.md` raiz): **Catálogo** (Produtos, único item
+  com `to` real hoje), **Marketplaces** (Canais disponíveis/Minhas
+  conexões — Pricing, backend 100% pronto em `pricing.php`, telas da
+  Fase 4 ainda não construídas), **Assinatura** (Meu plano/Faturas —
+  Billing, pendência real da Fase 2) e **Administração** (só
+  `admin_master` — Usuários/Planos/Marketplaces/Assinaturas/Transações/
+  Notificações/Configurações/Auditoria, namespace `/v1/admin/*` inteiro
+  já existe no backend, Fase 6 não construída no front). A maioria dos
+  itens continua sem `to` de propósito (mesma regra de "nunca link
+  quebrado, mas item inerte é diferente" já documentada) — "planejar a
+  rota" aqui significa a ESTRUTURA/agrupamento já refletir o app final,
+  trocando `to` conforme cada fase entrega a view real.
+- **`NavGroup.roles?: UserRole[]`** (novo campo) — filtra a VISIBILIDADE
+  do grupo inteiro. `AppSidebarContent.vue` computa `visibleNavGroups`
+  (`navGroups.filter(...)`) comparando contra `authStore.user.role` —
+  mesma régua de controle de acesso do resto do projeto (só `USER.role`,
+  sem granularidade extra).
+- **`label`/`title` de `navigation.ts` resolvidos via `i18n.global.t()`
+  no MÓDULO** (não `useI18n()`, que exige contexto de componente) — mesmo
+  padrão já usado em `core/router/guards.ts` pro `document.title`. Achado
+  real: os labels desse arquivo (e as strings "Favoritos"/"Recentes"/
+  estado vazio do `AppSidebarContent.vue`) estavam soltos em português
+  direto no código, violando a regra não-negociável de i18n desde que o
+  arquivo foi criado — corrigido junto.
+- **"Recentes" agora rastreia navegação de verdade** —
+  `useAppShell().recordVisit()`, chamado de `router.afterEach`
+  (`core/router/guards.ts`) em toda navegação com `meta.title` que não
+  seja rota de guest nem de onboarding (`skipOnboardingChecks` —
+  verify-email/choose-plan/billing-result são passos de um fluxo, não
+  páginas que alguém "revisita"). Lista de até 5 páginas, mais recente
+  primeiro, revisitar uma página existente move ela pro topo em vez de
+  duplicar. Persistido em `localStorage` (`orbita-recent-pages`) —
+  conveniência por DISPOSITIVO, não dado de conta, não precisa de
+  round-trip com o backend. Test-first
+  (`tests/core/layouts/composables/useAppShell.test.ts`).
+- **"Favoritos" agora lê `authStore.user.favorites`** (dado de CONTA,
+  precisa vir do backend) — endpoint ainda não existe, mensagem enviada
+  pra sessão `backend-c5` em 2026-08-31 pedindo `POST`/`DELETE` de
+  favoritos e inclusão da lista em `GET /auth/me` (mesmo endpoint que já
+  devolve `requires_subscription`, evita uma consulta extra só pra isso).
+  `modules/identity/types/user.type.ts` já lê o campo via um cast
+  estreito (`UserResourceWithFavorites`, nunca `any` solto) — até o
+  schema gerado trazer `favorites` de verdade, a lista fica sempre vazia
+  (estado honesto). **Sem affordance de "adicionar favorito" ainda** —
+  um botão sem endpoint por trás seria botão morto (regra já aplicada no
+  `ListToolbar` do CRUD de Produtos); entra quando o backend responder.
+- Verificado em browser real: `user` comum não vê o grupo "Administração",
+  `admin_master` vê; navegar pra `/products` faz "Produtos" aparecer na
+  aba "Recentes" imediatamente.
+
+**Grupo "Dashboards" + bug real de item ativo, mesmo dia** — o rewrite
+acima esqueceu o dashboard (só sobrava acessível pelo logo/breadcrumb,
+sem entrada própria na sidebar), reportado pelo usuário na sequência.
+Adicionado `dashboardGroup` (`navigation.ts`, primeiro grupo da lista) com
+um item só, "Padrão" (`to: { name: 'home' }`) — nome no plural
+("Dashboards") porque antecipa outros dashboards nomeados entrando no
+mesmo grupo depois, sem forçar isso agora.
+
+- **Achado real, no mesmo teste**: com o item "Padrão" adicionado, ele
+  aparecia marcado como ativo em QUALQUER rota (ex.: navegando pra
+  `/products`, "Padrão" continuava destacado junto com "Produtos").
+  Causa: `AppSidebarNavItem.vue` estilizava `.router-link-active` (classe
+  NÃO-exata que o `RouterLink` do Vue Router aplica), e o item "Padrão"
+  aponta pra `home` — path `/`, ancestral de toda rota do app (tudo
+  debaixo de `AppLayout` mora sob `/`). `router-link-active` marca
+  positivo pra "rota atual OU qualquer descendente dela", então
+  `/products` sempre "contava" como ativo pro link da raiz — pegadinha
+  clássica do Vue Router com link pra rota `/`, só ficou visível agora
+  porque antes não existia nenhum link apontando pra uma rota cujo path
+  fosse exatamente `/`. **Corrigido** trocando pra
+  `.router-link-exact-active` (classe que só marca quando a rota atual é
+  EXATAMENTE aquela, nunca um descendente) — é o seletor certo pra
+  destacar item de menu, deveria ter sido a escolha desde o início.
+  Verificado em Playwright: em `/`, "Padrão" fica ativo; em `/products`,
+  só "Produtos" fica ativo, "Padrão" não mais.
+
 ### AppHeader (`core/layouts/AppHeader.vue`)
 
 **Reconstruído em 2026-08-28, pedido direto do usuário com captura real**
@@ -2412,6 +2494,71 @@ aqui seria redundante.
      do header continua `0` depois de rolar a página 600px (mobile) e
      1200px (desktop) — sem o fix, o valor ficaria negativo (header
      rolado pra fora da viewport).
+
+**Botão de favoritar ligado, 2026-08-31** — endpoint implementado pela
+sessão `backend-c5` (`POST /favorites`, `DELETE /favorites/{id}`,
+`favorites` incluído em `GET /auth/me`/`POST /auth/login`), completando o
+que ficara como casca inerte desde a reconstrução de 2026-08-28 ("não
+existe favoritar página no domínio do Orbita hoje"). Fechou também um bug
+real na leitura: a implementação temporária (cast estreito em
+`user.type.ts`, enquanto o endpoint não existia) lia `resource.favorites`
+de DENTRO de `UserResource` — mas o campo real chega como IRMÃO de `user`
+em `LoginResultResource` (`{ user, requires_subscription, favorites }`),
+nunca aninhado. Ou seja, mesmo que o backend já tivesse implementado
+antes, a lista sempre resolveria vazia com o mapper antigo — corrigido
+passando `favorites` como parâmetro explícito de `toAuthUser()`, extraído
+do campo certo em cada call site (`useLoginForm.ts`/`guards.ts`/
+`useVerifyEmail.ts`); `useUpdateProfileForm.ts` preserva
+`authStore.user.favorites` (resposta de `PATCH /auth/me` não inclui o
+campo), mesmo padrão já usado ali pra `requiresSubscription`.
+
+- **`useFavorites.ts` vive em `core/layouts/composables/`, não em
+  `modules/platform/`** — apesar de `USER_FAVORITE` morar no contexto
+  `Platform` no backend, favoritar aqui é conveniência de navegação da
+  sidebar, não feature de negócio, e um módulo nunca importa de outro
+  módulo diretamente (`docs/infra/convencoes-frontend-infra.md` seção 2).
+  `toFavoriteItem()` (mapper `UserFavoriteResource → FavoriteItem`) subiu
+  de `modules/identity/types/user.type.ts` pra `core/store/types/auth.type.ts`
+  pelo mesmo motivo — os dois módulos (`identity`, ao ler `/auth/me`/
+  `/auth/login`; e o próprio `core/layouts`, ao ler a resposta de
+  `POST /favorites`) precisam dele, e `core/` é o único lugar que os dois
+  já podem importar sem cruzar módulos.
+- **Favorita/desfavorita a PÁGINA ATUAL** (`route.name`/`route.meta.title`,
+  resolvido via `i18n.global.t()` — mesmo padrão de `recordVisit()`) — só
+  aparece (`v-if`) quando a rota é "favoritável", mesmo critério já usado
+  por "Recentes": precisa de `name`+`title`, nunca rota de guest
+  (`requiresGuest`) nem passo de onboarding (`skipOnboardingChecks`).
+  Antes disso o botão era sempre visível (mesmo em `/login`) só que
+  inerte; agora ele nem renderiza fora de uma página de conteúdo real.
+- **Cor comunica estado, sem trocar de ícone** (`{colors.accent-yellow}`
+  quando a página atual já é favorito) — mesmo critério de
+  `StatusDot`/`Badge`; o conjunto de ícones gerado não tem uma variante
+  "preenchida" do `Star`, então não dava pra sinalizar trocando o ícone.
+- **Remover também é possível direto na lista da sidebar**
+  (`AppSidebarContent.vue`, botão `X` por item, só visível no hover/foco)
+  — útil pra desfavoritar uma página em que não se está navegando no
+  momento; sincroniza com o botão do header porque os dois leem/escrevem
+  o mesmo `authStore.user.favorites`.
+- **`addFavorite` espera a resposta da API antes de mutar a store**
+  (precisa do `id` real gerado pelo backend, sem ele não dá pra remover
+  depois); `removeFavorite` já atualiza otimisticamente (tem o `id` de
+  antemão) e reverte se a chamada falhar.
+- **4 aria-label do `AppHeader` que estavam soltas em português direto no
+  template corrigidas no mesmo PR** (achado colateral, não pedido
+  explicitamente) — violavam a regra não-negociável de i18n desde a
+  reconstrução de 2026-08-28, nunca pegas antes. Novo namespace `header`
+  em `pt-BR.ts` (`toggleSidebar`/`toggleTheme`/`goBack`/`notifications`/
+  `unreadNotifications`); favoritar/desfavoritar usa `common.actions`
+  (`favorite`/`unfavorite`), reaproveitável por qualquer outro botão de
+  favorito que apareça no futuro.
+- Verificado em browser real contra o backend local de verdade (não
+  mockado): favoritar "Produtos" no header muda a cor pra amarelo E o
+  aria-label pra "Remover dos favoritos"; item aparece na aba "Favoritos"
+  da sidebar; **sobrevive a um reload da página** (prova de que o bug de
+  leitura foi corrigido — antes disso a lista sempre voltaria vazia,
+  mesmo com o registro salvo no backend); desfavoritar pelo header e
+  desfavoritar pela lista da sidebar chegam ao mesmo estado (lista vazia,
+  botão do header volta a cinza); `/login` não renderiza o botão.
 
 ### AppFooter (`core/layouts/AppFooter.vue`)
 

@@ -88,7 +88,17 @@ function handleClick(): void {
     @include focus-ring;
   }
 
-  &.router-link-active {
+  // `router-link-exact-active`, NUNCA `router-link-active` — achado real,
+  // reportado pelo usuário em 2026-08-31: o item "Padrão" (Dashboard,
+  // `to: { name: 'home' }`, path `/`) ficava marcado como ativo em
+  // QUALQUER outra rota (ex.: `/products`). Motivo: `/` é ancestral de
+  // path de toda rota do app (tudo debaixo de `AppLayout` mora sob `/`),
+  // e `router-link-active` (não-exato) marca positivo pra ROTA
+  // ATUAL OU QUALQUER DESCENDENTE dela — clássica pegadinha do Vue
+  // Router com link pra rota raiz. `-exact-active` só marca quando a
+  // rota atual é EXATAMENTE essa, o que é o comportamento certo pra
+  // destacar item de menu.
+  &.router-link-exact-active {
     font-weight: $font-weight-semibold;
     background-color: $color-ink-4;
 

@@ -2,38 +2,63 @@
 /**
  * Seção "Favorites/Recently" grounded na captura real do usuário
  * (2026-08-28) — 2 abas simples (texto, sem pill/sublinhado) + lista com
- * marcador de ponto (não ícone) pros favoritos. "Recently" não tem dado
- * nenhum por trás ainda (o Orbita não rastreia histórico de navegação) —
- * em vez de inventar itens falsos, mostra um estado vazio honesto.
+ * marcador de ponto (não ícone) pros favoritos.
  *
- * Usuário logado no topo (`Avatar` + nome), pedido em seguida com nova
- * captura ("ByeWind" no topo do Figma) — dado real de `useAuthStore`
+ * **Favoritos e Recentes com dado real, 2026-08-31** (pedido direto do
+ * usuário — "hoje tá cheio de dado mockado"):
+ * - Recentes vem de `useAppShell().recentPages` — rastreado de verdade a
+ *   cada navegação (`core/router/guards.ts`, `router.afterEach`),
+ *   persistido em `localStorage` (conveniência por dispositivo, não dado
+ *   de conta).
+ * - Favoritos vem de `authStore.user.favorites` — dado de CONTA. **Endpoint
+ *   implementado pela sessão `backend-c5` em 2026-08-31** (`POST /favorites`,
+ *   `DELETE /favorites/{id}`, lista incluída em `/auth/me`/`/auth/login`).
+ *   Adicionar acontece pelo botão de estrela do `AppHeader.vue` (favorita a
+ *   PÁGINA ATUAL); remover também pode ser feito aqui direto na lista, via
+ *   `useFavorites().removeFavorite()` — conveniente pra desfavoritar uma
+ *   página em que não se está navegando no momento.
+ *
+ * Usuário logado no topo (`Avatar` + nome) — dado real de `useAuthStore`
  * (`docs/infra/convencoes-frontend-infra.md` seção 5, único estado
- * genuinamente global de sessão), nunca um nome hardcoded: primeiro
- * consumidor de `useAuthStore` fora de `main.ts`. `Avatar.vue` já
- * resolve sozinho o fallback de iniciais — `USER` não tem campo de foto
- * no modelo de dados (`docs/negocio/contexto-plataforma-precificacao.md`
- * seção 2.1), então não tem `src` nenhum pra passar aqui.
+ * genuinamente global de sessão). `Avatar.vue` já resolve sozinho o
+ * fallback de iniciais — `USER` não tem campo de foto no modelo de dados
+ * (`docs/negocio/contexto-plataforma-precificacao.md` seção 2.1), então
+ * não tem `src` nenhum pra passar aqui.
  *
- * Botão de logout, 2026-08-30 — backend implementou `POST /auth/logout`
- * (antes bloqueado, gap registrado em `docs/planejamento/plano-implementacao.md`).
- * Colocado aqui, ao lado do usuário logado, por ser o lugar mais natural:
- * mesma linha de quem está logado, sempre visível (não depende de abrir
- * nenhum menu). `useLogout()` vem de `modules/identity/composables` —
- * ver justificativa de fronteira no próprio arquivo.
+ * Botão de logout — `POST /auth/logout`. Colocado aqui, ao lado do
+ * usuário logado, por ser o lugar mais natural: mesma linha de quem está
+ * logado, sempre visível (não depende de abrir nenhum menu). `useLogout()`
+ * vem de `modules/identity/composables` — ver justificativa de fronteira
+ * no próprio arquivo.
+ *
+ * `navGroups` filtrado por `authStore.user.role` (`visibleNavGroups`) —
+ * grupo "Administração" (`roles: ['admin_master']`) só aparece pra quem
+ * tem esse role, mesma régua de controle de acesso do resto do projeto
+ * (só `USER.role`, sem granularidade extra).
  */
-import { ref } from 'vue'
-import { SignOut } from '@/shared/components/icons/regular.generated'
+import { computed, ref } from 'vue'
+import { SignOut, X } from '@/shared/components/icons/regular.generated'
 import { useAuthStore } from '@/core/store/useAuthStore'
 import Avatar from '@/shared/components/ui/Avatar.vue'
 import Button from '@/shared/components/ui/Button.vue'
+import Icon from '@/shared/components/ui/Icon.vue'
 import { useLogout } from '@/modules/identity/composables/useLogout'
+import { useAppShell } from './composables/useAppShell'
+import { useFavorites } from './composables/useFavorites'
 import AppSidebarNavItem from './AppSidebarNavItem.vue'
-import { favoriteItems, navGroups } from './config/navigation'
+import { navGroups } from './config/navigation'
 
 const authStore = useAuthStore()
 const { isLoggingOut, logout } = useLogout()
+const { recentPages } = useAppShell()
+const { removeFavorite } = useFavorites()
 const activeFavoritesTab = ref<'favorites' | 'recently'>('favorites')
+
+const visibleNavGroups = computed(() =>
+  navGroups.filter(
+    (group) => !group.roles || (authStore.user && group.roles.includes(authStore.user.role)),
+  ),
+)
 </script>
 
 <template>
@@ -63,7 +88,7 @@ const activeFavoritesTab = ref<'favorites' | 'recently'>('favorites')
             type="button"
             @click="activeFavoritesTab = 'favorites'"
           >
-            Favoritos
+            {{ $t('sidebar.favoritesTab') }}
           </button>
           <button
             :class="[
@@ -73,26 +98,51 @@ const activeFavoritesTab = ref<'favorites' | 'recently'>('favorites')
             type="button"
             @click="activeFavoritesTab = 'recently'"
           >
-            Recentes
+            {{ $t('sidebar.recentTab') }}
           </button>
         </div>
 
-        <ul v-if="activeFavoritesTab === 'favorites'" class="app-sidebar-content__favorites-list">
-          <li v-for="item in favoriteItems" :key="item.id">
-            <RouterLink v-if="item.to" class="app-sidebar-content__favorite-link" :to="item.to">
-              <span class="app-sidebar-content__favorite-dot" />
-              {{ item.label }}
-            </RouterLink>
-            <span v-else class="app-sidebar-content__favorite-link app-sidebar-content__favorite-link--inert">
-              <span class="app-sidebar-content__favorite-dot" />
-              {{ item.label }}
-            </span>
-          </li>
-        </ul>
-        <p v-else class="app-sidebar-content__favorites-empty">Nenhum item visitado recentemente ainda.</p>
+        <template v-if="activeFavoritesTab === 'favorites'">
+          <ul
+            v-if="authStore.user && authStore.user.favorites.length > 0"
+            class="app-sidebar-content__favorites-list"
+          >
+            <li
+              v-for="item in authStore.user.favorites"
+              :key="item.id"
+              class="app-sidebar-content__favorite-item"
+            >
+              <RouterLink class="app-sidebar-content__favorite-link" :to="{ name: item.routeName }">
+                <span class="app-sidebar-content__favorite-dot" />
+                {{ item.label }}
+              </RouterLink>
+              <button
+                :aria-label="$t('common.actions.unfavorite')"
+                class="app-sidebar-content__favorite-remove"
+                type="button"
+                @click="removeFavorite(item.routeName)"
+              >
+                <Icon :icon="X" :size="14" />
+              </button>
+            </li>
+          </ul>
+          <p v-else class="app-sidebar-content__favorites-empty">{{ $t('sidebar.noFavorites') }}</p>
+        </template>
+
+        <template v-else>
+          <ul v-if="recentPages.length > 0" class="app-sidebar-content__favorites-list">
+            <li v-for="item in recentPages" :key="item.id">
+              <RouterLink v-if="item.to" class="app-sidebar-content__favorite-link" :to="item.to">
+                <span class="app-sidebar-content__favorite-dot" />
+                {{ item.label }}
+              </RouterLink>
+            </li>
+          </ul>
+          <p v-else class="app-sidebar-content__favorites-empty">{{ $t('sidebar.noRecent') }}</p>
+        </template>
       </div>
 
-      <nav v-for="(group, index) in navGroups" :key="index" class="app-sidebar-content__group">
+      <nav v-for="(group, index) in visibleNavGroups" :key="index" class="app-sidebar-content__group">
         <p v-if="group.title" class="app-sidebar-content__group-title">{{ group.title }}</p>
         <AppSidebarNavItem v-for="item in group.items" :key="item.id" :item="item" />
       </nav>
@@ -217,9 +267,17 @@ const activeFavoritesTab = ref<'favorites' | 'recently'>('favorites')
   list-style: none;
 }
 
-.app-sidebar-content__favorite-link {
+.app-sidebar-content__favorite-item {
   display: flex;
   align-items: center;
+  gap: $spacing-4;
+}
+
+.app-sidebar-content__favorite-link {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  min-width: 0;
   gap: $spacing-12;
   padding: $spacing-4 0;
   font-size: $font-size-sm;
@@ -230,13 +288,39 @@ const activeFavoritesTab = ref<'favorites' | 'recently'>('favorites')
   &:hover {
     color: $color-ink-40;
   }
+}
 
-  &--inert {
-    cursor: default;
+// Só aparece no hover da linha (mesmo affordance de "revela ação
+// secundária ao passar o mouse" já comum em listas do design system) —
+// sempre acessível via foco de teclado independente do hover.
+.app-sidebar-content__favorite-item:has(.app-sidebar-content__favorite-remove:focus-visible),
+.app-sidebar-content__favorite-item:hover {
+  .app-sidebar-content__favorite-remove {
+    opacity: 1;
+  }
+}
 
-    &:hover {
-      color: $color-ink;
-    }
+.app-sidebar-content__favorite-remove {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: $spacing-4;
+  color: $color-ink-40;
+  background: none;
+  border: none;
+  border-radius: $radius-8;
+  opacity: 0;
+  transition: opacity 0.1s ease;
+
+  &:hover {
+    color: $color-ink;
+    background-color: $color-ink-4;
+  }
+
+  &:focus-visible {
+    @include focus-ring;
+    opacity: 1;
   }
 }
 

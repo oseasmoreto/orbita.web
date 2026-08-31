@@ -787,6 +787,38 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/favorites": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["userFavorite.store"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/favorites/{favorite}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete: operations["userFavorite.destroy"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/user-marketplaces": {
         parameters: {
             query?: never;
@@ -1024,6 +1056,11 @@ export interface components {
             password: string;
             password_confirmation: string;
         };
+        /** CreateUserFavoriteRequest */
+        CreateUserFavoriteRequest: {
+            label: string;
+            route_name: string;
+        };
         /** CreateUserMarketplaceRequest */
         CreateUserMarketplaceRequest: {
             /** Format: uuid */
@@ -1040,6 +1077,7 @@ export interface components {
         LoginResultResource: {
             user: components["schemas"]["UserResource"];
             requires_subscription: boolean;
+            favorites: components["schemas"]["UserFavoriteResource"][];
         };
         /** MarketplaceResource */
         MarketplaceResource: {
@@ -1352,6 +1390,12 @@ export interface components {
             email?: string;
             password?: string;
             password_confirmation?: string;
+        };
+        /** UserFavoriteResource */
+        UserFavoriteResource: {
+            id: string;
+            label: string;
+            route_name: string;
         };
         /** UserMarketplaceResource */
         UserMarketplaceResource: {
@@ -3943,6 +3987,63 @@ export interface operations {
                                 total: number;
                             };
                         };
+                        errors: null;
+                    };
+                };
+            };
+            401: components["responses"]["AuthenticationException"];
+        };
+    };
+    "userFavorite.store": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateUserFavoriteRequest"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        success: boolean;
+                        message: string;
+                        data: components["schemas"]["UserFavoriteResource"];
+                        errors: null;
+                    };
+                };
+            };
+            401: components["responses"]["AuthenticationException"];
+            422: components["responses"]["ValidationException"];
+        };
+    };
+    "userFavorite.destroy": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                favorite: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        success: boolean;
+                        message: string;
+                        data: null;
                         errors: null;
                     };
                 };

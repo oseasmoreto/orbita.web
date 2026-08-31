@@ -1,6 +1,7 @@
 import type { Router } from 'vue-router'
 import { i18n } from '@/core/i18n'
-import type { UserRole } from '@/core/store/types/auth.type'
+import { useAppShell } from '@/core/layouts/composables/useAppShell'
+import { toFavoriteItem, type UserRole } from '@/core/store/types/auth.type'
 import { useAuthStore } from '@/core/store/useAuthStore'
 import { fetchCurrentUser } from '@/modules/identity/services/identityApi'
 import { toAuthUser } from '@/modules/identity/types/user.type'
@@ -64,7 +65,7 @@ async function bootstrapSession(): Promise<void> {
 
   try {
     const result = await fetchCurrentUser()
-    authStore.setUser(toAuthUser(result.user), {
+    authStore.setUser(toAuthUser(result.user, result.favorites.map(toFavoriteItem)), {
       requiresSubscription: result.requires_subscription,
     })
   } catch {
@@ -129,5 +130,19 @@ export function setupRouterGuards(router: Router): void {
 
   router.afterEach((to) => {
     document.title = to.meta.title ? `${i18n.global.t(to.meta.title)} · Orbita` : 'Orbita'
+
+    // "Recentes" da sidebar (`AppSidebarContent.vue`) — só rotas de
+    // conteúdo real do app principal: precisa de `title` (senão não tem
+    // o que mostrar na lista) e nunca uma rota de guest (login/cadastro/
+    // recuperação, ninguém "revisita" essas) nem de onboarding
+    // (`skipOnboardingChecks` — verify-email/choose-plan/billing-result
+    // são passos de um fluxo, não páginas que fazem sentido re-visitar).
+    if (to.name && to.meta.title && !to.meta.requiresGuest && !to.meta.skipOnboardingChecks) {
+      useAppShell().recordVisit({
+        id: String(to.name),
+        label: i18n.global.t(to.meta.title),
+        to: { name: to.name },
+      })
+    }
   })
 }

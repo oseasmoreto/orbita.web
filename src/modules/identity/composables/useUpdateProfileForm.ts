@@ -69,9 +69,12 @@ export function useUpdateProfileForm() {
       // `UpdateUserProfileAction` reseta e reenvia verificação) — o guard
       // (`core/router/guards.ts`) já manda pro `verify-email` sozinho na
       // próxima navegação, nada especial a fazer aqui além de atualizar a
-      // store. `requiresSubscription` é preservado (não vem nesta
-      // resposta, só em `/auth/me`/login).
-      authStore.setUser(toAuthUser(user), { requiresSubscription: authStore.requiresSubscription })
+      // store. `requiresSubscription`/`favorites` são preservados (não
+      // vêm nesta resposta, só em `/auth/me`/login) — sem isso, salvar o
+      // perfil apagaria os favoritos já carregados da store.
+      authStore.setUser(toAuthUser(user, authStore.user?.favorites ?? []), {
+        requiresSubscription: authStore.requiresSubscription,
+      })
       values.password = ''
       values.passwordConfirmation = ''
       toast.success(t('identity.account.updateSuccess'))

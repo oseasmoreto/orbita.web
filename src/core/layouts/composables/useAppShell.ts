@@ -1,4 +1,5 @@
 import { ref } from 'vue'
+import type { NavItem } from '../types/navigation.type'
 
 /**
  * Estado do shell autenticado (menu mobile aberto/fechado, itens de nav
@@ -13,6 +14,31 @@ const expandedItemIds = ref(new Set<string>())
 const isNotificationPanelOpen = ref(false)
 const hasUnreadNotifications = ref(false)
 const isDesktopSidebarCollapsed = ref(false)
+
+/**
+ * "Recentes" da sidebar (`AppSidebarContent.vue`) — pedido direto do
+ * usuário, 2026-08-31: rastrear de verdade as páginas que o usuário
+ * navegou dentro da SPA, em vez do estado vazio hardcoded que existia
+ * antes. Persistido em `localStorage` (não Pinia/backend) — é
+ * conveniência de navegação por DISPOSITIVO, não dado de domínio do
+ * usuário (diferente de favoritos, que são por CONTA e vêm do backend);
+ * sobrevive a um F5 mas não precisa de round-trip nenhum pra isso.
+ */
+const RECENT_PAGES_STORAGE_KEY = 'orbita-recent-pages'
+const MAX_RECENT_PAGES = 5
+
+function loadRecentPages(): NavItem[] {
+  try {
+    const raw = localStorage.getItem(RECENT_PAGES_STORAGE_KEY)
+    return raw ? (JSON.parse(raw) as NavItem[]) : []
+  } catch {
+    // localStorage indisponível (aba privada, quota) — degrada pra lista
+    // vazia, "recentes" é conveniência, nunca motivo de travar o app.
+    return []
+  }
+}
+
+const recentPages = ref<NavItem[]>(loadRecentPages())
 
 export function useAppShell() {
   function openMobileNav(): void {
@@ -92,6 +118,24 @@ export function useAppShell() {
     isDesktopSidebarCollapsed.value = !isDesktopSidebarCollapsed.value
   }
 
+  /**
+   * Chamado do `router.afterEach` (`core/router/guards.ts`) a cada
+   * navegação que vale a pena lembrar. Move pro topo em vez de duplicar
+   * quando a página já estava na lista (revisitar não deveria empurrar
+   * ela pro meio) e trava em `MAX_RECENT_PAGES` — mais que isso vira
+   * ruído, não "recente" de verdade.
+   */
+  function recordVisit(page: NavItem): void {
+    const withoutDuplicate = recentPages.value.filter((item) => item.id !== page.id)
+    recentPages.value = [page, ...withoutDuplicate].slice(0, MAX_RECENT_PAGES)
+
+    try {
+      localStorage.setItem(RECENT_PAGES_STORAGE_KEY, JSON.stringify(recentPages.value))
+    } catch {
+      // idem loadRecentPages — falha de storage não pode travar a navegação
+    }
+  }
+
   return {
     closeMobileNav,
     closeNotificationPanel,
@@ -103,6 +147,8 @@ export function useAppShell() {
     isNotificationPanelOpen,
     openMobileNav,
     openNotificationPanel,
+    recentPages,
+    recordVisit,
     setHasUnreadNotifications,
     toggleDesktopSidebar,
     toggleItem,

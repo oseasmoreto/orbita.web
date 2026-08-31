@@ -13,9 +13,26 @@
  * no Orbita hoje (nenhuma feature de "painel direito"/layout alternativo
  * existe), mesmo critério de não inventar affordance sem propósito já
  * usado no resto do design system.
+ *
+ * **Botão de favoritar ligado em 2026-08-31** (endpoint `POST /favorites`
+ * implementado pela sessão `backend-c5`) — era casca inerte até aqui
+ * ("não existe favoritar página no domínio do Orbita hoje"), agora
+ * favorita/desfavorita a PÁGINA ATUAL (`route.name`/`route.meta.title`)
+ * via `useFavorites().toggleFavorite()`. Só aparece clicável quando a
+ * rota atual é "favoritável" — mesmo critério já usado por
+ * `recordVisit()`/"Recentes" (`core/router/guards.ts`): precisa de
+ * `name`+`title`, nunca rota de guest nem passo de onboarding
+ * (`skipOnboardingChecks`) — não faz sentido favoritar a tela de login ou
+ * um passo do fluxo de cadastro/pagamento. Cor muda pra
+ * `{colors.accent-yellow}` quando a página atual já está favoritada
+ * (mesmo critério de "cor comunica estado", `StatusDot`/`Badge`), sem
+ * trocar de ícone (não existe variante "preenchida" do `Star` no conjunto
+ * gerado).
  */
+import { computed } from 'vue'
 import { useMediaQuery } from '@vueuse/core'
-import { useRouter } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
+import { i18n } from '@/core/i18n'
 import {
   Bell,
   ClockCounterClockwise,
@@ -28,12 +45,33 @@ import Icon from '@/shared/components/ui/Icon.vue'
 import { useTheme } from '@/shared/composables/useTheme'
 import { useAppShell } from './composables/useAppShell'
 import { useBreadcrumb } from './composables/useBreadcrumb'
+import { useFavorites } from './composables/useFavorites'
 
 const router = useRouter()
+const route = useRoute()
 const { items: breadcrumbItems } = useBreadcrumb()
 const { toggleTheme } = useTheme()
 const { hasUnreadNotifications, toggleDesktopSidebar, toggleMobileNav, toggleNotificationPanel } =
   useAppShell()
+const { isFavorite, toggleFavorite } = useFavorites()
+
+const isCurrentRouteFavoritable = computed(
+  () =>
+    Boolean(route.name && route.meta.title) &&
+    !route.meta.requiresGuest &&
+    !route.meta.skipOnboardingChecks,
+)
+const isCurrentRouteFavorite = computed(
+  () => isCurrentRouteFavoritable.value && isFavorite(String(route.name)),
+)
+
+async function toggleCurrentRouteFavorite(): Promise<void> {
+  if (!isCurrentRouteFavoritable.value || !route.meta.title) {
+    return
+  }
+
+  await toggleFavorite(i18n.global.t(route.meta.title), String(route.name))
+}
 
 // Mesmo breakpoint md (1023px/64rem) já usado pelo Drawer.vue — abaixo
 // dele a sidebar é um drawer (isMobileNavOpen), acima é a coluna estática
@@ -72,16 +110,20 @@ function goBack(): void {
   <header class="app-header">
     <div class="app-header__left">
       <button
-        aria-label="Ocultar/exibir menu"
+        :aria-label="$t('header.toggleSidebar')"
         class="app-header__icon-button"
         type="button"
         @click="toggleSidebar"
       >
         <Icon :icon="SidebarSimple" :size="20" />
       </button>
-      <!-- Sem dado real por trás ainda (não existe "favoritar página" no
-      domínio do Orbita) — casca pronta, mesmo critério do AppFooter. -->
-      <button aria-label="Favoritar" class="app-header__icon-button" type="button">
+      <button
+        v-if="isCurrentRouteFavoritable"
+        :aria-label="isCurrentRouteFavorite ? $t('common.actions.unfavorite') : $t('common.actions.favorite')"
+        :class="['app-header__icon-button', { 'app-header__icon-button--favorite': isCurrentRouteFavorite }]"
+        type="button"
+        @click="toggleCurrentRouteFavorite"
+      >
         <Icon :icon="Star" :size="20" />
       </button>
     </div>
@@ -91,14 +133,24 @@ function goBack(): void {
     <Breadcrumb class="app-header__breadcrumb" :items="breadcrumbItems" />
 
     <div class="app-header__actions">
-      <button aria-label="Alternar tema" class="app-header__icon-button" type="button" @click="toggleTheme">
+      <button
+        :aria-label="$t('header.toggleTheme')"
+        class="app-header__icon-button"
+        type="button"
+        @click="toggleTheme"
+      >
         <Icon :icon="Sun" :size="20" />
       </button>
-      <button aria-label="Voltar" class="app-header__icon-button" type="button" @click="goBack">
+      <button
+        :aria-label="$t('header.goBack')"
+        class="app-header__icon-button"
+        type="button"
+        @click="goBack"
+      >
         <Icon :icon="ClockCounterClockwise" :size="20" />
       </button>
       <button
-        aria-label="Notificações"
+        :aria-label="$t('header.notifications')"
         class="app-header__icon-button app-header__notification-button"
         type="button"
         @click="toggleNotificationPanel"
@@ -106,7 +158,7 @@ function goBack(): void {
         <Icon :icon="Bell" :size="20" />
         <span
           v-if="hasUnreadNotifications"
-          aria-label="Há notificações não lidas"
+          :aria-label="$t('header.unreadNotifications')"
           class="app-header__unread-dot"
           role="status"
         />
@@ -204,6 +256,13 @@ function goBack(): void {
 
   &:focus-visible {
     @include focus-ring;
+  }
+
+  // Cor comunica estado (mesmo critério de `StatusDot`/`Badge`), sem
+  // trocar de ícone — o conjunto gerado não tem uma variante "preenchida"
+  // do `Star`.
+  &--favorite {
+    color: $color-accent-yellow;
   }
 }
 
