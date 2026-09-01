@@ -64,7 +64,22 @@ export const dashboardGroup: NavGroup = {
   title: t('sidebar.nav.dashboards'),
 }
 
-export const catalogGroup: NavGroup = {
+/**
+ * **"Operação" — grupo novo, 2026-09-01, pedido direto do usuário**
+ * ("ficou um item por grupo... veja uma organização q fique pelo menos
+ * 2 itens por grupo, menos a dashboard") — `catalogGroup`/
+ * `marketplacesGroup`/`supportGroup` existiam como 3 grupos SEPARADOS,
+ * cada um com 1 item só, sem nenhuma restrição de `roles` (visíveis pra
+ * `user` E `admin_master`) — union óbvia, mesma visibilidade nos 3.
+ * Fundidos aqui num grupo só, sem forçar um Bounded Context 1:1 no
+ * título (Catalog/Pricing/Support são 3 contextos técnicos distintos) —
+ * "Operação" é a ÁREA que cobre o dia a dia do vendedor fora de
+ * cobrança/administração, mesmo critério de nome-por-área já usado nos
+ * 3 grupos admin (`adminUsersGroup`/`adminFinanceGroup`/
+ * `adminPlatformGroup` abaixo). Nenhum item mudou de `to`/ícone/rota —
+ * só reagrupados, mesma técnica da segmentação admin anterior.
+ */
+export const operationGroup: NavGroup = {
   items: [
     {
       icon: Package,
@@ -87,42 +102,20 @@ export const catalogGroup: NavGroup = {
     // Lançamentos (PRODUCT_LAUNCH) não é item de topo — é sempre uma aba
     // dentro do detalhe de UM produto (`products/{id}/launches`, backend
     // já pronto), não uma listagem própria que mereça entrada na sidebar.
-  ],
-  title: t('sidebar.nav.catalog'),
-}
-
-/**
- * Pricing (Bounded Context) — implementado em 2026-08-31 (Fase 4,
- * primeira rodada: CRUD admin de Marketplace/PricingRule +
- * conectar/gerenciar `USER_MARKETPLACE`). Um único item/tela pro grid de
- * cards (`MarketplacesView.vue`) — cobre os 2 nós do fluxo original
- * ("Canais disponíveis" + "Minhas conexões") num só lugar, já que um
- * card mostra os dois estados (conectado/não conectado) juntos.
- *
- * **Sem `roles` (visível pra `user` E `admin_master`), corrigido em
- * 2026-08-31** — pedido direto do usuário ("admin deve ver a tela de
- * link do produto e mktplace"). A v1 restringia a `roles: ['user']` com
- * o raciocínio de que `admin_master` "nunca tem assinatura própria" —
- * só que o middleware `subscription.active` (backend) já EXCLUI
- * `admin_master` dessa checagem de propósito, então a rota sempre foi
- * acessível pra essa conta; só o frontend bloqueava sem necessidade (ver
- * `routes.ts`). Vínculo produto↔marketplace (`PRODUCT_MARKETPLACE`) não
- * é item de sidebar — acessado a partir da listagem de Produtos
- * (Catalog), rota própria `product-marketplaces` (mesmo Bounded Context
- * do backend, `Api/Pricing/ProductMarketplaceController`, apesar da URL
- * aninhada sob `/products` — nunca um import direto de `modules/catalog`,
- * só navegação via `router.push`).
- */
-export const marketplacesGroup: NavGroup = {
-  items: [
     {
       icon: Storefront,
       id: 'marketplaces',
       label: t('sidebar.nav.salesChannels'),
       to: { name: 'marketplaces' },
     },
+    {
+      icon: Lifebuoy,
+      id: 'support-tickets',
+      label: t('sidebar.nav.myTickets'),
+      to: { name: 'support-tickets' },
+    },
   ],
-  title: t('sidebar.nav.marketplaces'),
+  title: t('sidebar.nav.operation'),
 }
 
 /**
@@ -162,26 +155,6 @@ export const billingGroup: NavGroup = {
 }
 
 /**
- * Support (Bounded Context novo no backend, 2026-09-01) — "Meus
- * chamados", sem `roles` de propósito: `TicketController` só exige
- * `auth:sanctum`, qualquer usuário autenticado (inclusive `admin_master`)
- * pode abrir um chamado, mesmo raciocínio já usado em
- * `marketplacesGroup`. Gerenciamento de TODOS os chamados (visão admin)
- * fica em `adminPlatformGroup`, item "Chamados" — não aqui.
- */
-export const supportGroup: NavGroup = {
-  items: [
-    {
-      icon: Lifebuoy,
-      id: 'support-tickets',
-      label: t('sidebar.nav.myTickets'),
-      to: { name: 'support-tickets' },
-    },
-  ],
-  title: t('sidebar.nav.support'),
-}
-
-/**
  * Só `admin_master` (`NavGroup.roles`) — namespace `/v1/admin/*` inteiro
  * já implementado no backend (Identity/Billing/Pricing/Platform).
  *
@@ -191,25 +164,22 @@ export const supportGroup: NavGroup = {
  * grupo só ("Administração") com 8 itens sem nenhuma hierarquia visual
  * entre eles, misturando conta/cobrança/config num scroll só. Dividido
  * por área, não por Bounded Context 1:1 (o pedido do usuário foi por
- * ÁREA de produto, não por camada técnica) — `adminUsersGroup` (Identity),
- * `adminFinanceGroup` (Billing), `adminPlatformGroup` (Pricing admin +
- * Platform, já que "canais de venda"/"configuração"/"notificação"/
- * "auditoria" são todos operação da plataforma em si, não dinheiro nem
- * conta de usuário). Nenhum item mudou de `to`/ícone — só reagrupados.
+ * ÁREA de produto, não por camada técnica) — `adminFinanceGroup`
+ * (Billing), `adminPlatformGroup` (Identity/Pricing admin/Platform).
+ *
+ * **`adminUsersGroup` desfeito no mesmo dia, rodada seguinte** — nasceu
+ * como grupo PRÓPRIO nessa mesma segmentação, mas com 1 item só
+ * ("Contas de usuário"); pedido do usuário logo em seguida ("ficou um
+ * item por grupo... pelo menos 2 itens por grupo") não deixou nenhum
+ * outro grupo `roles: ['admin_master']` sobrando pra parear — movido
+ * pra dentro de `adminPlatformGroup`, primeiro item (prioridade visual:
+ * gerenciar conta é tipicamente a ação admin mais comum). Contradiz um
+ * pouco a frase "não dinheiro nem conta de usuário" do parágrafo acima
+ * (motivo original de EXCLUIR conta de usuário daqui) — mantida como
+ * registro histórico da decisão original, a exceção agora é só sobre
+ * densidade mínima de itens por grupo, não uma reversão da lógica de
+ * categorização.
  */
-export const adminUsersGroup: NavGroup = {
-  items: [
-    {
-      icon: UsersThree,
-      id: 'admin-users',
-      label: t('sidebar.nav.adminUsers'),
-      to: { name: 'admin-users' },
-    },
-  ],
-  roles: ['admin_master'],
-  title: t('sidebar.nav.adminUsersGroup'),
-}
-
 // `admin-subscriptions`/`admin-transactions` ganharam `to` na Fase 7
 // (2026-09-01, pedido direto do usuário: "crie uma fase 7 com a parte
 // financeira, assinaturas e transações e implemente") — antes ficavam
@@ -242,6 +212,12 @@ export const adminFinanceGroup: NavGroup = {
 
 export const adminPlatformGroup: NavGroup = {
   items: [
+    {
+      icon: UsersThree,
+      id: 'admin-users',
+      label: t('sidebar.nav.adminUsers'),
+      to: { name: 'admin-users' },
+    },
     {
       icon: Storefront,
       id: 'admin-marketplaces',
@@ -279,11 +255,8 @@ export const adminPlatformGroup: NavGroup = {
 
 export const navGroups: NavGroup[] = [
   dashboardGroup,
-  catalogGroup,
-  marketplacesGroup,
+  operationGroup,
   billingGroup,
-  supportGroup,
-  adminUsersGroup,
   adminFinanceGroup,
   adminPlatformGroup,
 ]

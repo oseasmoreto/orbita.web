@@ -2601,6 +2601,45 @@ sem tocar `identity.admin.users.title` (h1 da página, continua
 3 grupos separados com os itens corretos, breadcrumb em `/admin/users`
 mostra "Usuários / Contas de usuário", sem duplicação.
 
+**Reorganização "1 item = não é grupo", 2026-09-01, pedido direto do
+usuário** ("ficou um item por grupo... veja uma organização q fique
+pelo menos 2 itens por grupo, menos a dashboard isso vamos mexer
+depois") — no fim da sessão de Support (Fase 8), a sidebar tinha
+acumulado 4 grupos com 1 item só: `catalogGroup` (Produtos),
+`marketplacesGroup` (Canais de venda), `supportGroup` (Meus chamados,
+recém-criado) e `adminUsersGroup` (Contas de usuário, da segmentação
+acima). `Dashboards` (1 item, "Padrão") ficou explicitamente EXEMPTO —
+"isso vamos mexer depois", não uma omissão.
+
+- **`operationGroup`** (novo) — funde os 3 grupos sem `roles` (visíveis
+  pra `user` E `admin_master`, mesma visibilidade preservada 1:1, união
+  óbvia): Produtos, Canais de venda, Meus chamados. Sem forçar um
+  Bounded Context único no título (Catalog/Pricing/Support são 3
+  contextos técnicos distintos) — "Operação" é o nome de ÁREA (mesmo
+  critério dos 3 grupos admin acima) que cobre o dia a dia do vendedor
+  fora de cobrança/administração.
+- **`adminUsersGroup` desfeito** — seu único item ("Contas de usuário")
+  virou o PRIMEIRO item de `adminPlatformGroup` (agora 6 itens:
+  Contas de usuário/Marketplaces/Notificações/Configurações/Auditoria/
+  Chamados). **Contradição registrada, não escondida**: a segmentação
+  original (parágrafo acima) justificava `adminPlatformGroup` como "não
+  dinheiro nem conta de usuário" — exatamente o oposto do que essa
+  fusão faz. Motivo: não sobrava nenhum OUTRO grupo `roles:
+  ['admin_master']` com 1 item só pra parear (`adminFinanceGroup` já
+  tinha 3, `Financeiro` e `Usuários` combinariam pior temáticamente que
+  `Plataforma`, que já era um "resto de administração" heterogêneo antes
+  disso). A exceção é sobre densidade mínima de itens por grupo, não
+  uma reversão da lógica de categorização original.
+- Nenhum item mudou de `to`/ícone/rota — só reagrupados, mesma técnica
+  da segmentação anterior. Chaves i18n mortas removidas do catálogo
+  (`sidebar.nav.catalog`/`marketplaces`/`support`/`adminUsersGroup` —
+  eram só título de grupo, sem mais nenhum consumidor).
+- Verificado em browser real, 2 contas (`user`/`admin_master`): sidebar
+  do usuário comum mostra "Operação" (3 itens) + "Assinatura" (2 itens)
+  — nenhum grupo de 1 item, exceto "Dashboards"; sidebar do admin mostra
+  os mesmos + "Financeiro" (3) + "Plataforma" (6, com "Contas de
+  usuário" primeiro).
+
 ### AppHeader (`core/layouts/AppHeader.vue`)
 
 **Reconstruído em 2026-08-28, pedido direto do usuário com captura real**
