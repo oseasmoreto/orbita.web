@@ -1078,9 +1078,10 @@ Conexão com marketplace e vínculo produto↔marketplace. **Sem dashboard de
 preço sugerido nesta fase** — decisão do usuário em 2026-09-01: em vez de
 ficar bloqueada esperando o backend expor `PricingCalculator`, a Fase 4
 fecha aqui com o vínculo puro (já implementado) e o dashboard de preço
-sugerido vira a **última fase do projeto** (ver "Fase 7 — Preço sugerido
-por canal (última fase)", no fim deste documento) — não bloqueia mais
-nenhuma fase intermediária.
+sugerido vira a **última fase do projeto** (ver "Fase 99 — Preço sugerido
+por canal (última fase)", no fim deste documento — renumerada de "Fase 7"
+em 2026-09-01 pra abrir espaço pra Fase 7 real, Financeiro) — não bloqueia
+mais nenhuma fase intermediária.
 
 Pedido direto do usuário: "vamos primeiro implementar os CRUDs que são do
 admin (cadastro de marketplace e regras do marketplace) e pra role user
@@ -1210,8 +1211,9 @@ nem as seguintes**: reconfirmado o mesmo gap ao ser perguntado "o que
 faltou da Fase 4?" (nada tinha mudado no backend desde a última
 checagem) — em vez de deixar a Fase 4 "pendurada" esperando o backend
 expor o endpoint, o dashboard de preço sugerido vira explicitamente a
-**última fase do projeto** ("Fase 7", no fim deste documento). Fase 4
-está com esse escopo revisado: **concluída**.
+**última fase do projeto** ("Fase 99", no fim deste documento —
+renumerada de "Fase 7" em 2026-09-01). Fase 4 está com esse escopo
+revisado: **concluída**.
 
 **Correção pixel-perfect do grid de cards, 2026-08-31** — usuário comparou
 lado a lado com a captura de referência ("não está pixel perfect"). 2
@@ -1498,8 +1500,9 @@ mostra corretamente o estado vazio).
 ## Fase 6 — Admin (usuários, planos, configurações, impersonation) — concluída, 2026-09-01
 
 Painel de administração de usuários, fora do namespace comum — fecha o
-escopo funcional "normal" do MVP. Só a Fase 7 (preço sugerido, bloqueada
-por backend) fica depois desta, por decisão explícita do usuário.
+escopo funcional "normal" do MVP. Só a Fase 99 (preço sugerido, bloqueada
+por backend — renumerada de "Fase 7" em 2026-09-01) fica depois desta,
+por decisão explícita do usuário.
 **Escopo ampliado pelo usuário no mesmo pedido** ("sim, porém adicione
 tbm planos e configurações já que vamos tratar de módulos do admin") —
 Planos e Configurações entraram junto com Usuários/impersonation, mesma
@@ -1658,12 +1661,214 @@ disparam a query certa (`filter[...]`) contra o backend local.
 
 ---
 
-## Fase 7 — Preço sugerido por canal (última fase do projeto)
+## Fase 7 — Financeiro (assinaturas e transações admin) — concluída, 2026-09-01
+
+**Pedido direto do usuário**: "pegue a fase 7 atual e bote fase 99 e crie
+uma fase 7 com a parte financeira, assinaturas e transações e
+implemente" — fecha o gap deixado em aberto na Fase 6
+(`admin-subscriptions`/`admin-transactions` sem `to`, "não foram
+pedidos nesta rodada... revisitável sob demanda").
+
+**Backend já pronto, sem nenhuma tarefa de API nova**:
+`AdminSubscriptionController` (`index`/`show`/`update`, namespace
+`/admin/subscriptions`) e `AdminTransactionController` (`index`/`show`,
+`/admin/transactions`, sempre read-only — registro financeiro imutável,
+mesma regra do `TransactionController` do próprio usuário) já existiam
+no backend antes deste pedido, só nunca tinham sido consumidos pelo
+frontend.
+
+**Achado real, mesmo dia — `AdminSubscriptionResource`/
+`AdminTransactionResource` só traziam `user_id` cru** (sem nome/e-mail),
+igual ao gap já resolvido em `AdminAuditLogResource` mais cedo no mesmo
+dia. Reportado pra sessão de backend ANTES de escrever a UI (pra não
+construir a tabela já sabendo que ia mostrar UUID) — resolvido em
+minutos, mesmo padrão: os dois resources embutem `user: AdminUserResource`
+agora, `user_id` continua existindo por completude. `AdminSubscription`/
+`AdminTransaction` (`modules/billing/types/`) ganharam o campo `user`
+(`AdminUser` de `core/types/adminUser.type.ts`, 3º consumidor real do
+tipo promovido — Identity, Platform (auditoria) e agora Billing).
+
+**Assinaturas** (`AdminSubscriptionsView.vue`) — editável (`status`/
+`end_date`, `OverrideSubscriptionModal.vue` + `useOverrideSubscriptionForm.ts`,
+bespoke, mesma categoria de `EditUserRoleModal.vue`/`useUpdateUserRoleForm.ts`
+— só 2 campos de `Select`/`DatePicker` controlado, nada pra validar com
+Zod). Sem `useCrudDrawer` — não existe criar/excluir assinatura pelo
+admin, só a correção manual de suporte via `OverrideSubscriptionAction`.
+Filtro de `status` (`ListToolbar` `#filters`, `Select`, sentinel `'all'`,
+mesmo padrão da rodada anterior) — sem filtro por `user_id`/`plan_id` na
+UI (a API aceita, mas exigiriam um seletor de busca por texto que não
+existe pra usuário/plano ainda).
+
+**Transações** (`AdminTransactionsView.vue`) — read-only, mesma forma de
+`TransactionsView.vue` (do próprio usuário) + `ListToolbar` com filtro de
+`status` (todos os 9 valores de `TransactionStatus`, reaproveitando as
+mesmas chaves i18n de `billing.transactions.status.*`, sem duplicar).
+Sem filtro de `gateway` — hoje só existe 1 gateway integrado (Mercado
+Pago), um `Select` sem segunda opção real não vale a pena (mesma régua
+de "sem dimensão real pra oferecer" já usada noutros lugares do
+projeto); o service (`listAdminTransactions`) já aceita o param, só sem
+UI.
+
+**Rotas**: `admin-subscriptions`/`admin-transactions` (`billing/routes.ts`,
+`meta.roles: ['admin_master']`) — os 2 itens de sidebar que já existiam
+sem `to` desde a reorganização de menu da mesma sessão (`adminFinanceGroup`)
+ganharam a rota real.
+
+Verificado em browser real contra o backend local, com dado seedado via
+tinker (1 usuário + 1 assinatura + 1 transação novos, além do dado real
+já existente de sessões anteriores): listagem de assinaturas mostra
+nome de usuário/plano reais (não UUID); editar uma assinatura (mudar
+status de "Ativa" pra "Cancelada") dispara o `PATCH` real e a linha
+atualiza na tabela sem reload; filtro de status funciona; listagem de
+transações mostra nome de usuário real, valor formatado, status
+colorido corretamente.
+
+---
+
+## Fase 8 — Support (chamados) — concluída, 2026-09-01
+
+Novo Bounded Context do backend (`Support`: `Ticket`/`TicketMessage`),
+avisado via mensagem cross-session da sessão de backend responsável
+(`support-ticket-system`), que pediu explicitamente pra alinhar layout/
+escopo com o usuário antes de implementar. Fluxo real desta fase:
+
+1. **Alinhamento de layout, pedido direto do usuário** ("vamos repassar
+   o layout antes") — usuário pediu pra examinar 2 seções (Meetings/
+   Chats) de um Figma de referência (`AiDEA – Smart SaaS Dashboard UI
+   Kit`, `node-id=17261-105108`), reforçando: "esse arquivo é só pra
+   estrutura, DS mantemos o nosso" — nunca tokens/cores do Figma de
+   origem, só o ESQUELETO de layout.
+2. **Discussão de estrutura antes de codar** — proposta inicial (Meetings
+   = cards agrupados por seção como listagem principal) foi analisada e
+   REJEITADA pelo usuário implicitamente ao perguntar "ou nada a ver?";
+   argumentei contra (quebraria o padrão `DataTable`+`ListToolbar` já
+   estabelecido em 9 outras telas do projeto, e Meetings não modela
+   thread de conversa) e propus: listagem em `DataTable` normal (mesmo
+   padrão de sempre) + detalhe/resposta num `Drawer` com a estrutura do
+   frame "Chats" (2 painéis: histórico de mensagens + composer). Usuário
+   confirmou: "siga da forma q pensou mesmo e docuemnte tudo".
+3. **Implementação** — backend 100% pronto de antemão (`TicketController`/
+   `AdminTicketController`/`TicketMessageController`/
+   `AdminTicketMessageController`), regenerado via `npm run generate:api-types`.
+
+**Módulo novo** (`modules/support/`, 5º Bounded Context do frontend,
+mesma estrutura padrão dos outros 4):
+
+- **Tipos** (`types/ticket.type.ts`/`ticketMessage.type.ts`): `Ticket`
+  (visão do próprio usuário, `resolvedBy` já embutido — o backend
+  aprendeu com os gaps de `AdminAuditLogResource`/`AdminSubscriptionResource`
+  e não repetiu o erro de UUID cru), `AdminTicket` (superset com `user`),
+  `TicketMessage` (mesma Resource pros 2 lados, `user` sempre embutido —
+  autor pode ser o dono do chamado OU qualquer admin). `ticketStatusColor`
+  (`open`→amarelo/"aguardando ação", `resolved`→verde).
+- **Schema** (`schemas/createTicketFormSchema.ts`, test-first): `subject`
+  (obrigatório, até 255) + `message` (obrigatório) — espelha
+  `CreateTicketRequest`.
+- **Service** (`services/supportApi.ts`): par completo user/admin —
+  `listTickets`/`createTicket`/`getTicket`/`resolveTicket`/`disputeTicket`/
+  `listTicketMessages`/`createTicketMessage` +
+  `listAdminTickets`/`getAdminTicket`/`resolveAdminTicket`/
+  `listAdminTicketMessages`/`createAdminTicketMessage`.
+- **Composables**: `useTicketList`/`useAdminTicketList` (mesmo padrão
+  `useResourceList`+filtro de status `Select` sentinel `'all'` do resto
+  do projeto), `useCreateTicketForm` (bespoke, só cria), `useTicketThread`/
+  `useAdminTicketThread` (2 composables SEPARADOS, não 1 com branch de
+  modo — mesmo critério já usado em `CreateAdminUserForm`/
+  `EditUserRoleModal`: os conjuntos de ação são assimétricos, ver achado
+  de negócio abaixo).
+- **Componentes**: `CreateTicketForm.vue` (Drawer), `TicketMessageList.vue`
+  (bloco puramente de apresentação, ESTRUTURA do frame "Chats" —
+  bolha alinhada à direita/preta quando é mensagem própria, esquerda/
+  cinza quando é de outra pessoa —, reaproveitado pelos 2 painéis),
+  `TicketThreadPanel.vue` (usuário) / `AdminTicketThreadPanel.vue`
+  (admin) — cada um consome seu composable de thread.
+- **Views**: `TicketsView.vue` ("Meus chamados", `DataTable`+`ListToolbar`
+  com filtro de status + `Drawer` que alterna entre `CreateTicketForm`/
+  `TicketThreadPanel` via `useCrudDrawer`), `AdminTicketsView.vue`
+  ("Chamados", mesma forma + coluna `user`, sem `addable` — não existe
+  criar chamado pelo admin).
+- **Rotas**: `support/tickets` (`support-tickets`, SEM `meta.roles` —
+  `TicketController` só exige `auth:sanctum`, qualquer autenticado pode
+  abrir chamado, inclusive `admin_master`) e `admin/tickets`
+  (`admin-tickets`, `roles: ['admin_master']`).
+- **Menu**: grupo novo "Suporte" (sem `roles`, item "Meus chamados") +
+  item "Chamados" em `adminPlatformGroup` (mesma área de "operação da
+  plataforma" de Notificações/Configurações/Auditoria).
+
+**Achado de negócio real, decisivo pro design dos composables** —
+"Disputar" NÃO é um botão/campo separado: `DisputeTicketAction` (backend)
+só existe quando o chamado já está `resolved`, e `ReplyToTicketAction`
+(resposta comum) nunca reabre nem checa status. Ou seja, o MESMO
+composer ("digite sua mensagem") decide sozinho qual endpoint chamar
+conforme o status atual — `shouldDisputeOnReply(status)` (função pura,
+testada) isola essa decisão dentro de `useTicketThread.ts`: chamado
+`resolved` → enviar mensagem = contestar (reabre + registra a mensagem
+no histórico, sem 3º status); chamado `open` → resposta comum. Do lado
+do admin (`useAdminTicketThread.ts`) não existe esse branch —
+`AdminReplyToTicketAction` nunca reabre, admin pode responder um chamado
+resolvido só como nota de encerramento, sem mudar status — por isso os 2
+composables são arquivos separados, não um só com `if (mode === 'admin')`.
+
+**Notificação `ticket_opened` (Fase 5, extensão)** — `NotificationType`
+ganhou o 4º valor (`TicketOpened`, síncrono, todo `admin_master` recebe
+na abertura, não em resposta nova). `notification.type.ts` ganhou o
+ícone (`Lifebuoy`) + tint (`purple`); catálogo `pt-BR.ts` ganhou
+`notificationTitleTicketOpened`/`notificationMessageTicketOpened` — as
+2 chaves reais que `NotifyAdminsOnTicketOpened` (backend) manda,
+conferidas 1:1 contra `NotificationMessageKey` do backend. **Achado real
+na verificação**: sem essas 2 chaves, o painel de notificações mostrava
+a chave crua (`notificationTitleTicketOpened`) sem tradução nenhuma —
+mesmo bug já documentado outras vezes nesse projeto (chave nova sem
+entrada no catálogo cai pro texto literal, por design do
+`useApiMessage`), pego ANTES de reportar como pronto porque o roteiro de
+verificação incluiu abrir o sino do admin depois de criar um chamado.
+
+Verificado em browser real contra o backend local, fluxo completo:
+usuário abre chamado → thread mostra "Aberto" + botão "Marcar como
+resolvido" → admin vê o chamado na listagem (com nome do usuário, não
+UUID) → admin responde → admin resolve (status vira "Resolvido", botão
+de resolver some) → usuário reabre o painel do chamado resolvido → vê o
+aviso "Enviar uma mensagem vai reabrir este chamado" → envia mensagem →
+chamado volta pra "Aberto" automaticamente (toast "Chamado reaberto —
+sua mensagem foi registrada") → notificação "Novo chamado de suporte"
+aparece no sino do admin, traduzida corretamente.
+
+**Correção pixel-perfect + `Textarea.vue` novo, mesmo dia — pedido
+direto do usuário** ("como q isso é parecido com isso, cade o pixel
+perfect? outro ponto, crie um componente de textarea pq esses inputs
+tao paia pra texto grande"), comparando a v1 lado a lado com as
+capturas reais do frame "Chats". 2 gaps estruturais reais corrigidos
+(detalhe completo na seção `TicketMessageList`/`TicketThreadPanel` de
+`docs/design/design-system.md`): separador de data ("Hoje"/"Ontem",
+`TicketMessageList.vue`) e composer reconstruído como barra única
+arredondada (não `Input`+`Button` soltos). No mesmo pedido, `Textarea.vue`
+novo (`shared/components/ui/`) — auto-grow, sem alça de resize manual —
+substituindo `Input` no campo "Mensagem" de `CreateTicketForm.vue` e no
+composer das 2 threads (`Enter` envia, `Shift+Enter` quebra linha).
+**Diferença estrutural mantida de propósito, não corrigida**: o painel
+de chamado continua num `Drawer` sobre a listagem em `DataTable` — os 2
+painéis (lista+conversa) simultâneos e sempre visíveis do Chats de
+verdade não foram replicados, é mudança de arquitetura maior, deixada
+como pergunta em aberto pro usuário em vez de assumida. Reverificado em
+browser real: `Textarea` do composer cresce com o texto,
+`Enter`/`Shift+Enter` funcionam como esperado, divisor "Hoje" aparece
+corretamente.
+
+---
+
+## Fase 99 — Preço sugerido por canal (última fase do projeto)
+
+**Renumerada de "Fase 7" pra "Fase 99" em 2026-09-01, pedido direto do
+usuário** ("pegue a fase 7 atual e bote fase 99 e crie uma fase 7 com a
+parte financeira") — abre espaço pra Fase 7 real (Financeiro, ver seção
+logo acima), sem perder a intenção original de "deliberadamente por
+último, fecha o projeto" (só o número mudou, não a posição relativa —
+continua depois de qualquer fase de admin, nunca antes).
 
 **Decisão do usuário, 2026-09-01**: movida de "gap pendente da Fase 4"
 pra fase própria, deliberadamente por último — fecha o projeto, não
-bloqueia nenhuma fase intermediária (5/6) enquanto o backend não expuser
-o endpoint necessário.
+bloqueia nenhuma fase intermediária (5/6/7) enquanto o backend não
+expuser o endpoint necessário.
 
 Implementa o nó "Dashboard de precificação → Preço sugerido por canal" do
 diagrama de fluxo do sistema (`docs/negocio/contexto-plataforma-precificacao.md`
@@ -1674,7 +1879,7 @@ doc) — hoje só regra de negócio documentada, sem UI nem rota.
 `PriceRange`/`SuggestedPrice` (Domain do backend) existem e são testados
 isoladamente, mas nunca foram conectados a nenhuma rota —
 `PRODUCT_MARKETPLACE` é vínculo puro (`suggested_price`/`is_approximated`
-removidos por migration em 2026-08-26). Não dá pra começar a Fase 7 até o
+removidos por migration em 2026-08-26). Não dá pra começar a Fase 99 até o
 backend expor esse cálculo em algum contrato de API (endpoint dedicado
 tipo `GET /products/{id}/marketplaces/{link}/suggested-price`, ou
 embutido na listagem de vínculos — decisão do backend).
@@ -1701,7 +1906,7 @@ Sem service/composable/rota criados ainda — fase não iniciada.
   que o plano não repita isso fase a fase.
 - **E2E crítico (Playwright)**, após a Fase 4 estar de pé: login → cadastro
   de produto → conecta marketplace → vincula produto ao marketplace. ("Vê
-  preço sugerido" só entra no roteiro E2E quando a Fase 7 existir — não é
+  preço sugerido" só entra no roteiro E2E quando a Fase 99 existir — não é
   mais um bloqueio da Fase 4.)
 - **i18n**: catálogo `pt-BR` (`core/i18n/messages/pt-BR.ts`) cresce por
   fase, conforme cada módulo integra chaves reais de `ApiMessageKey`/
@@ -1715,4 +1920,4 @@ Sem service/composable/rota criados ainda — fase não iniciada.
 | Item | Fase afetada | Status |
 |---|---|---|
 | `APP_URL`/`.env` real ainda aponta pro túnel ngrok de teste | Fase 1 (verificação de e-mail) | Reportado, não bloqueia infra |
-| Sugestão de preço (`PricingCalculator`) nunca exposta em rota | Fase 7 (movida da Fase 4 em 2026-09-01, decisão do usuário) | Sem rota — Fase 7 não inicia até existir; não bloqueia Fases 5/6 |
+| Sugestão de preço (`PricingCalculator`) nunca exposta em rota | Fase 99 (movida da Fase 4 em 2026-09-01, renumerada de "Fase 7" no mesmo dia) | Sem rota — Fase 99 não inicia até existir; não bloqueia Fases 5/6/7 |

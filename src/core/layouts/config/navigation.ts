@@ -4,6 +4,7 @@ import {
   ChartPieSlice,
   Clipboard,
   Gear,
+  Lifebuoy,
   Package,
   Receipt,
   Storefront,
@@ -161,6 +162,26 @@ export const billingGroup: NavGroup = {
 }
 
 /**
+ * Support (Bounded Context novo no backend, 2026-09-01) — "Meus
+ * chamados", sem `roles` de propósito: `TicketController` só exige
+ * `auth:sanctum`, qualquer usuário autenticado (inclusive `admin_master`)
+ * pode abrir um chamado, mesmo raciocínio já usado em
+ * `marketplacesGroup`. Gerenciamento de TODOS os chamados (visão admin)
+ * fica em `adminPlatformGroup`, item "Chamados" — não aqui.
+ */
+export const supportGroup: NavGroup = {
+  items: [
+    {
+      icon: Lifebuoy,
+      id: 'support-tickets',
+      label: t('sidebar.nav.myTickets'),
+      to: { name: 'support-tickets' },
+    },
+  ],
+  title: t('sidebar.nav.support'),
+}
+
+/**
  * Só `admin_master` (`NavGroup.roles`) — namespace `/v1/admin/*` inteiro
  * já implementado no backend (Identity/Billing/Pricing/Platform).
  *
@@ -189,6 +210,11 @@ export const adminUsersGroup: NavGroup = {
   title: t('sidebar.nav.adminUsersGroup'),
 }
 
+// `admin-subscriptions`/`admin-transactions` ganharam `to` na Fase 7
+// (2026-09-01, pedido direto do usuário: "crie uma fase 7 com a parte
+// financeira, assinaturas e transações e implemente") — antes ficavam
+// sem `to` de propósito (só "ver TODAS as assinaturas/transações de
+// todos os usuários", sem CRUD óbvio pra assinatura na época).
 export const adminFinanceGroup: NavGroup = {
   items: [
     {
@@ -197,8 +223,18 @@ export const adminFinanceGroup: NavGroup = {
       label: t('sidebar.nav.adminPlans'),
       to: { name: 'admin-plans' },
     },
-    { icon: Wallet, id: 'admin-subscriptions', label: t('sidebar.nav.adminSubscriptions') },
-    { icon: Receipt, id: 'admin-transactions', label: t('sidebar.nav.adminTransactions') },
+    {
+      icon: Wallet,
+      id: 'admin-subscriptions',
+      label: t('sidebar.nav.adminSubscriptions'),
+      to: { name: 'admin-subscriptions' },
+    },
+    {
+      icon: Receipt,
+      id: 'admin-transactions',
+      label: t('sidebar.nav.adminTransactions'),
+      to: { name: 'admin-transactions' },
+    },
   ],
   roles: ['admin_master'],
   title: t('sidebar.nav.adminFinanceGroup'),
@@ -230,6 +266,12 @@ export const adminPlatformGroup: NavGroup = {
       label: t('sidebar.nav.adminAuditLogs'),
       to: { name: 'admin-audit-logs' },
     },
+    {
+      icon: Lifebuoy,
+      id: 'admin-tickets',
+      label: t('sidebar.nav.adminTickets'),
+      to: { name: 'admin-tickets' },
+    },
   ],
   roles: ['admin_master'],
   title: t('sidebar.nav.adminPlatformGroup'),
@@ -240,6 +282,7 @@ export const navGroups: NavGroup[] = [
   catalogGroup,
   marketplacesGroup,
   billingGroup,
+  supportGroup,
   adminUsersGroup,
   adminFinanceGroup,
   adminPlatformGroup,

@@ -1,6 +1,11 @@
 import type { Component } from 'vue'
 import type { components } from '@/core/api/schema'
-import { CheckCircle, Megaphone, UserSwitch } from '@/shared/components/icons/regular.generated'
+import {
+  CheckCircle,
+  Lifebuoy,
+  Megaphone,
+  UserSwitch,
+} from '@/shared/components/icons/regular.generated'
 
 type NotificationResource = components['schemas']['NotificationResource']
 
@@ -47,12 +52,14 @@ const NOTIFICATION_ICON: Record<NotificationType, Component> = {
   admin_announcement: Megaphone,
   impersonation_started: UserSwitch,
   subscription_activated: CheckCircle,
+  ticket_opened: Lifebuoy,
 }
 
 const NOTIFICATION_TINT: Record<NotificationType, 'blue' | 'purple'> = {
   admin_announcement: 'blue',
   impersonation_started: 'purple',
   subscription_activated: 'blue',
+  ticket_opened: 'purple',
 }
 
 export function notificationIconFor(type: NotificationType): Component {

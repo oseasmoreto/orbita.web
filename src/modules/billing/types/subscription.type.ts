@@ -1,4 +1,5 @@
 import type { components } from '@/core/api/schema'
+import { type AdminUser, toAdminUser } from '@/core/types/adminUser.type'
 import { type Plan, toPlan } from './plan.type'
 
 export type SubscriptionStatus = components['schemas']['SubscriptionStatus']
@@ -71,6 +72,50 @@ export function toSubscription(
     planId: resource.plan_id,
     startDate: resource.start_date,
     status: resource.status,
+  }
+}
+
+/**
+ * Tipo de domínio em cima de `AdminSubscriptionResource` (Fase 7, admin
+ * — "ver TODAS as assinaturas de todos os usuários", `GET
+ * /admin/subscriptions`). Sem `pendingPlanId` (o resource admin não
+ * embute isso ainda — troca de plano com pagamento pendente é um detalhe
+ * do fluxo do PRÓPRIO usuário, não exibido nesta listagem).
+ *
+ * `user` (`AdminUser` completo, mesmo shape de `GET /admin/users`) —
+ * pedido pra sessão de backend em 2026-09-01, resolvido no MESMO dia,
+ * mesmo padrão já usado em `AdminAuditLogResource`: sem isso a listagem
+ * mostraria só `user_id` cru, sem como identificar de quem é cada linha
+ * sem uma segunda consulta por linha. `userId` continua existindo no
+ * tipo por completude 1:1 com o resource, a UI usa `user.name` direto.
+ */
+export interface AdminSubscription {
+  cancelAtPeriodEnd: boolean
+  createdAt: string | null
+  endDate: string | null
+  id: string
+  plan: Plan
+  planId: string
+  startDate: string
+  status: SubscriptionStatus
+  user: AdminUser
+  userId: string
+}
+
+export function toAdminSubscription(
+  resource: components['schemas']['AdminSubscriptionResource'],
+): AdminSubscription {
+  return {
+    cancelAtPeriodEnd: resource.cancel_at_period_end,
+    createdAt: resource.created_at,
+    endDate: resource.end_date,
+    id: resource.id,
+    plan: toPlan(resource.plan),
+    planId: resource.plan_id,
+    startDate: resource.start_date,
+    status: resource.status,
+    user: toAdminUser(resource.user),
+    userId: resource.user_id,
   }
 }
 

@@ -212,6 +212,70 @@ export interface paths {
         patch: operations["adminSubscription.update"];
         trace?: never;
     };
+    "/admin/tickets": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["adminTicket.index"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/tickets/{ticket}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["adminTicket.show"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/tickets/{ticket}/resolve": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["adminTicket.resolve"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/tickets/{ticket}/messages": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["adminTicketMessage.index"];
+        put?: never;
+        post: operations["adminTicketMessage.store"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/admin/transactions": {
         parameters: {
             query?: never;
@@ -800,6 +864,86 @@ export interface paths {
         patch: operations["subscription.changePlan"];
         trace?: never;
     };
+    "/tickets": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["ticket.index"];
+        put?: never;
+        post: operations["ticket.store"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/tickets/{ticket}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["ticket.show"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/tickets/{ticket}/resolve": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["ticket.resolve"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/tickets/{ticket}/dispute": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["ticket.dispute"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/tickets/{ticket}/messages": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["ticketMessage.index"];
+        put?: never;
+        post: operations["ticketMessage.store"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/transactions": {
         parameters: {
             query?: never;
@@ -969,6 +1113,12 @@ export interface components {
         AdminSubscriptionResource: {
             id: string;
             user_id: string;
+            /**
+             * @description Objeto embutido (achado real, pedido do front, 2026-09-01) —
+             *     mesmo padrão de AdminAuditLogResource (tarefa 58): user_id
+             *     continua aqui, quem consome já com o objeto usa `user`.
+             */
+            user: components["schemas"]["AdminUserResource"];
             plan_id: string;
             /**
              * @description Mesmo gap do SubscriptionResource (achado real, 2026-09-01) —
@@ -987,10 +1137,29 @@ export interface components {
             /** Format: date-time */
             created_at: string | null;
         };
+        /** AdminTicketResource */
+        AdminTicketResource: {
+            id: string;
+            user_id: string;
+            user: components["schemas"]["AdminUserResource"];
+            subject: string;
+            status: components["schemas"]["TicketStatus"];
+            /** Format: date-time */
+            resolved_at: string | null;
+            resolved_by: components["schemas"]["AdminUserResource"] | null;
+            /** Format: date-time */
+            created_at: string | null;
+        };
         /** AdminTransactionResource */
         AdminTransactionResource: {
             id: string;
             user_id: string;
+            /**
+             * @description Objeto embutido (achado real, pedido do front, 2026-09-01) —
+             *     mesmo padrão de AdminAuditLogResource (tarefa 58): user_id
+             *     continua aqui, quem consome já com o objeto usa `user`.
+             */
+            user: components["schemas"]["AdminUserResource"];
             subscription_id: string | null;
             gateway: string;
             gateway_transaction_id: string;
@@ -1115,6 +1284,11 @@ export interface components {
             value: string;
             type: components["schemas"]["SettingType"];
         };
+        /** CreateTicketRequest */
+        CreateTicketRequest: {
+            subject: string;
+            message: string;
+        };
         /** CreateUserByAdminRequest */
         CreateUserByAdminRequest: {
             name: string;
@@ -1140,6 +1314,10 @@ export interface components {
             /** Format: uuid */
             marketplace_id: string;
             store_name: string;
+        };
+        /** DisputeTicketRequest */
+        DisputeTicketRequest: {
+            message: string;
         };
         /** ExchangeSsoLoginTokenRequest */
         ExchangeSsoLoginTokenRequest: {
@@ -1198,7 +1376,7 @@ export interface components {
          * NotificationType
          * @enum {string}
          */
-        NotificationType: "subscription_activated" | "impersonation_started" | "admin_announcement";
+        NotificationType: "subscription_activated" | "impersonation_started" | "admin_announcement" | "ticket_opened";
         /** OverrideSubscriptionRequest */
         OverrideSubscriptionRequest: {
             status?: components["schemas"]["SubscriptionStatus"];
@@ -1298,6 +1476,10 @@ export interface components {
             email: string;
             password: string;
             password_confirmation: string;
+        };
+        /** ReplyToTicketRequest */
+        ReplyToTicketRequest: {
+            body: string;
         };
         /** RequestPasswordResetRequest */
         RequestPasswordResetRequest: {
@@ -1409,6 +1591,31 @@ export interface components {
          * @enum {string}
          */
         SubscriptionStatus: "pending" | "active" | "canceled" | "expired" | "payment_failed";
+        /** TicketMessageResource */
+        TicketMessageResource: {
+            id: string;
+            user_id: string;
+            user: components["schemas"]["AdminUserResource"];
+            body: string;
+            /** Format: date-time */
+            created_at: string | null;
+        };
+        /** TicketResource */
+        TicketResource: {
+            id: string;
+            subject: string;
+            status: components["schemas"]["TicketStatus"];
+            /** Format: date-time */
+            resolved_at: string | null;
+            resolved_by: components["schemas"]["AdminUserResource"] | null;
+            /** Format: date-time */
+            created_at: string | null;
+        };
+        /**
+         * TicketStatus
+         * @enum {string}
+         */
+        TicketStatus: "open" | "resolved";
         /** TransactionResource */
         TransactionResource: {
             id: string;
@@ -2425,6 +2632,215 @@ export interface operations {
                         success: boolean;
                         message: string;
                         data: components["schemas"]["AdminSubscriptionResource"];
+                        errors: null;
+                    };
+                };
+            };
+            401: components["responses"]["AuthenticationException"];
+            422: components["responses"]["ValidationException"];
+        };
+    };
+    "adminTicket.index": {
+        parameters: {
+            query?: {
+                /**
+                 * @description Campos separados por vírgula. Prefixo "-" inverte pra desc. Permitidos: created_at, resolved_at.
+                 * @example -created_at
+                 */
+                sort?: string;
+                /**
+                 * @description Filtro exato por quem abriu o chamado.
+                 * @example 00000000-0000-0000-0000-000000000000
+                 */
+                "filter[user_id]"?: string;
+                /**
+                 * @description Filtro exato por status.
+                 * @example open
+                 */
+                "filter[status]"?: string;
+                /**
+                 * @description Data mínima de abertura (YYYY-MM-DD).
+                 * @example 2026-09-01
+                 */
+                "filter[created_from]"?: string;
+                /**
+                 * @description Data máxima de abertura (YYYY-MM-DD).
+                 * @example 2026-09-30
+                 */
+                "filter[created_to]"?: string;
+                /**
+                 * @description Data mínima de resolução (YYYY-MM-DD).
+                 * @example 2026-09-01
+                 */
+                "filter[resolved_from]"?: string;
+                /**
+                 * @description Data máxima de resolução (YYYY-MM-DD).
+                 * @example 2026-09-30
+                 */
+                "filter[resolved_to]"?: string;
+                /**
+                 * @description Filtro por quem respondeu (qualquer mensagem daquele user_id no chamado).
+                 * @example 00000000-0000-0000-0000-000000000000
+                 */
+                "filter[replied_by]"?: string;
+                /**
+                 * @description Tamanho de página, teto em 100.
+                 * @example 15
+                 */
+                per_page?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        success: boolean;
+                        message: string;
+                        data: {
+                            items: components["schemas"]["AdminTicketResource"][];
+                            meta: {
+                                current_page: number;
+                                per_page: number;
+                                total: number;
+                            };
+                        };
+                        errors: null;
+                    };
+                };
+            };
+            401: components["responses"]["AuthenticationException"];
+        };
+    };
+    "adminTicket.show": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                ticket: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        success: boolean;
+                        message: string;
+                        data: components["schemas"]["AdminTicketResource"];
+                        errors: null;
+                    };
+                };
+            };
+            401: components["responses"]["AuthenticationException"];
+        };
+    };
+    "adminTicket.resolve": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                ticket: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        success: boolean;
+                        message: string;
+                        data: components["schemas"]["AdminTicketResource"];
+                        errors: null;
+                    };
+                };
+            };
+            401: components["responses"]["AuthenticationException"];
+        };
+    };
+    "adminTicketMessage.index": {
+        parameters: {
+            query?: {
+                /**
+                 * @description Campos separados por vírgula. Prefixo "-" inverte pra desc. Permitido: created_at.
+                 * @example created_at
+                 */
+                sort?: string;
+                /**
+                 * @description Tamanho de página, teto em 100.
+                 * @example 15
+                 */
+                per_page?: number;
+            };
+            header?: never;
+            path: {
+                ticket: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        success: boolean;
+                        message: string;
+                        data: {
+                            items: components["schemas"]["TicketMessageResource"][];
+                            meta: {
+                                current_page: number;
+                                per_page: number;
+                                total: number;
+                            };
+                        };
+                        errors: null;
+                    };
+                };
+            };
+            401: components["responses"]["AuthenticationException"];
+        };
+    };
+    "adminTicketMessage.store": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                ticket: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReplyToTicketRequest"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        success: boolean;
+                        message: string;
+                        data: components["schemas"]["TicketMessageResource"];
                         errors: null;
                     };
                 };
@@ -4081,6 +4497,267 @@ export interface operations {
                         success: boolean;
                         message: string;
                         data: components["schemas"]["SubscriptionCheckoutResource"];
+                        errors: null;
+                    };
+                };
+            };
+            401: components["responses"]["AuthenticationException"];
+            422: components["responses"]["ValidationException"];
+        };
+    };
+    "ticket.index": {
+        parameters: {
+            query?: {
+                /**
+                 * @description Campos separados por vírgula. Prefixo "-" inverte pra desc. Permitidos: created_at, resolved_at.
+                 * @example -created_at
+                 */
+                sort?: string;
+                /**
+                 * @description Filtro exato por status.
+                 * @example open
+                 */
+                "filter[status]"?: string;
+                /**
+                 * @description Data mínima de abertura (YYYY-MM-DD).
+                 * @example 2026-09-01
+                 */
+                "filter[created_from]"?: string;
+                /**
+                 * @description Data máxima de abertura (YYYY-MM-DD).
+                 * @example 2026-09-30
+                 */
+                "filter[created_to]"?: string;
+                /**
+                 * @description Data mínima de resolução (YYYY-MM-DD).
+                 * @example 2026-09-01
+                 */
+                "filter[resolved_from]"?: string;
+                /**
+                 * @description Data máxima de resolução (YYYY-MM-DD).
+                 * @example 2026-09-30
+                 */
+                "filter[resolved_to]"?: string;
+                /**
+                 * @description Tamanho de página, teto em 100.
+                 * @example 15
+                 */
+                per_page?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        success: boolean;
+                        message: string;
+                        data: {
+                            items: components["schemas"]["TicketResource"][];
+                            meta: {
+                                current_page: number;
+                                per_page: number;
+                                total: number;
+                            };
+                        };
+                        errors: null;
+                    };
+                };
+            };
+            401: components["responses"]["AuthenticationException"];
+        };
+    };
+    "ticket.store": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateTicketRequest"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        success: boolean;
+                        message: string;
+                        data: components["schemas"]["TicketResource"];
+                        errors: null;
+                    };
+                };
+            };
+            401: components["responses"]["AuthenticationException"];
+            422: components["responses"]["ValidationException"];
+        };
+    };
+    "ticket.show": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                ticket: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        success: boolean;
+                        message: string;
+                        data: components["schemas"]["TicketResource"];
+                        errors: null;
+                    };
+                };
+            };
+            401: components["responses"]["AuthenticationException"];
+        };
+    };
+    "ticket.resolve": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                ticket: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        success: boolean;
+                        message: string;
+                        data: components["schemas"]["TicketResource"];
+                        errors: null;
+                    };
+                };
+            };
+            401: components["responses"]["AuthenticationException"];
+        };
+    };
+    "ticket.dispute": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                ticket: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DisputeTicketRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        success: boolean;
+                        message: string;
+                        data: components["schemas"]["TicketResource"];
+                        errors: null;
+                    };
+                };
+            };
+            401: components["responses"]["AuthenticationException"];
+            422: components["responses"]["ValidationException"];
+        };
+    };
+    "ticketMessage.index": {
+        parameters: {
+            query?: {
+                /**
+                 * @description Campos separados por vírgula. Prefixo "-" inverte pra desc. Permitido: created_at.
+                 * @example created_at
+                 */
+                sort?: string;
+                /**
+                 * @description Tamanho de página, teto em 100.
+                 * @example 15
+                 */
+                per_page?: number;
+            };
+            header?: never;
+            path: {
+                ticket: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        success: boolean;
+                        message: string;
+                        data: {
+                            items: components["schemas"]["TicketMessageResource"][];
+                            meta: {
+                                current_page: number;
+                                per_page: number;
+                                total: number;
+                            };
+                        };
+                        errors: null;
+                    };
+                };
+            };
+            401: components["responses"]["AuthenticationException"];
+        };
+    };
+    "ticketMessage.store": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                ticket: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReplyToTicketRequest"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        success: boolean;
+                        message: string;
+                        data: components["schemas"]["TicketMessageResource"];
                         errors: null;
                     };
                 };

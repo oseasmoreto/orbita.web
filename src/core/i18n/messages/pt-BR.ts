@@ -70,6 +70,42 @@ export default {
         limitsFormat: '{products} produtos · {marketplaces} marketplaces',
         title: 'Planos',
       },
+      subscriptions: {
+        columns: {
+          cancelAtPeriodEnd: 'Cancelamento agendado',
+          createdAt: 'Criado em',
+          endDate: 'Válido até',
+          plan: 'Plano',
+          startDate: 'Assinante desde',
+          status: 'Status',
+          user: 'Usuário',
+        },
+        editButton: 'Editar',
+        editModal: {
+          fields: {
+            endDate: 'Válido até',
+            status: 'Status',
+          },
+          title: 'Editar assinatura',
+        },
+        empty: 'Nenhuma assinatura encontrada.',
+        error: 'Não foi possível carregar as assinaturas agora.',
+        title: 'Assinaturas',
+        updateSuccess: 'Assinatura atualizada com sucesso.',
+      },
+      transactions: {
+        columns: {
+          createdAt: 'Data',
+          gateway: 'Gateway',
+          paymentMethod: 'Forma de pagamento',
+          status: 'Status',
+          user: 'Usuário',
+          value: 'Valor',
+        },
+        empty: 'Nenhuma transação encontrada.',
+        error: 'Não foi possível carregar as transações agora.',
+        title: 'Transações',
+      },
     },
     billingCycleFilter: {
       monthly: 'Mensal',
@@ -309,6 +345,7 @@ export default {
       hidePassword: 'Ocultar senha',
       logout: 'Sair',
       save: 'Salvar',
+      send: 'Enviar',
       showPassword: 'Mostrar senha',
       sort: 'Ordenar',
       unfavorite: 'Remover dos favoritos',
@@ -457,6 +494,7 @@ export default {
   errorMessageServer: 'Ocorreu um erro no servidor. Tente novamente em instantes.',
   errorMessageSubscriptionAlreadyActive: 'Você já tem uma assinatura ativa.',
   errorMessageSubscriptionNotActive: 'Sua assinatura não está ativa no momento.',
+  errorMessageTicketNotResolved: 'Só é possível disputar um chamado que já foi resolvido.',
   errorMessageTooManyRequests: 'Muitas tentativas. Aguarde um momento e tente de novo.',
   errorMessageTrialNotEligible: 'O plano de teste grátis é só para quem ainda não assinou antes.',
   errorMessageUnauthorized: 'Sua sessão expirou. Faça login novamente.',
@@ -760,9 +798,11 @@ export default {
   notificationMessageAdminAnnouncement: 'Um administrador enviou um aviso.',
   notificationMessageImpersonationStarted: 'Um administrador começou a acessar sua conta.',
   notificationMessageSubscriptionActivated: 'Sua assinatura foi ativada com sucesso.',
+  notificationMessageTicketOpened: 'Um usuário abriu um novo chamado de suporte.',
   notificationTitleAdminAnnouncement: 'Aviso do administrador',
   notificationTitleImpersonationStarted: 'Acesso administrativo iniciado',
   notificationTitleSubscriptionActivated: 'Assinatura ativada',
+  notificationTitleTicketOpened: 'Novo chamado de suporte',
   platform: {
     admin: {
       auditLogs: {
@@ -826,6 +866,7 @@ export default {
           admin_announcement: 'Aviso do admin',
           impersonation_started: 'Impersonation iniciada',
           subscription_activated: 'Assinatura ativada',
+          ticket_opened: 'Chamado aberto',
         },
       },
       settings: {
@@ -1047,6 +1088,7 @@ export default {
       adminPlatformGroup: 'Plataforma',
       adminSettings: 'Configurações',
       adminSubscriptions: 'Assinaturas',
+      adminTickets: 'Chamados',
       adminTransactions: 'Transações',
       adminUsers: 'Contas de usuário',
       adminUsersGroup: 'Usuários',
@@ -1056,12 +1098,67 @@ export default {
       invoices: 'Faturas',
       marketplaces: 'Marketplaces',
       myPlan: 'Meu plano',
+      myTickets: 'Meus chamados',
       products: 'Produtos',
       salesChannels: 'Canais de venda',
       subscription: 'Assinatura',
+      support: 'Suporte',
     },
     noFavorites: 'Nenhum favorito ainda.',
     noRecent: 'Nenhuma página visitada ainda.',
     recentTab: 'Recentes',
+  },
+  support: {
+    admin: {
+      tickets: {
+        columns: {
+          user: 'Usuário',
+        },
+        empty: 'Nenhum chamado encontrado.',
+        error: 'Não foi possível carregar os chamados agora.',
+        thread: {
+          openedBy: 'Aberto por {name}',
+        },
+        title: 'Chamados',
+      },
+    },
+    tickets: {
+      columns: {
+        createdAt: 'Aberto em',
+        resolvedAt: 'Resolvido em',
+        status: 'Status',
+        subject: 'Assunto',
+      },
+      createButton: 'Novo chamado',
+      empty: 'Você ainda não abriu nenhum chamado.',
+      error: 'Não foi possível carregar seus chamados agora.',
+      form: {
+        createSuccess: 'Chamado aberto com sucesso.',
+        createTitle: 'Novo chamado',
+        errors: {
+          messageRequired: 'Descreva o problema ou dúvida.',
+          subjectMax: 'Assunto muito longo — use até 255 caracteres.',
+          subjectRequired: 'Assunto é obrigatório.',
+        },
+        fields: {
+          message: 'Mensagem',
+          subject: 'Assunto',
+        },
+        submit: 'Abrir chamado',
+      },
+      status: {
+        open: 'Aberto',
+        resolved: 'Resolvido',
+      },
+      thread: {
+        disputeSuccess: 'Chamado reaberto — sua mensagem foi registrada.',
+        reopenNotice: 'Enviar uma mensagem vai reabrir este chamado.',
+        replyPlaceholder: 'Digite sua mensagem...',
+        resolveButton: 'Marcar como resolvido',
+        resolveSuccess: 'Chamado marcado como resolvido.',
+        title: 'Chamado',
+      },
+      title: 'Meus chamados',
+    },
   },
 } as const

@@ -1,4 +1,5 @@
 import type { components } from '@/core/api/schema'
+import { type AdminUser, toAdminUser } from '@/core/types/adminUser.type'
 
 export type TransactionStatus = components['schemas']['TransactionStatus']
 
@@ -48,6 +49,43 @@ export function toTransaction(resource: components['schemas']['TransactionResour
     paymentMethod: resource.payment_method,
     status: resource.status,
     subscriptionId: resource.subscription_id,
+    value: resource.value,
+  }
+}
+
+/**
+ * Tipo de domínio em cima de `AdminTransactionResource` (Fase 7, admin —
+ * "ver TODAS as transações de todos os usuários", `GET
+ * /admin/transactions`, read-only: `AdminTransactionController` só tem
+ * `index`/`show`). `user` (`AdminUser` completo) — pedido pra sessão de
+ * backend em 2026-09-01, resolvido no MESMO dia, mesmo padrão de
+ * `AdminSubscription` (`subscription.type.ts`)/`AdminAuditLogResource`.
+ * `userId` continua no tipo por completude 1:1, a UI usa `user.name`.
+ */
+export interface AdminTransaction {
+  createdAt: string | null
+  gateway: string
+  id: string
+  paymentMethod: string
+  status: TransactionStatus
+  subscriptionId: string | null
+  user: AdminUser
+  userId: string
+  value: string
+}
+
+export function toAdminTransaction(
+  resource: components['schemas']['AdminTransactionResource'],
+): AdminTransaction {
+  return {
+    createdAt: resource.created_at,
+    gateway: resource.gateway,
+    id: resource.id,
+    paymentMethod: resource.payment_method,
+    status: resource.status,
+    subscriptionId: resource.subscription_id,
+    user: toAdminUser(resource.user),
+    userId: resource.user_id,
     value: resource.value,
   }
 }

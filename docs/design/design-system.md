@@ -604,6 +604,46 @@ cada form já é a fonte de verdade real pra inteiro-vs-decimal
 (`.int()` quando faz sentido), o `step` do HTML nunca deveria ser mais
 restritivo que isso.
 
+### Textarea (`shared/components/ui/Textarea.vue`)
+
+**Pedido direto pelo usuário em 2026-09-01** ("crie um componente de
+textarea pq esses inputs tao paia pra texto grande") — até então
+qualquer campo de texto livre mais longo (mensagem de chamado, resposta
+de thread — `modules/support/`) usava `Input.vue`, sempre uma linha só.
+Sem frame próprio no Figma pra "Textarea" — mesmo tratamento visual de
+Input-A/B (padding/borda/fundo/`{rounded.8}`, variante `label` "boxed"),
+só trocando `<input>` por `<textarea>`.
+
+- **Auto-grow, sem alça de resize manual** (`resize: none` no CSS) —
+  cresce junto com o conteúdo (`el.style.height` recalculado a cada
+  `input`, via `scrollHeight`) até `maxRows` (prop, default 8), depois
+  rola internamente (`max-height: calc(maxRows * 1.5 * font-size)`,
+  `overflow-y: auto`). Prop `rows` (default 3) é só a altura INICIAL,
+  antes de qualquer digitação — `useTemplateRef` (Vue 3.5+, mesma versão
+  já usada no projeto) em vez do padrão antigo de função-ref, mais
+  simples de tipar.
+- **Sem prop de "enviar com Enter"** — decisão de propósito: isso é
+  comportamento de CONSUMIDOR (faz sentido pro composer de um chat,
+  nunca pra um campo de formulário comum como "Mensagem" na abertura de
+  chamado), não do átomo. Quem quiser esse comportamento usa
+  `@keydown.enter.exact.prevent="handler()"` no consumidor — o
+  `.exact` garante que só Enter puro dispara, Shift+Enter continua
+  inserindo quebra de linha normalmente (evento de teclado bubbla do
+  `<textarea>` interno pro wrapper, onde o listener herdado por
+  fallthrough de atributos do Vue já pega — mesmo mecanismo que
+  `@keyup.enter` em `Input.vue` já usava noutras telas).
+- **Sem `iconBefore`** (diferente de `Input.vue`) — nenhum consumidor
+  real pediu ícone dentro de uma área de texto multi-linha; adicionar
+  isso sem caso de uso seria abstração antecipada.
+- Consumidores reais: `CreateTicketForm.vue` (campo "Mensagem", `rows=5`)
+  e o composer das 2 threads de chamado (`TicketThreadPanel.vue`/
+  `AdminTicketThreadPanel.vue`, `rows=1` — cresce a partir de uma linha
+  só, como um composer de chat de verdade).
+- Verificado em browser real: `scrollHeight` cresce de ~40px (1 linha)
+  pra >100px depois de 3 linhas de texto digitadas, sem alça de resize
+  visível; `Shift+Enter` insere quebra de linha sem disparar envio,
+  `Enter` puro envia e limpa o campo.
+
 ### Checkbox (`shared/components/ui/Checkbox.vue`)
 
 Construído sobre `CheckboxRoot` da Reka UI. **Os ícones de estado são os
@@ -3337,6 +3377,72 @@ admin: `AdminTransactionController` só tem `index`/`show`).
   `StatusDot` na cor certa (verde/amarelo), paginação aparece mesmo com
   só 1 página (mesmo comportamento já esperado de `PaginationNav`).
 
+### AdminSubscriptionsView / OverrideSubscriptionModal (`modules/billing/`)
+
+**Fase 7, 2026-09-01** — "Assinaturas" (admin): "ver TODAS as assinaturas
+de todos os usuários" (`GET /admin/subscriptions`,
+`AdminSubscriptionController`), pedido direto do usuário ("crie uma
+fase 7 com a parte financeira, assinaturas e transações e implemente").
+Mesma forma geral de `AdminMarketplacesView.vue`
+(`useResourceList`/`DataTable`/`PaginationNav`+`ListToolbar`), mas **sem
+`useCrudDrawer`**: não existe criar/excluir assinatura pelo admin
+(`AdminSubscriptionController` só tem `index`/`show`/`update`) — só
+`OverrideSubscriptionModal.vue` (`Modal`, 2 campos: `status`/`end_date`)
+pra correção manual de suporte via `OverrideSubscriptionAction`, mesma
+categoria de `EditUserRoleModal.vue`/`useUpdateUserRoleForm.ts`
+(bespoke, fora do `useResourceForm` — não é o par create/update que ele
+modela).
+
+- **`user`/`plan` embutidos desde o início** — diferente do achado real
+  de `AdminAuditLogResource` (descoberto DEPOIS de construir a tela),
+  aqui o gap foi reportado pra sessão de backend ANTES de escrever a UI
+  (mesmo padrão já visto no mesmo dia, aplicado proativamente): `GET
+  /admin/subscriptions` nunca chegou a expor `user_id` cru pra esta
+  tela, resolvido em minutos. `AdminSubscription` (`subscription.type.ts`)
+  ganhou `user: AdminUser` — 3º consumidor real de `AdminUser`
+  (`core/types/adminUser.type.ts`, depois de Identity e Platform).
+- **Filtro de `status`** (`ListToolbar` `#filters`, `Select`, sentinel
+  `'all'`) — reaproveita as mesmas chaves i18n de
+  `billing.mySubscription.status.*` (tela "Meu plano" do próprio
+  usuário), sem duplicar tradução. Sem filtro por `user_id`/`plan_id` —
+  a API aceita, mas exigiriam um seletor de busca por texto que não
+  existe pra usuário/plano ainda.
+- **`OverrideSubscriptionModal.vue`**: `status` via `Select` (5 valores
+  de `SubscriptionStatus`), `end_date` via `DatePicker.vue` (`v-model`
+  de string ISO, `''` = sem data) — convertido pra `null` só na hora do
+  payload, já que `end_date` é `nullable` de propósito no backend
+  (decisão P11: admin pode limpar a data pra reverter a assinatura pra
+  indeterminada). Sempre manda os 2 campos explícitos no `PATCH` (nunca
+  omite pra "não mudar") — mais simples que replicar a lógica de
+  `sometimes` do backend num form que já mostra o valor atual
+  pré-preenchido.
+- Verificado em browser real contra o backend local: tabela mostra nome
+  de usuário/plano reais (não UUID), editar uma assinatura (trocar
+  status "Ativa" → "Cancelada" no modal) dispara o `PATCH` real e a
+  linha atualiza sem reload, filtro de status funciona.
+
+### AdminTransactionsView (`modules/billing/views/AdminTransactionsView.vue`)
+
+**Fase 7, 2026-09-01** — "Transações" (admin), read-only
+(`AdminTransactionController` só tem `index`/`show` — registro
+financeiro imutável, mesma regra do `TransactionController` do próprio
+usuário). Mesma forma de `TransactionsView.vue` + `ListToolbar` com
+filtro de `status` (todos os 9 valores de `TransactionStatus`,
+reaproveitando `billing.transactions.status.*` já existente, sem
+duplicar tradução).
+
+- **Sem filtro de `gateway`** — hoje só existe 1 gateway integrado
+  (Mercado Pago, `docs/infra/convencoes-frontend-infra.md` seção 15.1);
+  um `Select` sem segunda opção real pra escolher não vale a pena,
+  mesma régua de "sem dimensão real pra oferecer" já usada noutros
+  lugares do design system (ex.: busca de Marketplace/`Product`). O
+  service (`listAdminTransactions`) já aceita o param — mapeamento
+  1:1 com o `QueryParameter` real do controller, só sem UI.
+- **`user` embutido desde o início**, mesmo caso de `AdminSubscription`
+  acima — reportado pra sessão de backend antes de construir a tela.
+- Verificado em browser real: tabela mostra nome de usuário real, valor
+  formatado (`formatMoney`), `StatusDot` na cor certa.
+
 ### AccountView (`modules/identity/views/AccountView.vue`)
 
 Fecha a última pendência real da Fase 1 — escopo direto de
@@ -3872,6 +3978,119 @@ chave-valor), mesma forma exata de `AdminPlansView.vue`.
 - `type` é um `Select` com as 7 opções reais de `SettingType`
   (int/string/enum/text/json/bool/float) — `value` continua sempre
   `string` (é assim que a API guarda, independente do `type` declarado).
+
+### TicketMessageList / TicketThreadPanel / AdminTicketThreadPanel (`modules/support/`)
+
+**Fase 8, 2026-09-01** — Bounded Context novo (Support), pedido direto
+do usuário depois de avisado por mensagem cross-session da sessão de
+backend responsável. **Layout alinhado ANTES de codar**, também pedido
+direto do usuário ("vamos repassar o layout antes"): examinei 2 seções
+(Meetings/Chats) de um Figma de referência (`AiDEA – Smart SaaS
+Dashboard UI Kit — Community`, `node-id=17261-105108`), com a instrução
+explícita "esse arquivo é só pra estrutura, DS mantemos o nosso" — os 3
+componentes abaixo usam só os TOKENS do Orbita (`{colors.bg-2}`/
+`{colors.primary}`/`{colors.paper}`/`{radius.16}`), nunca cor/espaçamento
+do Figma de origem, só o ESQUELETO (2 painéis: lista + conversa,
+mensagens em bolha alinhada por remetente) copiado do frame "Chats".
+
+- **Proposta inicial rejeitada, decisão registrada**: cogitei o frame
+  "Meetings" (cards agrupados por seção: Live/Upcoming/Past) como
+  listagem principal — usuário perguntou "ou nada a ver?", o que reabriu
+  a discussão. Argumento final: Meetings quebraria o padrão
+  `DataTable`+`ListToolbar` já usado em 9 outras telas do projeto E não
+  modela o conceito de thread/conversa (os cards são ponto de entrada
+  pra uma call, não pra um histórico de mensagens) — usaria Meetings só
+  como referência secundária pra um widget de resumo no dashboard
+  (não implementado nesta rodada). Listagem ficou em `DataTable` normal
+  (`TicketsView.vue`/`AdminTicketsView.vue`), só o DETALHE (dentro de um
+  `Drawer`) reaproveita a estrutura 2-painéis do Chats.
+- **`TicketMessageList.vue`** (bloco puramente de apresentação, sem
+  regra de negócio) — bolha alinhada à direita (`{colors.primary}` de
+  fundo, texto `{colors.paper}`) quando `message.userId === currentUserId`
+  (mensagem própria), à esquerda (`{colors.bg-2}` de fundo, texto
+  `{colors.ink}`) quando é de outra pessoa — mesmo padrão visual do
+  frame "Chats" (bolha própria escura à direita, bolha da outra pessoa
+  clara à esquerda). `Avatar` + nome do autor acima da bolha,
+  `formatRelativeTime` (`shared/services/formatDate.ts`, já existia da
+  Fase 5/`NotificationItem`) no timestamp — leitura de "há poucos
+  segundos"/"há 2 minutos" é o padrão certo pra thread de conversa,
+  diferente da data formatada (`DD/MM/YYYY`) usada nas colunas de
+  `DataTable`. Reaproveitado pelos 2 painéis (usuário e admin) — 2º
+  consumidor real que justificou ficar em `components/blocks/` (mesmo
+  critério de promoção do resto do projeto).
+- **`TicketThreadPanel.vue`** (usuário) — cabeçalho com assunto +
+  `StatusDot` de status + botão "Marcar como resolvido" (só quando
+  `open`), corpo = `TicketMessageList`, rodapé = composer (`Input` +
+  `Button` `icon-before="PaperPlaneTilt"`). Quando o chamado já está
+  `resolved`, um aviso aparece acima do composer ("Enviar uma mensagem
+  vai reabrir este chamado") — a UI não tem um botão "Disputar"
+  separado, é o MESMO campo de resposta que decide sozinho (ver achado
+  de negócio no `plano-implementacao.md`, Fase 8).
+- **`AdminTicketThreadPanel.vue`** — mesma estrutura, 2 diferenças reais:
+  mostra "Aberto por {nome}" (já que aqui não é sempre o próprio ator) e
+  nunca tem o aviso de reabertura (responder um chamado resolvido nunca
+  reabre do lado do admin).
+- Verificado em browser real, fluxo completo ponta a ponta (usuário abre
+  → admin responde e resolve → usuário reabre respondendo, toast
+  "Chamado reaberto — sua mensagem foi registrada", status volta pra
+  "Aberto" automaticamente): bolhas alinhadas corretamente nos 2 lados
+  pros 2 atores, avatar/nome/timestamp corretos, `StatusDot` trocando de
+  cor (amarelo↔verde) em tempo real sem reload.
+
+**Correção pixel-perfect, mesmo dia — "cadê o pixel perfect?", pedido
+direto do usuário comparando lado a lado com as capturas reais do frame
+"Chats"** — a primeira versão só tinha copiado a bolha de mensagem
+alinhada por remetente, deixando pra trás 2 diferenças estruturais reais
+da referência:
+
+- **Sem separador de data** — a referência tem um divisor "Today" antes
+  das mensagens do dia; a v1 não tinha nenhum agrupamento por data.
+  Corrigido em `TicketMessageList.vue`: `computed` agrupa as mensagens
+  por dia (`dayjs().isSame(..., 'day')`), rótulo "Hoje"/"Ontem"/
+  `D de mês` (dayjs, locale pt-BR já registrada em
+  `formatDate.ts`), divisor com linha `{colors.ink-10}` dos dois lados
+  do texto (`::before`/`::after`, `flex: 1`).
+- **Composer era `Input` + `Button` soltos lado a lado, não uma barra
+  única** — a referência mostra o campo de digitação e o botão de
+  enviar como UMA forma arredondada só, não 2 elementos separados com
+  espaço entre eles. Corrigido envolvendo os 2 numa barra própria
+  (`.ticket-thread-panel__composer-bar`/`.admin-ticket-thread-panel__composer-bar`,
+  `{colors.bg-1}` + borda `{colors.ink-10}` + `{radius.16}`), com o
+  `Textarea` (ver seção própria, também pedida na mesma rodada) cedendo
+  a própria borda/fundo pra essa barra assumir — mesma técnica de
+  `.ui-toolbar__filters :deep(.ui-select-wrapper)` já usada no
+  `ListToolbar.vue`. O botão de enviar continua com o próprio
+  `{radius.8}` (não pill) dentro da barra maior — padrão comum de barra
+  arredondada com controle menor dentro, sem inventar uma 2ª escala de
+  raio só pra isso.
+- **Trocado `Input` (1 linha) por `Textarea` no composer** (`rows=1`,
+  cresce até `maxRows=6`) — resolve os 2 pedidos na mesma rodada: o
+  composer de chat de verdade cresce com o texto, e o `Enter` puro
+  envia (`@keydown.enter.exact.prevent`) enquanto `Shift+Enter` insere
+  quebra de linha, sem precisar de nenhuma prop nova no átomo (decisão
+  já registrada na seção `Textarea` acima).
+- **O que ficou de propósito diferente da referência**: o painel de
+  chamado continua dentro de um `Drawer` sobre a listagem em
+  `DataTable` (não os 2 painéis lado a lado, sempre visíveis, como o
+  Chats de verdade) — mudança de arquitetura maior, não cosmética;
+  registrada como pergunta em aberto pro usuário, não assumida
+  silenciosamente.
+- Reverificado em browser real: `scrollHeight` do `Textarea` do
+  composer cresce de ~40px pra >100px com texto de 3 linhas; `Shift+Enter`
+  insere quebra sem enviar, `Enter` puro envia e limpa o campo; divisor
+  "Hoje" aparece acima do primeiro grupo de mensagens do dia.
+
+**Achado real, notificação `ticket_opened` sem tradução** — o painel do
+sino (`NotificationPanel.vue`, Fase 5) mostrava a chave crua
+`notificationTitleTicketOpened` em vez de texto, porque o catálogo
+`pt-BR.ts` não tinha essa entrada ainda (mesmo mecanismo de "chave
+desconhecida cai pro texto literal" já documentado — `useApiMessage`).
+Corrigido adicionando `notificationTitleTicketOpened`/
+`notificationMessageTicketOpened` ao catálogo flat, conferidas 1:1
+contra `NotificationMessageKey::TicketOpenedTitle`/`TicketOpenedMessage`
+do backend — pego durante a própria verificação em browser real (o
+roteiro incluiu abrir o sino do admin depois de criar um chamado), não
+depois de reportar como pronto.
 
 ## Do's and Don'ts
 

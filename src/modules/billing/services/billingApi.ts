@@ -9,12 +9,19 @@ import {
   toPlan,
 } from '../types/plan.type'
 import {
+  type AdminSubscription,
   type Subscription,
   type SubscriptionCheckout,
+  toAdminSubscription,
   toSubscription,
   toSubscriptionCheckout,
 } from '../types/subscription.type'
-import { type Transaction, toTransaction } from '../types/transaction.type'
+import {
+  type AdminTransaction,
+  type Transaction,
+  toAdminTransaction,
+  toTransaction,
+} from '../types/transaction.type'
 
 type PlanResource = components['schemas']['PlanResource']
 type AdminPlanResource = components['schemas']['AdminPlanResource']
@@ -24,6 +31,9 @@ type SubscribeToPlanRequest = components['schemas']['SubscribeToPlanRequest']
 type ChangeSubscriptionPlanRequest = components['schemas']['ChangeSubscriptionPlanRequest']
 type SubscriptionResource = components['schemas']['SubscriptionResource']
 type TransactionResource = components['schemas']['TransactionResource']
+type AdminSubscriptionResource = components['schemas']['AdminSubscriptionResource']
+type AdminTransactionResource = components['schemas']['AdminTransactionResource']
+type OverrideSubscriptionRequest = components['schemas']['OverrideSubscriptionRequest']
 
 interface PlansEnvelope {
   items: PlanResource[]
@@ -42,6 +52,16 @@ interface SubscriptionsEnvelope {
 
 interface TransactionsEnvelope {
   items: TransactionResource[]
+  meta: { current_page: number; per_page: number; total: number }
+}
+
+interface AdminSubscriptionsEnvelope {
+  items: AdminSubscriptionResource[]
+  meta: { current_page: number; per_page: number; total: number }
+}
+
+interface AdminTransactionsEnvelope {
+  items: AdminTransactionResource[]
   meta: { current_page: number; per_page: number; total: number }
 }
 
@@ -221,4 +241,77 @@ export async function listTransactions(
     items: data.data.items.map(toTransaction),
     meta: data.data.meta,
   }
+}
+
+// ---------------------------------------------------------------------------
+// ADMIN SUBSCRIPTION/TRANSACTION — Fase 7 (Financeiro), "ver TODAS as
+// assinaturas/transações de todos os usuários", restrito a `admin_master`.
+// Assinatura é editável (`OverrideSubscriptionAction` — só `status`/
+// `end_date`, correção manual de suporte); transação é sempre read-only
+// (`AdminTransactionController` só tem `index`/`show`, registro
+// financeiro imutável, mesma regra já vale pro `TransactionController`
+// do próprio usuário).
+// ---------------------------------------------------------------------------
+
+export interface ListAdminSubscriptionsParams {
+  page?: number
+  perPage?: number
+  sort?: string
+  status?: string
+}
+
+export async function listAdminSubscriptions(
+  params: ListAdminSubscriptionsParams = {},
+): Promise<Paginated<AdminSubscription>> {
+  const { data } = await apiClient.get<ApiResponse<AdminSubscriptionsEnvelope>>(
+    '/admin/subscriptions',
+    {
+      params: {
+        'filter[status]': params.status,
+        page: params.page,
+        per_page: params.perPage,
+        sort: params.sort,
+      },
+    },
+  )
+
+  return { items: data.data.items.map(toAdminSubscription), meta: data.data.meta }
+}
+
+export async function updateAdminSubscription(
+  id: string,
+  payload: OverrideSubscriptionRequest,
+): Promise<AdminSubscription> {
+  const { data } = await apiClient.patch<ApiResponse<AdminSubscriptionResource>>(
+    `/admin/subscriptions/${id}`,
+    payload,
+  )
+  return toAdminSubscription(data.data)
+}
+
+export interface ListAdminTransactionsParams {
+  gateway?: string
+  page?: number
+  perPage?: number
+  sort?: string
+  status?: string
+}
+
+export async function listAdminTransactions(
+  params: ListAdminTransactionsParams = {},
+): Promise<Paginated<AdminTransaction>> {
+  const { data } = await apiClient.get<ApiResponse<AdminTransactionsEnvelope>>(
+    '/admin/transactions',
+    {
+      params: {
+        'filter[gateway]': params.gateway,
+        'filter[status]': params.status,
+        page: params.page,
+        per_page: params.perPage,
+        sort: params.sort,
+      },
+    },
+  )
+
+  return { items: data.data.items.map(toAdminTransaction), meta: data.data.meta }
 }

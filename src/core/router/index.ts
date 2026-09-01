@@ -5,6 +5,7 @@ import { catalogRoutes } from '@/modules/catalog/routes'
 import { identityAppRoutes, identityRoutes } from '@/modules/identity/routes'
 import { platformRoutes } from '@/modules/platform/routes'
 import { pricingRoutes } from '@/modules/pricing/routes'
+import { supportRoutes } from '@/modules/support/routes'
 import { setupRouterGuards } from './guards'
 
 const routes: RouteRecordRaw[] = [
@@ -27,6 +28,7 @@ const routes: RouteRecordRaw[] = [
       ...billingAppRoutes,
       ...pricingRoutes,
       ...platformRoutes,
+      ...supportRoutes,
     ],
     component: AppLayout,
     meta: { requiresAuth: true },

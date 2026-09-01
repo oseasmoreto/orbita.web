@@ -95,4 +95,23 @@ export const billingAppRoutes: RouteRecordRaw[] = [
     name: 'admin-plans',
     path: 'admin/plans',
   },
+  {
+    // Fase 7 — Financeiro (`docs/planejamento/plano-implementacao.md`,
+    // "crie uma fase 7 com a parte financeira, assinaturas e transações",
+    // pedido direto do usuário em 2026-09-01). "Ver TODAS as assinaturas
+    // de todos os usuários" — editável (`status`/`end_date`, correção
+    // manual de suporte via `OverrideSubscriptionAction`).
+    component: () => import('./views/AdminSubscriptionsView.vue'),
+    meta: { roles: ['admin_master'], title: 'billing.admin.subscriptions.title' },
+    name: 'admin-subscriptions',
+    path: 'admin/subscriptions',
+  },
+  {
+    // Idem, read-only (`AdminTransactionController` só tem `index`/`show`
+    // — registro financeiro imutável).
+    component: () => import('./views/AdminTransactionsView.vue'),
+    meta: { roles: ['admin_master'], title: 'billing.admin.transactions.title' },
+    name: 'admin-transactions',
+    path: 'admin/transactions',
+  },
 ]
