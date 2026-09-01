@@ -1,7 +1,8 @@
 import { isAxiosError } from 'axios'
 import { apiClient } from '@/core/api/client'
 import type { components } from '@/core/api/schema'
-import type { ApiResponse } from '@/shared/types/api.type'
+import { type AdminUser, toAdminUser } from '@/core/types/adminUser.type'
+import type { ApiResponse, Paginated } from '@/shared/types/api.type'
 import { type SsoAccount, type SsoProvider, toSsoAccount } from '../types/ssoAccount.type'
 
 type LoginRequest = components['schemas']['LoginRequest']
@@ -12,6 +13,14 @@ type RequestPasswordResetRequest = components['schemas']['RequestPasswordResetRe
 type ResetPasswordRequest = components['schemas']['ResetPasswordRequest']
 type UpdateUserProfileRequest = components['schemas']['UpdateUserProfileRequest']
 type SsoAccountResource = components['schemas']['SsoAccountResource']
+type AdminUserResource = components['schemas']['AdminUserResource']
+type CreateUserByAdminRequest = components['schemas']['CreateUserByAdminRequest']
+type UpdateUserByAdminRequest = components['schemas']['UpdateUserByAdminRequest']
+
+interface AdminUsersEnvelope {
+  items: AdminUserResource[]
+  meta: { current_page: number; per_page: number; total: number }
+}
 
 /**
  * `GET /auth/login` real (`core/api/schema.d.ts`, `login.store`) tem uma
@@ -206,4 +215,87 @@ export function buildSsoRedirectUrl(provider: SsoProvider): string {
 export function buildSsoCallbackUrl(provider: SsoProvider): string {
   const apiBaseUrl: string = import.meta.env.VITE_API_BASE_URL
   return `${apiBaseUrl}/auth/sso/${provider}/callback`
+}
+
+// ---------------------------------------------------------------------------
+// ADMIN USER — CRUD + impersonation (`/admin/users`), restrito a
+// `admin_master` (Fase 6).
+// ---------------------------------------------------------------------------
+
+export interface ListAdminUsersParams {
+  page?: number
+  perPage?: number
+  role?: string
+  sort?: string
+  status?: string
+}
+
+export async function listAdminUsers(
+  params: ListAdminUsersParams = {},
+): Promise<Paginated<AdminUser>> {
+  const { data } = await apiClient.get<ApiResponse<AdminUsersEnvelope>>('/admin/users', {
+    params: {
+      'filter[role]': params.role,
+      'filter[status]': params.status,
+      page: params.page,
+      per_page: params.perPage,
+      sort: params.sort,
+    },
+  })
+
+  return { items: data.data.items.map(toAdminUser), meta: data.data.meta }
+}
+
+export async function createAdminUser(payload: CreateUserByAdminRequest): Promise<AdminUser> {
+  const { data } = await apiClient.post<ApiResponse<AdminUserResource>>('/admin/users', payload)
+  return toAdminUser(data.data)
+}
+
+/**
+ * `role`/`status` — os únicos 2 campos editáveis por aqui
+ * (`UpdateUserByAdminRequest`, `docs/negocio/contexto-plataforma-precificacao.md`
+ * seção 2.1) — nome/e-mail/senha são autoatendimento (`updateProfile()`
+ * acima), nunca editáveis pelo admin. Backend recusa
+ * (`errorMessageCannotModifyOwnAccount`) se o admin tentar editar a
+ * própria conta por aqui — `AdminUsersView.vue` já desabilita a ação
+ * antes disso pra própria linha, proativamente.
+ */
+export async function updateAdminUser(
+  id: string,
+  payload: UpdateUserByAdminRequest,
+): Promise<AdminUser> {
+  const { data } = await apiClient.patch<ApiResponse<AdminUserResource>>(
+    `/admin/users/${id}`,
+    payload,
+  )
+  return toAdminUser(data.data)
+}
+
+/**
+ * `POST /admin/users/{id}/impersonate` (`StartImpersonationAction`) troca
+ * a SESSÃO inteira pro usuário alvo — a resposta é o `UserResource` do
+ * alvo, mas quem realmente decide o que fazer com isso é
+ * `useImpersonation.ts` (refaz `/auth/me` via `refreshCurrentUser()`,
+ * nunca confia só neste retorno pra popular a store, que não tem
+ * `favorites`/`planLimits`/`impersonated_by`). Só usuários com role
+ * `user` podem ser impersonados (`CannotImpersonateAdminException`) —
+ * `AdminUsersView.vue` já esconde a ação pra linhas `admin_master`.
+ */
+export async function impersonateUser(userId: string): Promise<UserResource> {
+  const { data } = await apiClient.post<ApiResponse<UserResource>>(
+    `/admin/users/${userId}/impersonate`,
+  )
+  return data.data
+}
+
+/**
+ * `POST /auth/impersonation/stop` (`StopImpersonationAction`) — devolve a
+ * sessão pro admin original (`impersonator_id` guardado na Session do
+ * servidor desde o `impersonateUser()`). Mesmo raciocínio: o retorno aqui
+ * não é usado pra popular a store direto, `useImpersonation.ts` refaz
+ * `/auth/me`.
+ */
+export async function stopImpersonation(): Promise<UserResource> {
+  const { data } = await apiClient.post<ApiResponse<UserResource>>('/auth/impersonation/stop')
+  return data.data
 }

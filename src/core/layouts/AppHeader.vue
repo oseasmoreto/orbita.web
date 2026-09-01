@@ -51,6 +51,7 @@ import {
 } from '@/shared/components/icons/regular.generated'
 import Breadcrumb from '@/shared/components/ui/Breadcrumb.vue'
 import Icon from '@/shared/components/ui/Icon.vue'
+import { useNotificationStore } from '@/core/store/useNotificationStore'
 import { useTheme } from '@/shared/composables/useTheme'
 import { useAppShell } from './composables/useAppShell'
 import { useBreadcrumb } from './composables/useBreadcrumb'
@@ -60,8 +61,11 @@ const router = useRouter()
 const route = useRoute()
 const { items: breadcrumbItems } = useBreadcrumb()
 const { toggleTheme } = useTheme()
-const { hasUnreadNotifications, toggleDesktopSidebar, toggleMobileNav, toggleNotificationPanel } =
-  useAppShell()
+const { toggleDesktopSidebar, toggleMobileNav, toggleNotificationPanel } = useAppShell()
+// Nunca destructurar `state`/`getters` de uma store Pinia sem `storeToRefs`
+// (perderia a reatividade) — mesmo critério já usado em `useAuthStore` no
+// resto do projeto: guarda a instância, acessa por `.` no template.
+const notificationStore = useNotificationStore()
 const { isFavorite, toggleFavorite } = useFavorites()
 
 // `favoriteApi.ts`/`UserFavoriteResource` só guarda `route_name` (string),
@@ -176,7 +180,7 @@ function goBack(): void {
       >
         <Icon :icon="Bell" :size="20" />
         <span
-          v-if="hasUnreadNotifications"
+          v-if="notificationStore.hasUnread"
           :aria-label="$t('header.unreadNotifications')"
           class="app-header__unread-dot"
           role="status"

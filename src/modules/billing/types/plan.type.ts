@@ -1,6 +1,7 @@
 import type { components } from '@/core/api/schema'
 
 type PlanResource = components['schemas']['PlanResource']
+type AdminPlanResource = components['schemas']['AdminPlanResource']
 
 export type BillingCycle = components['schemas']['BillingCycle']
 
@@ -33,6 +34,33 @@ export interface Plan {
 export function toPlan(resource: PlanResource): Plan {
   return {
     billingCycle: resource.billing_cycle,
+    id: resource.id,
+    isTrial: resource.is_trial,
+    maxMarketplaces: resource.max_marketplaces,
+    maxProducts: resource.max_products,
+    name: resource.name,
+    price: resource.price,
+    trialDays: resource.trial_days,
+  }
+}
+
+/**
+ * Versão admin (`GET/POST/PATCH/DELETE /admin/plans`, Fase 6) — inclui
+ * `active`/`createdAt`, únicos campos que só o `admin_master` vê/gerencia
+ * (cadastro de plano é restrito ao admin) — mesmo par público/admin já
+ * usado em `Marketplace`/`AdminMarketplace` (`modules/pricing/types/marketplace.type.ts`).
+ */
+export interface AdminPlan extends Omit<Plan, 'id'> {
+  active: AdminPlanResource['active']
+  createdAt: AdminPlanResource['created_at']
+  id: AdminPlanResource['id']
+}
+
+export function toAdminPlan(resource: AdminPlanResource): AdminPlan {
+  return {
+    active: resource.active,
+    billingCycle: resource.billing_cycle,
+    createdAt: resource.created_at,
     id: resource.id,
     isTrial: resource.is_trial,
     maxMarketplaces: resource.max_marketplaces,

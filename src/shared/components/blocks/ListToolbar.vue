@@ -45,6 +45,26 @@
  * backend (`CreateProductAction`, continua sendo a trava real). Bloco
  * continua sem regra de negócio própria: só repassa o booleano já
  * decidido pelo consumidor pro `Button` interno.
+ *
+ * **`addable`/`searchable` + slot `#filters`, 2026-09-01** — pedido
+ * direto do usuário depois de notar que só `ProductsView.vue` tinha essa
+ * barra: os outros CRUDs (Marketplaces/Planos/Usuários/Notificações/
+ * Configurações/Auditoria, admin) caíram pra um header solto (`h1` +
+ * `Button`) porque a API deles não tem filtro de TEXTO livre (só
+ * enum/boolean — `active`/`role`/`status`/`type`/`billing_cycle`), e
+ * `Search` sempre renderizava mesmo sem nenhum campo real pra buscar.
+ * Em vez do bloco aprender sobre esses domínios (violaria "block nunca
+ * tem regra de negócio", seção 3.2 de `docs/infra/convencoes-frontend-infra.md`),
+ * ele ganhou 2 saídas genéricas: `searchable` (esconde `Search` por
+ * completo quando não há campo de texto real — mesmo espírito de
+ * `filterable`/`sortable`) e um slot `#filters`, onde cada view encaixa
+ * os próprios `Select`s de domínio (ex.: `role`/`status` em Usuários) —
+ * a decisão de quais opções existem continua 100% da view/composable,
+ * o bloco só reserva o espaço visual na mesma barra. `addable` (esconde
+ * o botão de criar por completo) cobre o caso de tela read-only
+ * (Auditoria) — sem isso, um `v-else` ghost "+" sem handler seria botão
+ * morto, a mesma regra que já motivou `filterable`/`sortable` virarem
+ * opt-out.
  */
 import { ArrowsDownUp, FunnelSimple, Plus } from '@/shared/components/icons/regular.generated'
 import Button from '../ui/Button.vue'
@@ -52,16 +72,20 @@ import Search from '../ui/Search.vue'
 
 withDefaults(
   defineProps<{
+    addable?: boolean
     addDisabled?: boolean
     addLabel?: string
     filterable?: boolean
+    searchable?: boolean
     searchPlaceholder?: string
     sortable?: boolean
   }>(),
   {
+    addable: true,
     addDisabled: false,
     addLabel: undefined,
     filterable: true,
+    searchable: true,
     searchPlaceholder: undefined,
     sortable: true,
   },
@@ -78,9 +102,9 @@ const search = defineModel<string>('search', { default: '' })
 
 <template>
   <div class="ui-toolbar">
-    <div class="ui-toolbar__actions">
+    <div v-if="addable || filterable || sortable" class="ui-toolbar__actions">
       <Button
-        v-if="addLabel"
+        v-if="addable && addLabel"
         :disabled="addDisabled"
         :icon-before="Plus"
         variant="primary"
@@ -89,7 +113,7 @@ const search = defineModel<string>('search', { default: '' })
         {{ addLabel }}
       </Button>
       <Button
-        v-else
+        v-else-if="addable"
         :aria-label="$t('common.actions.add')"
         :disabled="addDisabled"
         :icon-before="Plus"
@@ -111,7 +135,14 @@ const search = defineModel<string>('search', { default: '' })
         @click="emit('sort')"
       />
     </div>
-    <Search v-model="search" :placeholder="searchPlaceholder ?? $t('common.search.placeholder')" />
+    <div v-if="$slots.filters" class="ui-toolbar__filters">
+      <slot name="filters" />
+    </div>
+    <Search
+      v-if="searchable"
+      v-model="search"
+      :placeholder="searchPlaceholder ?? $t('common.search.placeholder')"
+    />
   </div>
 </template>
 
@@ -141,6 +172,29 @@ const search = defineModel<string>('search', { default: '' })
   flex-shrink: 0;
   align-items: center;
   gap: $spacing-8;
+}
+
+.ui-toolbar__filters {
+  display: flex;
+  flex-shrink: 0;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: $spacing-8;
+}
+
+// Achado real, reportado pelo usuário em 2026-09-01: `Select.vue` tem
+// `.ui-select-wrapper { width: 100% }` (correto dentro de um `FormGroup`,
+// onde o campo deve ocupar a largura toda) — mas herdado sem alteração
+// aqui, cada `Select` de filtro forçava `flex-basis` pra 100% do
+// container, fazendo o segundo `Select` (ex.: `type`+`status` em
+// `AdminNotificationsView.vue`) sempre quebrar linha mesmo sobrando
+// espaço. `Input`/`FormGroup` não têm o mesmo problema (`Input.vue` não
+// fixa `width: 100%` no próprio wrapper). Corrigido travando a largura
+// do `Select` só dentro do toolbar, mesma técnica já usada pro `Search`
+// logo abaixo.
+.ui-toolbar__filters :deep(.ui-select-wrapper) {
+  width: auto;
+  min-width: 160px;
 }
 
 .ui-toolbar :deep(.ui-search) {

@@ -9,9 +9,13 @@
  * `edit` — marketplace precisa existir pra ter regra), mesmo padrão de
  * "Lançamentos" em `ProductsView.vue`.
  *
- * Sem `ListToolbar` — a API admin não tem filtro de texto por nome (só
- * `filter[active]`), mesmo raciocínio já registrado em
- * `ProductLaunchList.vue` (sem dimensão de busca real pra oferecer).
+ * **`ListToolbar` com filtro de `active`, 2026-09-01, pedido direto do
+ * usuário** ("falta de padrão nos forms, só produto tem a filterbar") —
+ * a API admin continua sem filtro de TEXTO por nome, mas `filter[active]`
+ * (boolean) agora tem UI de verdade: `Select` no slot `#filters` do
+ * `ListToolbar` (`searchable`/`filterable`/`sortable` desligados — sem
+ * campo de busca real, ordenação já existe via cabeçalho da `DataTable`,
+ * mesmo raciocínio de `ProductsView.vue`).
  */
 import { PencilSimpleLine, Trash } from '@/shared/components/icons/regular.generated'
 import dayjs from 'dayjs'
@@ -25,10 +29,12 @@ import { useToast } from '@/shared/composables/useToast'
 import { parseApiError } from '@/shared/services/parseApiError'
 import ConfirmDialog from '@/shared/components/blocks/ConfirmDialog.vue'
 import DataTable from '@/shared/components/blocks/DataTable.vue'
+import ListToolbar from '@/shared/components/blocks/ListToolbar.vue'
 import PaginationNav from '@/shared/components/blocks/PaginationNav.vue'
 import StatusDot from '@/shared/components/ui/StatusDot.vue'
 import Button from '@/shared/components/ui/Button.vue'
 import Drawer from '@/shared/components/ui/Drawer.vue'
+import Select from '@/shared/components/ui/Select.vue'
 import TabBar from '@/shared/components/ui/TabBar.vue'
 import AdminMarketplaceForm from '../components/AdminMarketplaceForm.vue'
 import MarketplaceLogo from '../components/MarketplaceLogo.vue'
@@ -38,6 +44,7 @@ import { deleteAdminMarketplace } from '../services/pricingApi'
 import { useAdminMarketplaceList } from '../composables/useAdminMarketplaceList'
 import type { AdminMarketplace } from '../types/marketplace.type'
 import type { DataTableColumn } from '@/shared/components/ui/types/dataTable.type'
+import type { SelectOption } from '@/shared/components/ui/types/select.type'
 import type { TabBarOption } from '@/shared/components/ui/types/tabBar.type'
 
 const { t } = useI18n()
@@ -46,6 +53,12 @@ const { resolveMessage } = useApiMessage()
 
 const list = useAdminMarketplaceList()
 onMounted(list.refresh)
+
+const activeFilterOptions = computed<SelectOption[]>(() => [
+  { label: t('common.filters.all'), value: 'all' },
+  { label: t('common.status.active'), value: 'true' },
+  { label: t('common.status.inactive'), value: 'false' },
+])
 
 const listErrorMessage = computed(() =>
   list.error.value ? resolveMessage(parseApiError(list.error.value).messageKey) : null,
@@ -99,12 +112,23 @@ function handleSaved(): void {
 
 <template>
   <div class="admin-marketplaces-view">
-    <div class="admin-marketplaces-view__header">
-      <h1 class="admin-marketplaces-view__title">{{ $t('pricing.admin.marketplaces.title') }}</h1>
-      <Button variant="primary" @click="drawer.openCreate()">
-        {{ $t('pricing.admin.marketplaces.createButton') }}
-      </Button>
-    </div>
+    <h1 class="admin-marketplaces-view__title">{{ $t('pricing.admin.marketplaces.title') }}</h1>
+
+    <ListToolbar
+      :add-label="$t('pricing.admin.marketplaces.createButton')"
+      :filterable="false"
+      :searchable="false"
+      :sortable="false"
+      @add="drawer.openCreate()"
+    >
+      <template #filters>
+        <Select
+          :model-value="list.activeFilter.value"
+          :options="activeFilterOptions"
+          @update:model-value="(value) => list.setActiveFilter(value)"
+        />
+      </template>
+    </ListToolbar>
 
     <p v-if="listErrorMessage" class="admin-marketplaces-view__error" role="alert">
       {{ listErrorMessage }}
@@ -211,13 +235,6 @@ function handleSaved(): void {
 
 .admin-marketplaces-view :deep(.ui-tab-bar) {
   margin-bottom: $spacing-16;
-}
-
-.admin-marketplaces-view__header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: $spacing-16;
 }
 
 .admin-marketplaces-view__title {

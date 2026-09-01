@@ -95,21 +95,6 @@ describe('useAppShell', () => {
     expect(isNotificationPanelOpen.value).toBe(false)
   })
 
-  it('starts with no unread notifications', () => {
-    const { hasUnreadNotifications } = useAppShell()
-    expect(hasUnreadNotifications.value).toBe(false)
-  })
-
-  it('lets the notification module report unread notifications', () => {
-    const { hasUnreadNotifications, setHasUnreadNotifications } = useAppShell()
-
-    setHasUnreadNotifications(true)
-    expect(hasUnreadNotifications.value).toBe(true)
-
-    setHasUnreadNotifications(false)
-    expect(hasUnreadNotifications.value).toBe(false)
-  })
-
   it('starts with the desktop sidebar expanded (not collapsed)', () => {
     const { isDesktopSidebarCollapsed } = useAppShell()
     expect(isDesktopSidebarCollapsed.value).toBe(false)

@@ -2,6 +2,7 @@
 import AppFooter from './AppFooter.vue'
 import AppHeader from './AppHeader.vue'
 import AppSidebar from './AppSidebar.vue'
+import ImpersonationBanner from './ImpersonationBanner.vue'
 
 /**
  * Casca autenticada — orquestra `AppSidebar`/`AppHeader`/`AppFooter`,
@@ -26,6 +27,7 @@ import AppSidebar from './AppSidebar.vue'
     <AppSidebar />
 
     <div class="app-layout__main">
+      <ImpersonationBanner />
       <AppHeader />
 
       <main class="app-layout__content">

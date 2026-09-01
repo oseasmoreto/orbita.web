@@ -57,11 +57,33 @@ export function toPlanLimits(
   return { maxMarketplaces: resource.max_marketplaces, maxProducts: resource.max_products }
 }
 
+/**
+ * `id`/`name` do admin ORIGINAL — `null` quando a sessão atual não é uma
+ * impersonation. Pedido pra sessão de backend em 2026-09-01 (Fase 6,
+ * mesmo dia): `impersonated_by` já existia como estado real na Session
+ * do servidor (`StartImpersonationAction`/`impersonator_id`), só não
+ * estava exposto em `GET /auth/me` — sem isso, o front só sabia "estou
+ * impersonando" no instante síncrono do clique em "Impersonar", perdia
+ * esse dado em qualquer reload. Objeto completo (não só um boolean) pra
+ * `ImpersonationBanner.vue` mostrar o nome sem uma segunda chamada.
+ */
+export interface ImpersonatedBy {
+  id: string
+  name: string
+}
+
+export function toImpersonatedBy(
+  resource: components['schemas']['LoginResultResource']['impersonated_by'],
+): ImpersonatedBy | null {
+  return resource ? { id: resource.id, name: resource.name } : null
+}
+
 export interface AuthUser {
   email: string
   emailVerifiedAt: string | null
   favorites: FavoriteItem[]
   id: string
+  impersonatedBy: ImpersonatedBy | null
   name: string
   planLimits: PlanLimits | null
   role: UserRole

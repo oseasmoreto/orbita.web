@@ -1,7 +1,7 @@
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { ensureCsrfCookie } from '@/core/api/client'
-import { toFavoriteItem, toPlanLimits } from '@/core/store/types/auth.type'
+import { toFavoriteItem, toImpersonatedBy, toPlanLimits } from '@/core/store/types/auth.type'
 import { useAuthStore } from '@/core/store/useAuthStore'
 import { useApiMessage } from '@/shared/composables/useApiMessage'
 import { parseApiError } from '@/shared/services/parseApiError'
@@ -42,6 +42,7 @@ export function useSsoExchange() {
           result.user,
           result.favorites.map(toFavoriteItem),
           toPlanLimits(result.plan_limits),
+          toImpersonatedBy(result.impersonated_by),
         ),
         { requiresSubscription: result.requires_subscription },
       )

@@ -905,10 +905,19 @@ export interface components {
             id: string;
             user_id: string;
             /**
+             * @description Objeto embutido (achado real, pedido direto do usuário,
+             *     2026-09-01) — a tela de auditoria precisa do nome/e-mail do
+             *     usuário, não só do id cru. user_id continua aqui (nunca
+             *     removido — mesmo padrão de plan_id/plan em SubscriptionResource,
+             *     tarefa 55), quem consome já com o objeto usa `user`.
+             */
+            user: components["schemas"]["AdminUserResource"];
+            /**
              * @description Nullable — só preenchido quando a ação foi feita durante uma
              *     impersonation (tarefa 29). null é o caso comum.
              */
             impersonated_by: string | null;
+            impersonator: components["schemas"]["AdminUserResource"] | null;
             action: string;
             module: string;
             description: string;
@@ -1112,6 +1121,13 @@ export interface components {
             /** Format: email */
             email: string;
             password: string;
+            /**
+             * @description Opcional — default User em toDto() quando omitido, mesmo
+             *     estilo de UpdateUserByAdminRequest::role(). Decisão 2026-09-01,
+             *     pedido direto do usuário: admin_master pode criar outro
+             *     admin_master direto por aqui.
+             */
+            role?: components["schemas"]["UserRole"];
             password_confirmation: string;
         };
         /** CreateUserFavoriteRequest */
@@ -1143,6 +1159,10 @@ export interface components {
             plan_limits: {
                 max_products: number | null;
                 max_marketplaces: number | null;
+            } | null;
+            impersonated_by: {
+                id: string;
+                name: string;
             } | null;
         };
         /** MarketplaceResource */

@@ -1072,10 +1072,15 @@ pra reescrever, e campo numérico novo (ex.: `PricingRule.percentage`/
 
 ---
 
-## Fase 4 — Pricing (primeira rodada concluída, 2026-08-31)
+## Fase 4 — Pricing (concluída, sem dashboard de preço sugerido)
 
 Conexão com marketplace e vínculo produto↔marketplace. **Sem dashboard de
-preço sugerido nesta fase** — ver gap abaixo, continua de pé.
+preço sugerido nesta fase** — decisão do usuário em 2026-09-01: em vez de
+ficar bloqueada esperando o backend expor `PricingCalculator`, a Fase 4
+fecha aqui com o vínculo puro (já implementado) e o dashboard de preço
+sugerido vira a **última fase do projeto** (ver "Fase 7 — Preço sugerido
+por canal (última fase)", no fim deste documento) — não bloqueia mais
+nenhuma fase intermediária.
 
 Pedido direto do usuário: "vamos primeiro implementar os CRUDs que são do
 admin (cadastro de marketplace e regras do marketplace) e pra role user
@@ -1190,17 +1195,23 @@ pausar → editar nome da loja → desconectar → limite libera de novo); e o
 fluxo completo produto→conectar→vincular→desvincular. Suíte completa (37
 arquivos, 206 testes) + typecheck/eslint/biome verdes.
 
-**Gap de backend confirmado (continua bloqueando a tela de "preço
-sugerido")**: `PricingCalculator`/`PriceRange`/`SuggestedPrice` existem
-na camada de Domain do backend, testados isoladamente, mas **nunca foram
-conectados a nenhuma rota**. `PRODUCT_MARKETPLACE` é vínculo puro (sem
-`suggested_price`/`is_approximated` — migration
+**Gap de backend confirmado**: `PricingCalculator`/`PriceRange`/
+`SuggestedPrice` existem na camada de Domain do backend, testados
+isoladamente, mas **nunca foram conectados a nenhuma rota**.
+`PRODUCT_MARKETPLACE` é vínculo puro (sem `suggested_price`/
+`is_approximated` — migration
 `2026_08_26_145617_remove_suggested_price_and_is_approximated_from_product_marketplaces_table`
 confirma a remoção). A tela "Dashboard de precificação com preço sugerido
 por canal" do diagrama de jornada **não é implementável no contrato de
 API atual** — só dá pra construir o vínculo puro, já feito acima.
-Revisitar esta fase quando o backend expuser o endpoint de sugestão de
-preço.
+
+**Decisão do usuário, 2026-09-01 — não fica mais bloqueando esta fase
+nem as seguintes**: reconfirmado o mesmo gap ao ser perguntado "o que
+faltou da Fase 4?" (nada tinha mudado no backend desde a última
+checagem) — em vez de deixar a Fase 4 "pendurada" esperando o backend
+expor o endpoint, o dashboard de preço sugerido vira explicitamente a
+**última fase do projeto** ("Fase 7", no fim deste documento). Fase 4
+está com esse escopo revisado: **concluída**.
 
 **Correção pixel-perfect do grid de cards, 2026-08-31** — usuário comparou
 lado a lado com a captura de referência ("não está pixel perfect"). 2
@@ -1415,42 +1426,271 @@ substitui o cruzamento manual; `MySubscriptionView.currentPlan` virou só
 
 ---
 
-## Fase 5 — Platform
+## Fase 5 — Platform (concluída, 2026-09-01)
 
-Notificações, e (pro admin) configuração/auditoria.
+Notificações (caixa de entrada do próprio usuário + gerenciamento/broadcast
+do admin) e log de auditoria do admin. Pedido direto do usuário
+("sim", confirmando o resumo de escopo) — implementada na mesma sessão em
+que o gap da Fase 4 foi movido pra uma fase final própria.
 
-**Rotas:** `/notifications` (lista + marcar lida), `/admin/audit-logs`,
-`/admin/notifications/broadcast`.
+**Rotas reais:** `/notifications` (lista completa paginada, sem item de
+sidebar — alcançada só pelo sino do `AppHeader`, mesmo padrão de
+`product-marketplaces`), `/admin/notifications` (`meta.roles:
+['admin_master']` — lista + botão "Transmitir notificação" abrindo um
+`Modal`, não uma tela de formulário separada), `/admin/audit-logs`
+(idem, read-only).
 
-**Services:** `platformApi.ts` — `listNotifications`, `markAsRead`,
-`listAuditLogs` (admin), `broadcastNotification` (admin).
+**Services (`platformApi.ts`):** `listNotifications`/`countUnreadNotifications`/
+`markNotificationAsRead` (caixa de entrada do usuário), `listAdminNotifications`/
+`sendNotificationToUser`/`broadcastNotification`/`deleteAdminNotification`
+(admin), `listAuditLogs` (admin, read-only).
 
-**Store:** `useNotificationStore` (Pinia) — contador de não lidas, exibido
-globalmente no layout (badge no ícone de sino). Estado genuinamente global
-(seção 5), diferente da lista paginada em si (fica no composable da tela).
+**Store (`core/store/useNotificationStore.ts`, Pinia):** só o CONTADOR de
+não lidas (`unreadCount`/`hasUnread`/`setUnreadCount`/`decrementUnread`) —
+migrado de `useAppShell.hasUnreadNotifications` (achado real: estado de
+DOMÍNIO tinha vazado pra dentro do composable de UI do shell, que não devia
+saber nada sobre notificação de verdade). A LISTA paginada em si nunca mora
+na store, fica em `useNotificationFeed`/`useAdminNotificationList` (a
+diferença que a seção 5 do doc de convenções já preconizava, agora um
+exemplo real dela).
 
-**Composables:** `useNotificationFeed`, `useAuditLogFilters` (admin).
+**Composables:** `useNotificationFeed` (usuário — lista + `markAsRead` +
+`refreshUnreadCount`, consumido tanto por `NotificationPanel.vue` quanto por
+`NotificationsView.vue`, 2 instâncias independentes), `useAdminNotificationList`
++ `useBroadcastNotificationForm` (admin — bespoke, fora do motor genérico
+`useResourceForm`: broadcast é fire-and-forget, nunca edita um recurso
+persistido depois), `useAuditLogList` (com `module`/`action` como filtros
+exatos — sem filtro por `user_id`/`impersonated_by`, exigiria um seletor de
+usuário que só existe na Fase 6).
 
-Toda mensagem de notificação passa por `useApiMessage` (Fase 0) — nunca um
-`switch` manual mapeando tipo → texto.
+Toda mensagem de notificação passa por `useApiMessage().resolveMessage()`
+(`NotificationMessageKey` real do backend — 6 chaves novas no catálogo
+`pt-BR.ts`, conferidas 1:1 contra `Domain/Platform/Enums/NotificationMessageKey.php`)
+— nunca um `switch` manual mapeando tipo → texto.
+
+**Achado real, durante a verificação em browser**: assinar o plano trial
+NUNCA gera a notificação "Assinatura ativada" — `SubscriptionActivated`
+(evento que dispara o listener de notificação) só é disparado por
+`ConfirmSubscriptionPaymentAction` (confirmação de pagamento via webhook do
+Mercado Pago), caminho que o trial pula inteiramente (`SubscribeToPlanAction`
+não dispara esse evento pro caso trial). Não é um bug desta implementação —
+é uma lacuna de negócio pré-existente no backend, fora do escopo desta
+rodada (a UI de notificação em si foi verificada com dado seedado
+diretamente via tinker, confirmado funcionando ponta a ponta). Revisitável
+se o usuário quiser que o trial também dispare essa notificação.
+
+Verificado em browser real contra o backend local: sino do `AppHeader`
+mostra o ponto vermelho quando há notificação não lida (contador real via
+`countUnreadNotifications`, não mais placeholder), abrir o painel busca a
+lista de verdade, clicar numa notificação marca como lida e decrementa o
+contador na hora; `/admin/notifications` transmite uma notificação real
+(`202`, status `pending` → vira `sent` depois do Job assíncrono),
+lista ordenada por mais recente primeiro, exclusão funciona; `/admin/audit-logs`
+renderiza registro real (seedado via tinker, já que nenhuma ação
+audit-logada é alcançável pelo frontend nesta fase — as 3 únicas
+(`SubscriptionActivated`/`SubscriptionPlanChanged`/`ImpersonationStarted`)
+dependem de webhook real ou impersonation, Fase 6) e o filtro por
+`action`/`module` funciona (testado com um filtro que não bate nada,
+mostra corretamente o estado vazio).
 
 ---
 
-## Fase 6 — Admin (usuários, impersonation)
+## Fase 6 — Admin (usuários, planos, configurações, impersonation) — concluída, 2026-09-01
 
-Fecha o MVP: painel de administração de usuários, fora do namespace comum.
+Painel de administração de usuários, fora do namespace comum — fecha o
+escopo funcional "normal" do MVP. Só a Fase 7 (preço sugerido, bloqueada
+por backend) fica depois desta, por decisão explícita do usuário.
+**Escopo ampliado pelo usuário no mesmo pedido** ("sim, porém adicione
+tbm planos e configurações já que vamos tratar de módulos do admin") —
+Planos e Configurações entraram junto com Usuários/impersonation, mesma
+sessão.
 
-**Rotas:** `/admin/users`, `/admin/users/:id`, `/admin/users/:id/impersonate`
-— todas com guard `roles: ['admin_master']`.
+**Rotas reais:** `/admin/users` (CRUD de usuário — só criar/editar
+`role`/`status`, sem `destroy`, ver abaixo), `/admin/plans` (CRUD
+completo), `/admin/settings` (CRUD completo) — todas `meta.roles:
+['admin_master']`. `admin-subscriptions`/`admin-transactions` continuam
+sem `to` — não foram pedidos ("ver TODAS as assinaturas/transações de
+todos os usuários" seria read-only, sem CRUD óbvio), revisitável sob
+demanda.
 
-**Services:** `adminApi.ts` — `listUsers`, `getUser`, `updateUser`,
-`impersonateUser`, `stopImpersonation` (`POST /auth/impersonation/stop`,
-já existe no backend).
+**Services:** `identityApi.ts` ganhou `listAdminUsers`/`createAdminUser`/
+`updateAdminUser`/`impersonateUser`/`stopImpersonation`; `billingApi.ts`
+ganhou `listAdminPlans`/`createAdminPlan`/`updateAdminPlan`/
+`deleteAdminPlan`; `platformApi.ts` ganhou `listSettings`/`createSetting`/
+`updateSetting`/`deleteSetting`.
 
-**Composables:** `useImpersonation` — troca de sessão pro usuário
-impersonado e volta; precisa de aviso visual persistente ("você está
-impersonando X") enquanto ativo — notificação de "início de impersonation"
-(`NotificationType`) já existe no backend pra isso.
+**Achado de modelagem, `CreateUserByAdminRequest` × `UpdateUserByAdminRequest`
+não têm NENHUM campo em comum** — criar usuário é nome/e-mail/senha,
+editar é só `role`/`status` (nome/e-mail/senha continuam autoatendimento,
+`updateProfile()`). Isso quebra a simetria create/edit que
+`useResourceForm` modela — em vez de forçar a abstração genérica com um
+`update()` nunca chamado, viraram 2 composables bespoke pequenos
+(`useCreateAdminUserForm.ts`/`useUpdateUserRoleForm.ts`, mesma categoria
+de `useBroadcastNotificationForm.ts` da Fase 5) e 2 componentes
+separados (`CreateAdminUserForm.vue` num `Drawer`, `EditUserRoleModal.vue`
+num `Modal` — 2 campos, ação pontual). Sem `destroy` de usuário —
+`AdminUserController` não expõe (exclusão é sempre autoatendimento via
+`DeleteUserAccountAction`, nunca hard-delete pelo admin).
+
+**Impersonation** (`useImpersonation.ts`, `modules/identity/composables/`):
+`canImpersonate`/`canEditUser` (testados) escondem as ações antes mesmo
+do backend recusar — nunca a própria linha do admin logado
+(`errorMessageCannotModifyOwnAccount`), nunca `admin_master`
+(`CannotImpersonateAdminException`, só `role: 'user'`). O aviso visual
+persistente pedido no plano (`ImpersonationBanner.vue`, montado em
+`AppLayout.vue`) só foi possível ficar **realmente** persistente (sobrevive
+a F5) depois de pedir pro backend embutir `impersonated_by: { id, name } |
+null` em `GET /auth/me` (resolvido no mesmo dia) — sem isso, o front só
+saberia "estou impersonando" no instante síncrono do clique, um estado
+puramente client-side se perderia em qualquer reload.
+
+**Gap conhecido, não resolvido nesta rodada**: `ImpersonationBanner.vue`
+só é renderizado dentro de `AppLayout.vue` — se o admin impersonar um
+usuário sem assinatura ativa (ex.: criado agora mesmo via "Novo usuário",
+nunca escolheu um plano), o guard de rota manda ele pra `/choose-plan`
+(fora do `AppLayout`, sem sidebar/header/banner) e o admin fica sem UI
+nenhuma pra "Voltar a ser admin" enquanto estiver ali — só resolve
+navegando manualmente de volta (ex.: editando a URL). Descoberto testando
+em browser real (impersonar um usuário recém-criado sem plano). Não
+bloqueia o caso comum (impersonar um usuário de suporte real, que já tem
+assinatura), mas é uma lacuna real — revisitável se o caso de uso
+"debugar conta sem assinatura" for uma necessidade real.
+
+**Achado real, sistêmico, encontrado testando `AdminPlanForm.vue` (campo
+`price`, `79.90`) em browser real**: `<input type="number">` sem `step`
+tem `step` nativo `1` por padrão — o botão de submit de todo `CrudFormActions`
+é `type="submit"` de verdade, então a validação de CONSTRAINT NATIVA do
+browser (`step mismatch`) bloqueava o `submit` ANTES do `@submit.prevent`
+do form rodar, silenciosamente (só um tooltip nativo do browser, nenhum
+toast/erro da aplicação). Afetava qualquer campo numérico decimal do app
+inteiro (`ProductForm.vue` — `purchasePrice`/`fullSalePrice`/`targetMargin`
+etc., `AdminPricingRuleForm.vue`), não só o formulário novo — nunca pego
+antes porque o dado de teste desses forms sempre foi seedado via tinker,
+não digitado e submetido de verdade pelo browser. Corrigido de propósito
+em `shared/components/ui/Input.vue` (`step="any"` quando `type="number"`,
+correção sistêmica pro átomo, não um patch pontual no form novo) — o Zod
+de cada form já é a fonte de verdade real pra inteiro-vs-decimal, o
+`step` do HTML nunca deveria ser mais restritivo que isso.
+
+Verificado em browser real contra o backend local, ponta a ponta: criar
+usuário → editar role/status → impersonar (dashboard do usuário alvo
+carrega de verdade, banner aparece com nome correto) → **reload da
+página com a impersonation ativa → banner sobrevive** (prova concreta do
+gap fechado com o backend) → "Voltar a ser admin" → sessão volta,
+banner some, navega pra `/admin/users`; CRUD de plano completo incluindo
+um plano TRIAL de verdade (campo "Dias de trial" aparecendo/sumindo
+conforme o ciclo selecionado); CRUD de configuração incluindo o campo
+`hash` desabilitado em modo edição.
+
+**Gap da Fase 5 fechado, mesmo dia** — `AdminAuditLogsView.vue`
+(Fase 5) documentava `userId`/`impersonatedBy` exibidos como UUID cru
+porque `AdminAuditLogResource` não embutia nome/e-mail e não existia
+ainda uma listagem de usuários (`admin-users`, esta fase) pra cruzar.
+Com `AdminUsersView.vue`/impersonation prontos, reportei o gap pra
+sessão de backend (`backend-f9`) — resolvido no mesmo dia, embutindo
+`user`/`impersonator` completos (`AdminUserResource`) em
+`AdminAuditLogResource`. Frontend atualizado em seguida:
+`AdminUser`/`toAdminUser` promovidos de `modules/identity/types/` pra
+`core/types/adminUser.type.ts` (2º consumidor real cruzando módulo,
+mesmo critério de promoção já usado pra `toFavoriteItem`/`ImpersonatedBy`),
+`AuditLog` (`modules/platform/types/auditLog.type.ts`) ganhou
+`user`/`impersonator`, `AdminAuditLogsView.vue` passou a exibir
+`row.user.name`/`row.impersonator?.name` em vez de UUID. Achado
+colateral fechado junto: a coluna "Via impersonation" já existia como
+chave no catálogo `pt-BR.ts` desde a Fase 5, mas nunca tinha entrado no
+array `columns` da view — nunca usada até agora. Verificado em browser
+real (usuário `admin_master` + `AuditLog` seedado via tinker com
+`impersonated_by` setado — as 3 ações reais de auditoria continuam
+inalcançáveis pelo frontend, gap já registrado na Fase 5): coluna
+"Usuário" mostra nome real, "Via impersonation" mostra o nome do
+impersonador quando setado e `—` quando não há.
+
+**`role` no cadastro de usuário pelo admin, 2026-09-01** — mudança de
+contrato pedida direto pelo usuário depois que o backend liberou
+`CreateUserByAdminRequest.role` (opcional, default `UserRole::User`
+quando omitido, mesmo estilo de `UpdateUserByAdminRequest::role()`):
+`admin_master` agora pode criar outro `admin_master` direto pelo
+formulário de "Novo usuário", sem precisar do passo extra de
+criar-como-`user`-depois-editar-role. `createAdminUserFormSchema.ts`
+ganhou o campo `role` (`z.enum(['admin_master', 'user'])`, testado);
+`CreateAdminUserForm.vue` ganhou um `Select` reaproveitando as mesmas
+opções/chaves i18n de `EditUserRoleModal.vue`
+(`identity.admin.users.roles.*`), default `'user'` — nunca omitido do
+payload (diferente do backend, que aceita ausência; o front sempre
+manda um valor explícito, mais simples que replicar a lógica de default
+dos dois lados). Verificado em browser real: criar um usuário com role
+"Administrador" via formulário grava `role: admin_master` de verdade no
+banco e a linha aparece na tabela já como "Administrador", sem precisar
+de edição posterior.
+
+**Menu do admin segmentado em 3 grupos, 2026-09-01, pedido direto do
+usuário** — o único grupo "Administração" (8 itens sem hierarquia
+visual) virou `adminUsersGroup`/`adminFinanceGroup`/`adminPlatformGroup`
+(`core/layouts/config/navigation.ts`), mesma posição na sidebar, mesmos
+itens/rotas/ícones, só reagrupados por área: Usuários (Identity),
+Financeiro (Billing: planos/assinaturas/transações), Plataforma
+(Pricing admin + Platform: marketplaces/notificações/configurações/
+auditoria). Achado de polish corrigido junto: o item único de "Usuários"
+reaproveitava o mesmo texto do título do grupo, deixando o breadcrumb
+"Usuários / Usuários" — renomeado o label do item pra "Contas de
+usuário" (chave `sidebar.nav.adminUsers`), sem tocar no h1 da página
+(`identity.admin.users.title`, continua "Usuários"). Verificado em
+browser real: sidebar mostra os 3 grupos com os itens corretos,
+breadcrumb sem duplicação.
+
+**`ListToolbar` estendido pros 6 CRUDs admin, 2026-09-01, pedido direto
+do usuário** ("venho notando uma falta de padrão nos forms, somente
+produto tem a filterbar, pq os demais cruds não tem?") — investigação
+confirmou que a inconsistência era real, mas motivada: `ListToolbar`
+sempre renderiza `Search`, e só Produtos tinha um filtro de texto real
+(`filter[sku]`) pra justificar isso; os demais CRUDs admin só têm
+filtro enum/boolean (`active`/`role`/`status`/`type`/`billing_cycle`),
+sem UI conectada. Corrigido com 2 props novas no bloco
+(`searchable`/`addable`, ambas opt-out, mesmo padrão de
+`filterable`/`sortable`) + slot `#filters` — decisão detalhada na seção
+`ListToolbar` de `docs/design/design-system.md`, incluindo o achado real
+do `SelectItem` da Reka UI rejeitando `value=""` (sentinel de "Todos"
+trocado pra `'all'`). Marketplaces/Planos/Usuários/Notificações/
+Configurações ganharam `Select`(s) de filtro reais; Auditoria migrou os
+2 `Input` de texto livre que já tinha pra dentro da mesma barra visual,
+sem mudar o comportamento. Verificado em browser real: os 6 filtros
+disparam a query certa (`filter[...]`) contra o backend local.
+
+---
+
+## Fase 7 — Preço sugerido por canal (última fase do projeto)
+
+**Decisão do usuário, 2026-09-01**: movida de "gap pendente da Fase 4"
+pra fase própria, deliberadamente por último — fecha o projeto, não
+bloqueia nenhuma fase intermediária (5/6) enquanto o backend não expuser
+o endpoint necessário.
+
+Implementa o nó "Dashboard de precificação → Preço sugerido por canal" do
+diagrama de fluxo do sistema (`docs/negocio/contexto-plataforma-precificacao.md`
+seção 4) e a decisão "Faixa não encontrada → aproximação" (seção 3, mesmo
+doc) — hoje só regra de negócio documentada, sem UI nem rota.
+
+**Bloqueio real, não é código faltando no front**: `PricingCalculator`/
+`PriceRange`/`SuggestedPrice` (Domain do backend) existem e são testados
+isoladamente, mas nunca foram conectados a nenhuma rota —
+`PRODUCT_MARKETPLACE` é vínculo puro (`suggested_price`/`is_approximated`
+removidos por migration em 2026-08-26). Não dá pra começar a Fase 7 até o
+backend expor esse cálculo em algum contrato de API (endpoint dedicado
+tipo `GET /products/{id}/marketplaces/{link}/suggested-price`, ou
+embutido na listagem de vínculos — decisão do backend).
+
+**Escopo, quando o endpoint existir:**
+- Exibir `suggested_price` por vínculo produto↔marketplace, com aviso
+  visual quando `is_approximated` (faixa não encontrada, sistema usou a
+  mais próxima).
+- Comparar `suggested_price` contra `PRODUCT.target_margin` — sinalizar
+  quando o preço sugerido fica fora da margem aceitável (dispara
+  `NOTIFICATION` do lado do backend; aqui é só exibir o estado).
+- Provavelmente o primeiro consumidor real de `ChartCard.vue`/`StatCard.vue`
+  fora da vitrine (`HomeView.vue`) — os dois já existem no design system,
+  prontos, sem dado real por trás até aqui.
+
+Sem service/composable/rota criados ainda — fase não iniciada.
 
 ---
 
@@ -1460,9 +1700,9 @@ impersonando X") enquanto ativo — notificação de "início de impersonation"
   implementação (seção 11.1) — TDD não é negociável nas fases acima, mesmo
   que o plano não repita isso fase a fase.
 - **E2E crítico (Playwright)**, após a Fase 4 estar de pé: login → cadastro
-  de produto → conecta marketplace → vincula produto ao marketplace. (Sem
-  "vê preço sugerido" enquanto o gap da Fase 4 não for resolvido pelo
-  backend.)
+  de produto → conecta marketplace → vincula produto ao marketplace. ("Vê
+  preço sugerido" só entra no roteiro E2E quando a Fase 7 existir — não é
+  mais um bloqueio da Fase 4.)
 - **i18n**: catálogo `pt-BR` (`core/i18n/messages/pt-BR.ts`) cresce por
   fase, conforme cada módulo integra chaves reais de `ApiMessageKey`/
   `NotificationMessageKey` — não adiantar chave que a fase ainda não usa.
@@ -1475,4 +1715,4 @@ impersonando X") enquanto ativo — notificação de "início de impersonation"
 | Item | Fase afetada | Status |
 |---|---|---|
 | `APP_URL`/`.env` real ainda aponta pro túnel ngrok de teste | Fase 1 (verificação de e-mail) | Reportado, não bloqueia infra |
-| Sugestão de preço (`PricingCalculator`) nunca exposta em rota | Fase 4 | Sem rota — fase segue só com vínculo puro até existir |
+| Sugestão de preço (`PricingCalculator`) nunca exposta em rota | Fase 7 (movida da Fase 4 em 2026-09-01, decisão do usuário) | Sem rota — Fase 7 não inicia até existir; não bloqueia Fases 5/6 |

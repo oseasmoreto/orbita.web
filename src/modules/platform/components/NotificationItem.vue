@@ -8,18 +8,46 @@
  * do item de lista real usado dentro do painel. Mesma classe de correção
  * já feita pro `Search.vue`/`DropdownMenu.vue` — grounding contra o frame
  * certo, não contra o nome mais parecido na lista de componentes.
+ *
+ * **Ligado a dado real, Fase 5 (2026-09-01)**: recebe a `Notification` de
+ * domínio direto (não mais o placeholder `NotificationItemData`
+ * ícone/tint/timestamp já resolvidos por fora) — ícone/tint vêm de
+ * `notificationIconFor`/`notificationTintFor` (funções puras,
+ * `notification.type.ts`), timestamp de `formatRelativeTime`
+ * (`shared/services/formatDate.ts`), e `title`/`message` passam por
+ * `useApiMessage().resolveMessage()` (mesma disciplina de
+ * `ApiMessageKey`/`NotificationMessageKey` — chave catalogada OU texto
+ * livre, o componente nunca decide qual é qual, seção 6.3 de
+ * `docs/infra/convencoes-frontend-infra.md`).
  */
+import { computed } from 'vue'
+import { useApiMessage } from '@/shared/composables/useApiMessage'
 import IconTile from '@/shared/components/ui/IconTile.vue'
-import type { NotificationItemData } from '../types/notification.type'
+import { formatRelativeTime } from '@/shared/services/formatDate'
+import { notificationIconFor, notificationTintFor } from '../types/notification.type'
+import type { Notification } from '../types/notification.type'
 
-defineProps<{
-  notification: NotificationItemData
+const props = defineProps<{
+  notification: Notification
 }>()
+
+defineEmits<{ select: [notification: Notification] }>()
+
+const { resolveMessage } = useApiMessage()
+
+const icon = computed(() => notificationIconFor(props.notification.type))
+const tint = computed(() => notificationTintFor(props.notification.type))
+const title = computed(() => resolveMessage(props.notification.title))
+const timestamp = computed(() => formatRelativeTime(props.notification.createdAt))
 </script>
 
 <template>
-  <div class="notification-item">
-    <IconTile :icon="notification.icon" :tint="notification.tint" />
+  <button
+    class="notification-item"
+    type="button"
+    @click="$emit('select', notification)"
+  >
+    <IconTile :icon="icon" :tint="tint" />
     <div class="notification-item__body">
       <p
         :class="[
@@ -27,31 +55,39 @@ defineProps<{
           { 'notification-item__title--unread': !notification.read },
         ]"
       >
-        {{ notification.title }}
+        {{ title }}
       </p>
-      <p class="notification-item__timestamp">{{ notification.timestamp }}</p>
+      <p class="notification-item__timestamp">{{ timestamp }}</p>
     </div>
     <span
       v-if="!notification.read"
-      aria-label="Não lida"
+      :aria-label="$t('platform.notifications.unread')"
       class="notification-item__unread-dot"
       role="status"
     />
-  </div>
+  </button>
 </template>
 
 <style scoped lang="scss">
 @use '@/core/styles/variables' as *;
+@use '@/core/styles/mixins' as *;
 
 .notification-item {
   display: flex;
   align-items: flex-start;
+  width: 100%;
   gap: $spacing-8;
   padding: $spacing-4;
+  text-align: left;
+  background-color: transparent;
   border-radius: $radius-8;
 
   &:hover {
     background-color: $color-ink-4;
+  }
+
+  &:focus-visible {
+    @include focus-ring;
   }
 }
 

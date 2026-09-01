@@ -55,6 +55,7 @@ export async function listMarketplaces(
 }
 
 export interface ListAdminMarketplacesParams {
+  active?: boolean
   page?: number
   perPage?: number
   sort?: string
@@ -65,7 +66,14 @@ export async function listAdminMarketplaces(
 ): Promise<Paginated<AdminMarketplace>> {
   const { data } = await apiClient.get<ApiResponse<Envelope<AdminMarketplaceResource>>>(
     '/admin/marketplaces',
-    { params: { page: params.page, per_page: params.perPage, sort: params.sort } },
+    {
+      params: {
+        'filter[active]': params.active,
+        page: params.page,
+        per_page: params.perPage,
+        sort: params.sort,
+      },
+    },
   )
 
   return { items: data.data.items.map(toAdminMarketplace), meta: data.data.meta }

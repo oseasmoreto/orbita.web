@@ -39,6 +39,25 @@ const model = defineModel<string>({ default: '' })
 
 const inputId = useId()
 
+/**
+ * **Achado real, 2026-09-01** — `step` nativo do `<input type="number">`
+ * sem esse atributo é `1` por padrão; o `CrudFormActions` do rodapé de
+ * todo form de CRUD usa `type="submit"` de verdade, então a validação de
+ * constraint NATIVA do browser (`step mismatch`) bloqueia o `submit`
+ * ANTES do `@submit.prevent` do form sequer rodar — silencioso, sem
+ * toast/erro nenhum, só o browser mostra um tooltip nativo ("Please
+ * enter a valid value..."). Descoberto testando `AdminPlanForm.vue`
+ * (campo `price`, `79.90`) em browser real — mas afeta QUALQUER campo
+ * `type="number"` decimal do app (`ProductForm.vue` — `purchasePrice`/
+ * `fullSalePrice`/`targetMargin`/`weight` etc., `AdminPricingRuleForm.vue`),
+ * provavelmente nunca pego antes porque o dado de teste desses forms
+ * sempre foi seedado via tinker, não digitado e submetido de verdade
+ * pelo browser. `step="any"` remove a restrição nativa sem enfraquecer
+ * validação real nenhuma — o Zod de cada form (`createProductFormSchema`
+ * etc.) já é quem decide inteiro vs. decimal de verdade, o `step` do
+ * HTML nunca foi a fonte de verdade.
+ */
+
 // `type="password"` sempre ganha o botão de revelar/ocultar — não é opt-in
 // por prop porque a UX (mostrar a senha digitada sob demanda) é esperada
 // em praticamente todo campo de senha, sem exceção real no produto até
@@ -68,6 +87,7 @@ function toggleReveal(): void {
         :class="['ui-input', { 'ui-input--invalid': invalid }]"
         :disabled="disabled"
         :placeholder="placeholder"
+        :step="type === 'number' ? 'any' : undefined"
         :type="resolvedType"
       />
       <button

@@ -587,6 +587,23 @@ anterior usava `{colors.bg-2}` como fundo; o componente real do Figma
 - **Focus**: mesmo `focus-ring` do botão, aplicado ao wrapper via
   `:has(.ui-input:focus-visible)`.
 
+**Bug sistêmico real, 2026-09-01 (Fase 6)** — descoberto testando
+`AdminPlanForm.vue` (campo `price`, `79.90`) em browser real: `<input
+type="number">` sem `step` tem `step` nativo `1` por padrão. Todo botão
+de submit de CRUD (`CrudFormActions.vue`) é `type="submit"` de verdade —
+a validação de CONSTRAINT NATIVA do browser (`step mismatch`) bloqueava o
+`submit` ANTES do `@submit.prevent` do form rodar, silenciosamente (só um
+tooltip nativo do browser, "Please enter a valid value...", nenhum toast
+da aplicação). Afetava qualquer campo numérico decimal do app inteiro
+(`ProductForm.vue` — `purchasePrice`/`fullSalePrice`/`targetMargin`,
+`AdminPricingRuleForm.vue`), não só o formulário novo — nunca pego antes
+porque o dado de teste desses forms sempre foi seedado via tinker, nunca
+digitado e submetido de verdade pelo browser. Corrigido com
+`:step="type === 'number' ? 'any' : undefined"` no `<input>` — o Zod de
+cada form já é a fonte de verdade real pra inteiro-vs-decimal
+(`.int()` quando faz sentido), o `step` do HTML nunca deveria ser mais
+restritivo que isso.
+
 ### Checkbox (`shared/components/ui/Checkbox.vue`)
 
 Construído sobre `CheckboxRoot` da Reka UI. **Os ícones de estado são os
@@ -1226,6 +1243,79 @@ o usuário só descobrir isso no 422 do backend. Bloco continua sem regra
 de negócio própria: só repassa o booleano já decidido pelo consumidor
 pro `Button` interno (`disabled`, nas duas variantes — com ou sem
 `addLabel`).
+
+**Props `addable`/`searchable` + slot `#filters`, 2026-09-01, pedido
+direto do usuário** ("venho notando uma falta de padrão nos forms,
+somente produto tem a filterbar") — até então só `ProductsView.vue`
+usava `ListToolbar`; os outros 6 CRUDs admin (Marketplaces/Planos/
+Usuários/Notificações/Configurações/Auditoria) tinham caído pra um
+header solto (`h1` + `Button`) porque a API deles só tem filtro
+enum/boolean (`active`/`role`/`status`/`type`/`billing_cycle`), nunca
+texto livre, e `Search` sempre renderizava mesmo sem nenhum campo real
+pra buscar. Resolvido sem o bloco aprender sobre domínio (continuaria
+violando "block nunca tem regra de negócio", seção 3.2 de
+`docs/infra/convencoes-frontend-infra.md`):
+
+- **`searchable`** (default `true`) — esconde `Search` por completo,
+  mesmo padrão opt-out de `filterable`/`sortable`.
+- **`addable`** (default `true`) — esconde o botão de criar por
+  completo (cobre o caso read-only, `AdminAuditLogsView.vue` — sem isso
+  um `v-else` ghost "+" sem handler seria botão morto, a régua que já
+  motivou `filterable`/`sortable` virarem opt-out em 2026-08-28).
+- **Slot `#filters`** — cada view encaixa os próprios `Select`s de
+  domínio (`role`/`status`/`active`/`type`/`billing_cycle`); decisão de
+  quais opções existem é 100% da view/composable, o bloco só reserva o
+  espaço visual (`.ui-toolbar__filters`, `display:flex; gap: {spacing.8};
+  flex-wrap: wrap;`) na mesma barra.
+
+Composables (`useAdminMarketplaceList`/`useAdminPlanList`/
+`useAdminUserList`/`useAdminNotificationList`/`useAdminSettingList`)
+ganharam `<campo>Filter` (ref) + `set<Campo>Filter()` (aplica na hora,
+sem exigir clique num botão "Filtrar" — diferente do texto livre de
+`useAuditLogList.ts`, que continua exigindo confirmação porque não é
+uma escolha discreta). 2 dos services (`listAdminUsers`/`listSettings`)
+já aceitavam os params de filtro desde a Fase 6, só nunca tinham UI
+conectada; os outros 3 (`listAdminMarketplaces`/`listAdminPlans`/
+`listAdminNotifications`) ganharam o param novo junto.
+
+**Achado real, `SelectItem` da Reka UI rejeita `value=""`** — a primeira
+versão da opção "Todos" (limpar filtro) usava `value: ''`, e todo
+`Select` quebrava com `"A <SelectItem /> must have a value prop that is
+not an empty string"` assim que a view montava (string vazia é
+reservada internamente pela lib pra "sem seleção"/mostrar o
+placeholder) — confirmado em browser real via console do Playwright.
+Corrigido trocando o sentinel de "Todos" pra `'all'` em toda opção +
+composable (`refFilter.value === 'all' ? undefined : refFilter.value`,
+os refs também nascem em `'all'`, não `''`, pra bater com a opção
+selecionada por default) — mesmo sentinel em texto literal nos 5 CRUDs,
+sem constante compartilhada (KISS, um string bem documentado repetido 5
+vezes não justifica um módulo novo). Reverificado depois: os 6 CRUDs
+abrem/fecham os `Select`s de filtro sem nenhum erro no console.
+
+Verificado em browser real contra o backend local: os 6 filtros
+(`filter[active]`, `filter[billing_cycle]`, `filter[role]`,
+`filter[status]` em Usuários E Notificações, `filter[type]` em
+Notificações E Configurações, `filter[module]`/`filter[action]` em
+Auditoria) disparam a query certa e a tabela atualiza — confirmado via
+URL de rede capturada no Playwright pra cada um, não só inspeção visual.
+
+**Achado real, reportado pelo usuário em 2026-09-01 — 2 `Select` de
+filtro empilhavam em vez de ficar lado a lado** (`AdminNotificationsView.vue`,
+única tela com 2 filtros simultâneos): `Select.vue` define
+`.ui-select-wrapper { width: 100%; }` — correto dentro de um `FormGroup`
+(o campo deve ocupar a largura toda do formulário), mas herdado sem
+alteração nenhuma dentro do `#filters` do `ListToolbar`, onde isso faz
+cada `Select` reivindicar 100% do container como `flex-basis`, forçando
+o segundo item pra própria linha mesmo sobrando espaço horizontal —
+`Input`/`FormGroup` não tinham o mesmo problema (`Input.vue` não fixa
+`width: 100%` no wrapper). Corrigido com um `:deep()` escopado só dentro
+de `.ui-toolbar__filters` (`width: auto; min-width: 160px;`), mesma
+técnica que o próprio arquivo já usa pra travar a largura do `Search`
+logo abaixo — nenhuma mudança em `Select.vue` (continua certo pro caso
+de formulário). Verificado em browser real: os 2 `Select` de
+`AdminNotificationsView.vue` renderizam na mesma linha
+(`getBoundingClientRect()` confirmando mesmo `top`, `left` diferente),
+160px cada.
 
 ### DropdownMenu (`shared/components/ui/DropdownMenu.vue`)
 
@@ -2438,6 +2528,39 @@ mesmo grupo depois, sem forçar isso agora.
   Verificado em Playwright: em `/`, "Padrão" fica ativo; em `/products`,
   só "Produtos" fica ativo, "Padrão" não mais.
 
+**Grupo "Administração" segmentado em 3, 2026-09-01, pedido direto do
+usuário** ("reordenar o menu, tem muita coisa num grupo chamado
+administração, da pra segmentar por plataforma, financeiro, usuarios")
+— o único `adminGroup` (8 itens: Usuários/Planos/Marketplaces/
+Assinaturas/Transações/Notificações/Configurações/Auditoria, todos sob
+`roles: ['admin_master']`) virou 3 `NavGroup` independentes na mesma
+posição da lista (`navGroups`), todos ainda `roles: ['admin_master']`,
+agrupados por ÁREA de produto (o pedido foi por área, não por Bounded
+Context técnico 1:1):
+
+- **`adminUsersGroup`** ("Usuários") — só `admin-users` (Identity).
+- **`adminFinanceGroup`** ("Financeiro") — `admin-plans`/
+  `admin-subscriptions`/`admin-transactions` (Billing).
+- **`adminPlatformGroup`** ("Plataforma") — `admin-marketplaces`
+  (Pricing) + `admin-notifications`/`admin-settings`/`admin-audit-logs`
+  (Platform) — agrupados juntos porque são todos "operação da
+  plataforma em si", não dinheiro nem conta de usuário.
+
+Nenhum item mudou de `to`/ícone — só reagrupados, mesmos 8 itens de
+antes. **Achado de polish, corrigido no mesmo PR**: com o item único de
+`adminUsersGroup` reaproveitando a mesma chave i18n do título do grupo
+(`sidebar.nav.adminUsers` = "Usuários"), o breadcrumb ficava "Usuários /
+Usuários" (grupo e página atual com o mesmo texto) — mesmo padrão que
+`dashboardGroup`/`marketplacesGroup` evitam de propósito (título do
+grupo genérico/plural, label do item mais específico: "Dashboards" →
+"Padrão", "Marketplaces" → "Canais de venda"). Corrigido trocando o
+valor de `sidebar.nav.adminUsers` pra "Contas de usuário" — chave nova
+`sidebar.nav.adminUsersGroup` ("Usuários") cobre só o título do grupo,
+sem tocar `identity.admin.users.title` (h1 da página, continua
+"Usuários", inalterado). Verificado em browser real: sidebar mostra os
+3 grupos separados com os itens corretos, breadcrumb em `/admin/users`
+mostra "Usuários / Contas de usuário", sem duplicação.
+
 ### AppHeader (`core/layouts/AppHeader.vue`)
 
 **Reconstruído em 2026-08-28, pedido direto do usuário com captura real**
@@ -3485,6 +3608,270 @@ qualquer produto seu) e a coluna "Marketplace" ganhou `MarketplaceLogo`
 (ver seção própria acima) via `ProductMarketplaceRow.marketplaceLogoUrl`,
 campo novo resolvido em `useProductMarketplaces.ts` cruzando
 `UserMarketplace`→`Marketplace`, mesmo caminho que já resolvia o nome.
+
+### NotificationItem/NotificationPanel/NotificationsView (`modules/platform/`)
+
+**Fase 5, 2026-09-01** — o painel do sino do `AppHeader` (`NotificationPanel.vue`)
+saiu do estado placeholder (lista fixa desde a Fase 0) pra dado real,
+`useNotificationFeed.ts`. `NotificationItem.vue` deixou de receber o
+`NotificationItemData` já resolvido (ícone/tint/timestamp por fora) e
+passou a receber a `Notification` de domínio direto — resolve
+ícone/tint via `notificationIconFor`/`notificationTintFor` (funções
+puras, `notification.type.ts`, mapeamento por `NotificationType`:
+`CheckCircle`/azul pra `subscription_activated`, `UserSwitch`/roxo pra
+`impersonation_started`, `Megaphone`/azul pra `admin_announcement`),
+timestamp via `formatRelativeTime` (`shared/services/formatDate.ts`,
+novo — primeiro uso de `dayjs/plugin/relativeTime` no projeto,
+auto-contido: registra o plugin E a locale `pt-br` no próprio módulo,
+não depende só do `dayjs.locale('pt-br')` de `main.ts`, que não roda no
+ambiente de teste), e `title`/`message` via
+`useApiMessage().resolveMessage()` (chave `NotificationMessageKey`
+catalogada ou texto livre, mesma disciplina de sempre).
+
+- **Elemento raiz virou `<button>`, não mais `<div>`** — precisa ser
+  clicável (marcar como lida, `@select`), reset de estilo de botão já
+  vem do global `_reset.scss` (`cursor: pointer; background: none;
+  border: none; font: inherit`), só `:focus-visible` com `focus-ring`
+  adicionado.
+- **Painel busca a lista só quando ABRE** (`watch(isNotificationPanelOpen)`),
+  não no mount do componente — `NotificationPanel.vue` é montado uma vez
+  em `App.vue`, buscar 10 notificações em todo carregamento de página
+  seria desperdício pra um painel que pode nunca ser aberto na sessão. O
+  CONTADOR de não lidas (`refreshUnreadCount`, `countUnreadNotifications`
+  — `GET /notifications?filter[read]=false&per_page=1`, lê só `meta.total`
+  sem transferir a lista) já busca no mount, é barato e alimenta o ponto
+  vermelho do sino independente do painel abrir ou não.
+- **`/notifications` (`NotificationsView.vue`)** — lista completa
+  paginada, mesmo `useNotificationFeed()` do painel (2 instâncias
+  independentes, cada uma com seu próprio fetch) — `<ul>` de
+  `NotificationItem` + `PaginationNav`, não `DataTable` (notificação não
+  é dado tabular). Sem item de sidebar — alcançada só pelo sino, mesmo
+  padrão de `product-marketplaces`.
+- Verificado em browser real contra o backend (2 notificações seedadas
+  via tinker, já que `subscription_activated` nunca é disparada pelo
+  fluxo de trial real — achado registrado em
+  `docs/planejamento/plano-implementacao.md`, Fase 5): ponto vermelho no
+  sino, painel com os 2 itens (ícone/cor/timestamp relativo corretos),
+  clique marca como lida e o ponto some da notificação e do sino.
+
+### useNotificationStore (`core/store/useNotificationStore.ts`)
+
+**Fase 5, 2026-09-01** — só o CONTADOR de não lidas (`unreadCount`/
+`hasUnread`), migrado de dentro de `useAppShell.ts`
+(`hasUnreadNotifications`/`setHasUnreadNotifications`, existia desde a
+Fase 0 como estado de UI do shell). Achado real ao planejar a fase:
+aquilo já era estado de DOMÍNIO (quantas notificações reais existem),
+não estado de UI (painel aberto/fechado) — `useAppShell` (core/layouts)
+não deveria saber nada sobre notificação de verdade, só orquestrar o
+shell. Migrado pra `core/store/` (mesmo nível de `useAuthStore`,
+"Pinia root (auth, notifications)" já previsto na estrutura de pastas
+desde a Fase 0, seção 2 de `docs/infra/convencoes-frontend-infra.md`) —
+`AppHeader.vue` passou a ler `notificationStore.hasUnread` (nunca
+destructura `state`/`getters` de uma store Pinia sem `storeToRefs`,
+mesmo critério já valia pra `useAuthStore` — guarda a instância, acessa
+por `.`).
+
+### AdminNotificationsView (`modules/platform/views/AdminNotificationsView.vue`)
+
+**Fase 5, 2026-09-01** — gerenciamento/broadcast, admin-only, diferente
+do sino do `AppHeader` (caixa de entrada do PRÓPRIO usuário). Mesma
+forma de `AdminMarketplacesView.vue` (`useResourceList`/`useConfirmAction`,
+`DataTable`+`PaginationNav`) pro CRUD principal (aqui só leitura +
+exclusão — não existe editar conteúdo já enviado), mas o botão de
+"criar" abre um `Modal` (não um `Drawer`/`useCrudDrawer`) — broadcast é
+uma ação fire-and-forget, nunca edita um recurso persistido depois,
+não é o par create/update que `useCrudDrawer`/`useResourceForm`
+modelam. `useBroadcastNotificationForm.ts` é bespoke por isso, mesma
+categoria de `useDeleteAccount.ts`/`useLogout.ts` — sem Zod (`title`/
+`message` são opcionais no backend, sem regra client-side que valha a
+pena adiantar, `title` só ganha `maxlength="255"` como guarda leve no
+próprio `Input`).
+
+- **Sem "enviar pra 1 usuário" nesta rodada** (`POST /admin/notifications`,
+  `SendNotificationToUserRequest` — existe no backend, não implementado
+  no front) — exigiria um seletor de `user_id`, que depende de uma tela
+  de busca/lista de usuários (`/admin/users`, Fase 6, não construída).
+  Só o broadcast (pra todos) está implementado, a rota explícita do
+  plano de implementação.
+- **Sort padrão `-created_at` sem precisar clicar no cabeçalho** —
+  achado real verificando em browser: sem isso, o broadcast recém-
+  enviado não aparecia no topo da lista (a `DataTable` não tem sort
+  nenhum aplicado até o usuário clicar a coluna). Diferente de
+  `useTransactionList`/`useAuditLogList` original (sem sort default,
+  por escolha) — aqui faz mais sentido por ser uma feed de atividade.
+  Mesmo ajuste replicado em `useAuditLogList.ts`.
+- `title`/`message` da listagem passam por `resolveMessage()` — nunca
+  `$t()` direto num valor vindo da API (mesma disciplina do
+  `NotificationItem`).
+- Verificado em browser real contra o backend: broadcast dispara `POST
+  .../broadcast` (`202`), toast de sucesso, lista atualiza com a nova
+  notificação no topo (`status: pending`, confirmado via banco que
+  `title`/`message` batem exatamente com o que foi digitado no modal),
+  exclusão funciona com `ConfirmDialog`.
+
+### AdminAuditLogsView (`modules/platform/views/AdminAuditLogsView.vue`)
+
+**Fase 5, 2026-09-01** — read-only (`AdminAuditLogController` só tem
+`index`/`show`), mesma forma de `TransactionsView.vue`
+(`useResourceList`/`DataTable`/`PaginationNav`, sem `ListToolbar`/
+`useCrudDrawer`/`ConfirmDialog`). Filtro por `module`/`action` (2
+`Input`s + botão "Filtrar", `filter[module]`/`filter[action]` exatos da
+API) — sem filtro por `user_id`/`impersonated_by`, mesmo motivo do "sem
+enviar pra 1 usuário" do `AdminNotificationsView` (exigiria seletor de
+usuário, Fase 6).
+
+- **Achado real, só descoberto na verificação (Fase 5)**: nenhuma das 3
+  ações que disparam log de auditoria hoje (`SubscriptionActivated`/
+  `SubscriptionPlanChanged`/`ImpersonationStarted`) é alcançável pelo
+  frontend nesta fase — as 2 primeiras exigem confirmação real via
+  webhook do Mercado Pago (o trial pula esse caminho inteiro), a
+  terceira é impersonation (Fase 6, ainda não construída nesse ponto).
+  Testado com um registro seedado via tinker — tabela renderiza
+  `action`/`module`/`description`/`userId`/`ipAddress`/data corretos,
+  filtro por `action` inexistente mostra corretamente o estado vazio
+  (`Nenhum registro de auditoria encontrado.`). Nesse momento
+  `userId`/`impersonatedBy` só existiam como UUID cru — a API não
+  embutia nome/e-mail (`AdminAuditLogResource`), e não fazia sentido
+  inventar cruzamento com uma listagem de usuários que ainda não
+  existia (`admin-users` só veio na Fase 6).
+
+**`user`/`impersonator` embutidos, 2026-09-01 (mesmo dia da Fase 6)** —
+gap acima fechado depois que `AdminUsersView.vue`/impersonation
+entraram no ar: reportado como achado à sessão de backend, que
+respondeu no mesmo dia embutindo `user`/`impersonator` completos
+(mesmo shape de `AdminUserResource`) em `AdminAuditLogResource` — sem
+pedido explícito do usuário, decisão tomada dentro do próprio trabalho
+colaborativo entre sessões (mensagem cross-session tratada como pedido
+de teammate, não como autorização do usuário). `AuditLog`
+(`modules/platform/types/auditLog.type.ts`) ganhou os campos `user:
+AdminUser`/`impersonator: AdminUser | null` — `userId`/`impersonatedBy`
+(string crua) continuam existindo no tipo por completude 1:1 com o
+resource, mas a UI não usa mais nenhum dos dois pra exibição.
+
+- **`AdminUser`/`toAdminUser` promovidos pra `core/types/adminUser.type.ts`**
+  (antes viviam em `modules/identity/types/`) — segundo consumidor real
+  cruzando módulo (`modules/platform` precisando do mesmo shape que
+  `modules/identity` já usava), mesmo critério de promoção já usado pra
+  `toFavoriteItem`/`ImpersonatedBy` em `core/store/types/auth.type.ts`:
+  sobe quando um SEGUNDO consumidor real aparece, nunca antecipado. Os
+  8 pontos de import dentro de `modules/identity/*` (`EditUserRoleModal.vue`,
+  `useImpersonation.ts`, `CreateAdminUserForm.vue`, `AdminUsersView.vue`,
+  `useCreateAdminUserForm.ts`, `identityApi.ts`, `useUpdateUserRoleForm.ts`,
+  `useAdminUserList.ts`) atualizados pra importar de `@/core/types/adminUser.type`.
+- **Achado colateral, fechado junto**: a coluna "Via impersonation"
+  (`platform.admin.auditLogs.columns.impersonatedBy`) já existia no
+  catálogo `pt-BR.ts` desde a criação da tela (Fase 5), mas nunca tinha
+  entrado no array `columns` da view — chave viva, nunca usada, gap que
+  só apareceu ao revisar a tela pra consumir os campos novos.
+- Verificado em browser real contra o backend local (usuário `admin_master`
+  + um `AuditLog` seedado via tinker com `impersonated_by` setado, já que
+  nenhuma das 3 ações reais de auditoria é alcançável pelo frontend —
+  mesmo gap documentado acima): coluna "Usuário" mostra o nome real (não
+  mais UUID), coluna "Via impersonation" aparece e mostra o nome do
+  admin impersonador quando setado, `—` quando não há impersonation
+  (linha de `product.deleted`, sem `impersonated_by`).
+
+### AdminUsersView / CreateAdminUserForm / EditUserRoleModal (`modules/identity/`)
+
+**Fase 6, 2026-09-01** — CRUD de usuário do lado do admin. Mesma forma
+geral de `AdminMarketplacesView.vue` (`useResourceList`/`DataTable`/
+`PaginationNav`), mas **sem `useCrudDrawer`**: `CreateUserByAdminRequest`
+(nome/e-mail/senha) e `UpdateUserByAdminRequest` (`role`/`status`) não
+compartilham NENHUM campo — criar e editar são 2 ações sem nada em
+comum, não o par simétrico que `useCrudDrawer`/`useResourceForm`
+modelam. `CreateAdminUserForm.vue` (`Drawer`) só cria;
+`EditUserRoleModal.vue` (`Modal`, 2 `Select`) só edita `role`/`status` —
+2 componentes/composables próprios, cada um com seu próprio estado
+aberto/fechado, em vez de forçar um `useCrudDrawer` com metade dos casos
+não fazendo sentido.
+
+- Sem exclusão — `AdminUserController` não tem `destroy` (usuário nunca
+  é hard-deletado pelo admin, só o próprio dono via
+  `DeleteUserAccountAction`).
+- Coluna "Ações": "Editar" (`PencilSimpleLine`) só aparece fora da
+  própria linha do admin logado (`canEditUser`, testado); "Impersonar"
+  (`UserSwitch`) só aparece pra `role: 'user'` E fora da própria linha
+  (`canImpersonate`, testado) — confirmado visualmente em browser real:
+  a própria linha do admin logado não mostra NENHUM ícone de ação, outra
+  conta `admin_master` mostra só "Editar".
+
+**Campo `role` no formulário de criação, 2026-09-01, pedido direto do
+usuário** — mudança de contrato: `CreateUserByAdminRequest` ganhou
+`role` opcional (default `user` quando omitido). `CreateAdminUserForm.vue`
+ganhou um `Select` de role reaproveitando as MESMAS opções/chaves i18n
+de `EditUserRoleModal.vue` (`identity.admin.users.roles.*`, nenhuma
+chave nova) — `createAdminUserFormSchema.ts` sempre exige o campo
+(`z.enum(['admin_master', 'user'])`, sem default silencioso do lado do
+Zod), `emptyValues()` do composable inicializa em `'user'`. Antes disso,
+criar um `admin_master` exigia 2 passos (criar como `user`, depois abrir
+`EditUserRoleModal` pra promover) — agora é 1 passo só. Verificado em
+browser real contra o backend local: criar usuário com "Perfil" =
+"Administrador" grava `role: admin_master` de verdade, linha aparece na
+tabela já com o role correto sem edição posterior.
+
+### ImpersonationBanner (`core/layouts/ImpersonationBanner.vue`)
+
+**Fase 6, 2026-09-01** — aviso visual persistente enquanto uma
+impersonation está ativa, pedido explícito do plano de implementação.
+Vive em `core/` (não em `modules/identity/`) pelo mesmo motivo de
+`AppHeader`/`AppSidebar`: é chrome do shell, montado uma vez em
+`AppLayout.vue`.
+
+- `authStore.user.impersonatedBy` é a fonte de verdade — vem de `GET
+  /auth/me` (pedido pra sessão de backend no mesmo dia, resolvido em
+  minutos: a Session do servidor já sabia disso via `impersonator_id`,
+  só não estava exposta). É o que faz o banner sobreviver a um F5 —
+  confirmado em browser real (reload com impersonation ativa, banner
+  continua lá).
+- **Sem `position: sticky`, de propósito** — `AppHeader.vue` já é sticky
+  em `top: 0`; empilhar 2 elementos sticky no mesmo `top` exigiria travar
+  o header num offset calculado a partir da altura deste banner (frágil,
+  muda no wrap mobile). Fica no fluxo normal, sempre visível ao
+  carregar/trocar de rota, aceita rolar pra fora com o resto do conteúdo.
+- Fundo `{colors.accent-orange}`, texto `{colors.paper-fixed}` — cor de
+  atenção que não colide com nenhum outro uso já estabelecido
+  (vermelho = erro, amarelo = pendente/aviso leve).
+- **Gap conhecido**: só renderiza dentro de `AppLayout.vue` — impersonar
+  um usuário sem assinatura ativa manda ele pro guard de `/choose-plan`
+  (fora do `AppLayout`), onde não existe banner nem botão de "Voltar a
+  ser admin" nenhum. Descoberto testando em browser real, documentado em
+  `docs/planejamento/plano-implementacao.md` Fase 6 — não bloqueia o caso
+  comum (usuário de suporte real, já assinante).
+
+### AdminPlansView / AdminPlanForm (`modules/billing/`)
+
+**Fase 6, 2026-09-01** — CRUD de `PLAN`, mesma forma exata de
+`AdminMarketplacesView.vue` (`useResourceList`/`useCrudDrawer`/
+`useConfirmAction`, form único cria+edita em cima de `useResourceForm`).
+
+- **`billingCycle`/`isTrial`/`trialDays` com sincronização automática no
+  form** — trocar o `Select` de ciclo pra "Trial" já marca `isTrial:
+  true` e mostra o campo "Dias de trial" (`v-if`); qualquer outro ciclo
+  esconde o campo e zera `isTrial`/`trialDays`. O schema
+  (`adminPlanFormSchema.ts`, testado) ainda valida a regra cruzada por
+  segurança, mas a UI evita o admin ver o erro na prática.
+  `findMostEconomicalPlan` (Fase de trial) já excluía plano trial do
+  comparativo — aqui é o admin CRIANDO esse mesmo tipo de plano.
+- **Coluna "Ciclo" mostra só "Trial" pro plano trial** (não "Mensal
+  Trial" com um Badge redundante do lado, versão descartada durante a
+  verificação em browser real — texto duplo/confuso, corrigido antes de
+  documentar).
+- Sem `ListToolbar` — mesmo raciocínio de `AdminMarketplacesView.vue`
+  (API admin sem filtro de texto por nome).
+
+### AdminSettingsView / AdminSettingForm (`modules/platform/`)
+
+**Fase 6, 2026-09-01** — CRUD de `SETTINGS` (configuração interna
+chave-valor), mesma forma exata de `AdminPlansView.vue`.
+
+- **`hash` só é editável em modo `create`** — depois de criado é a PK,
+  imutável (`UpdateSettingRequest` nem aceita o campo). Em modo `edit`,
+  o `Input` de hash fica `disabled` (confirmado em browser real,
+  `isDisabled(): true`) — só visível pra identificar qual configuração
+  está sendo editada, nunca editável.
+- `type` é um `Select` com as 7 opções reais de `SettingType`
+  (int/string/enum/text/json/bool/float) — `value` continua sempre
+  `string` (é assim que a API guarda, independente do `type` declarado).
 
 ## Do's and Don'ts
 

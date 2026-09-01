@@ -1,7 +1,7 @@
 import { ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
-import { toFavoriteItem, toPlanLimits } from '@/core/store/types/auth.type'
+import { toFavoriteItem, toImpersonatedBy, toPlanLimits } from '@/core/store/types/auth.type'
 import { useAuthStore } from '@/core/store/useAuthStore'
 import { useApiMessage } from '@/shared/composables/useApiMessage'
 import { useToast } from '@/shared/composables/useToast'
@@ -54,6 +54,7 @@ export function useVerifyEmail() {
           result.user,
           result.favorites.map(toFavoriteItem),
           toPlanLimits(result.plan_limits),
+          toImpersonatedBy(result.impersonated_by),
         ),
         {
           requiresSubscription: result.requires_subscription,

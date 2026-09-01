@@ -1,7 +1,12 @@
 import type { Router } from 'vue-router'
 import { i18n } from '@/core/i18n'
 import { useAppShell } from '@/core/layouts/composables/useAppShell'
-import { toFavoriteItem, toPlanLimits, type UserRole } from '@/core/store/types/auth.type'
+import {
+  toFavoriteItem,
+  toImpersonatedBy,
+  toPlanLimits,
+  type UserRole,
+} from '@/core/store/types/auth.type'
 import { useAuthStore } from '@/core/store/useAuthStore'
 import { fetchCurrentUser } from '@/modules/identity/services/identityApi'
 import { toAuthUser } from '@/modules/identity/types/user.type'
@@ -80,6 +85,7 @@ export async function refreshCurrentUser(): Promise<void> {
         result.user,
         result.favorites.map(toFavoriteItem),
         toPlanLimits(result.plan_limits),
+        toImpersonatedBy(result.impersonated_by),
       ),
       {
         requiresSubscription: result.requires_subscription,

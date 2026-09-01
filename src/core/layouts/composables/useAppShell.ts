@@ -12,7 +12,6 @@ import type { NavItem } from '../types/navigation.type'
 const isMobileNavOpen = ref(false)
 const expandedItemIds = ref(new Set<string>())
 const isNotificationPanelOpen = ref(false)
-const hasUnreadNotifications = ref(false)
 const isDesktopSidebarCollapsed = ref(false)
 
 /**
@@ -63,16 +62,6 @@ export function useAppShell() {
 
   function toggleNotificationPanel(): void {
     isNotificationPanelOpen.value = !isNotificationPanelOpen.value
-  }
-
-  /**
-   * O `AppHeader` (core) só exibe o indicador — quem decide se há
-   * notificação não lida é o módulo Platform (`NotificationPanel`), que
-   * conhece os dados de verdade. Nunca mutar `hasUnreadNotifications`
-   * direto de fora, sempre por aqui (mesmo padrão das outras flags).
-   */
-  function setHasUnreadNotifications(value: boolean): void {
-    hasUnreadNotifications.value = value
   }
 
   function isItemExpanded(id: string): boolean {
@@ -140,7 +129,6 @@ export function useAppShell() {
     closeMobileNav,
     closeNotificationPanel,
     expandItem,
-    hasUnreadNotifications,
     isDesktopSidebarCollapsed,
     isItemExpanded,
     isMobileNavOpen,
@@ -149,7 +137,6 @@ export function useAppShell() {
     openNotificationPanel,
     recentPages,
     recordVisit,
-    setHasUnreadNotifications,
     toggleDesktopSidebar,
     toggleItem,
     toggleMobileNav,

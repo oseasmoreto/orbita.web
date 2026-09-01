@@ -12,74 +12,56 @@
  *
  * Aberto/fechado pelo sino do `AppHeader` via `useAppShell` (estado de UI
  * do shell, não de domínio — mesmo padrão já usado pro menu mobile).
- * Dados abaixo são placeholder: não existe endpoint de notificação ainda
- * (Fase 5, `docs/planejamento/plano-implementacao.md`) — quando existir,
- * isso vira um composable (`useNotifications`) buscando de verdade, essa
- * lista fixa sai.
+ *
+ * **Ligado a dado real, Fase 5 (2026-09-01)** — `useNotificationFeed()`
+ * substitui a lista placeholder que existia desde a Fase 0. Contador de
+ * não lidas (`useNotificationStore`) é buscado uma vez no MOUNT deste
+ * componente (montado uma vez em `App.vue`, então roda uma vez por
+ * carregamento do app — barato, `per_page: 1`, `countUnreadNotifications`).
+ * A LISTA em si só é buscada quando o painel de fato ABRE
+ * (`watch(isNotificationPanelOpen)`) — abrir o painel raramente acontece
+ * toda sessão, não vale buscar 10 notificações à toa em todo carregamento
+ * só pra alimentar um painel que pode nunca abrir.
  */
-import { computed, watchEffect } from 'vue'
+import { onMounted, watch } from 'vue'
 import { useAppShell } from '@/core/layouts/composables/useAppShell'
-import { Bell, Broadcast, BugBeetle, User } from '@/shared/components/icons/regular.generated'
+import { Bell } from '@/shared/components/icons/regular.generated'
 import Drawer from '@/shared/components/ui/Drawer.vue'
 import Icon from '@/shared/components/ui/Icon.vue'
+import { useNotificationFeed } from '../composables/useNotificationFeed'
 import NotificationItem from './NotificationItem.vue'
-import type { NotificationItemData } from '../types/notification.type'
+import type { Notification } from '../types/notification.type'
 
-const { closeNotificationPanel, isNotificationPanelOpen, setHasUnreadNotifications } = useAppShell()
+const { closeNotificationPanel, isNotificationPanelOpen } = useAppShell()
+const { items, markAsRead, refresh, refreshUnreadCount } = useNotificationFeed()
 
-const notifications: NotificationItemData[] = [
-  {
-    icon: BugBeetle,
-    read: false,
-    timestamp: 'Just now',
-    tint: 'blue',
-    title: 'You have a bug that needs to be fixed.',
-  },
-  {
-    icon: User,
-    read: false,
-    timestamp: '59 minutes ago',
-    tint: 'purple',
-    title: 'New user registered.',
-  },
-  {
-    icon: BugBeetle,
-    read: true,
-    timestamp: '12 hours ago',
-    tint: 'blue',
-    title: 'You have a bug that needs to be fixed.',
-  },
-  {
-    icon: Broadcast,
-    read: true,
-    timestamp: 'Feb 2, 2025',
-    tint: 'purple',
-    title: 'Andi Lane subscribed to you.',
-  },
-]
+onMounted(refreshUnreadCount)
 
-// `watchEffect` (não só uma chamada única) porque `notifications` ainda é
-// placeholder estático — quando virar um composable buscando de verdade
-// (Fase 5), a lista passa a ser reativa e isso continua correto sem
-// mudar nada aqui.
-const hasUnread = computed(() => notifications.some((notification) => !notification.read))
-watchEffect(() => setHasUnreadNotifications(hasUnread.value))
+watch(isNotificationPanelOpen, (isOpen) => {
+  if (isOpen) {
+    void refresh()
+  }
+})
+
+function handleSelect(notification: Notification): void {
+  void markAsRead(notification)
+}
 </script>
 
 <template>
   <Drawer
     :model-value="isNotificationPanelOpen"
     size="sm"
-    title="Notificações"
+    :title="$t('platform.notifications.title')"
     @update:model-value="(value) => !value && closeNotificationPanel()"
   >
-    <div v-if="notifications.length === 0" class="notification-panel__empty">
+    <div v-if="items.length === 0" class="notification-panel__empty">
       <Icon :icon="Bell" :size="32" />
-      <p>Nenhuma notificação por enquanto.</p>
+      <p>{{ $t('platform.notifications.empty') }}</p>
     </div>
     <ul v-else class="notification-panel__list">
-      <li v-for="(notification, index) in notifications" :key="index">
-        <NotificationItem :notification="notification" />
+      <li v-for="notification in items" :key="notification.id">
+        <NotificationItem :notification="notification" @select="handleSelect" />
       </li>
     </ul>
   </Drawer>

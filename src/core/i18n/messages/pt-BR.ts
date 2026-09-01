@@ -26,6 +26,51 @@
  */
 export default {
   billing: {
+    admin: {
+      plans: {
+        columns: {
+          active: 'Ativo',
+          billingCycle: 'Ciclo',
+          createdAt: 'Criado em',
+          limits: 'Limites',
+          name: 'Nome',
+          price: 'Preço',
+        },
+        createButton: 'Novo plano',
+        deleteConfirm: {
+          description: 'Essa ação não pode ser desfeita.',
+          title: 'Excluir plano?',
+        },
+        deleteSuccess: 'Plano excluído com sucesso.',
+        empty: 'Nenhum plano cadastrado ainda.',
+        form: {
+          createSuccess: 'Plano criado com sucesso.',
+          createTitle: 'Novo plano',
+          editTitle: 'Editar plano',
+          errors: {
+            maxMarketplacesPositive: 'Limite de marketplaces deve ser maior que zero.',
+            maxProductsPositive: 'Limite de produtos deve ser maior que zero.',
+            nameRequired: 'Nome é obrigatório.',
+            pricePositive: 'Preço não pode ser negativo.',
+            trialCycleMismatch: 'Ciclo "Trial" exige marcar o plano como trial (e vice-versa).',
+            trialDaysRequired: 'Informe a duração do trial em dias.',
+          },
+          fields: {
+            active: 'Ativo',
+            billingCycle: 'Ciclo de cobrança',
+            billingCycleTrial: 'Trial',
+            maxMarketplaces: 'Limite de marketplaces',
+            maxProducts: 'Limite de produtos',
+            name: 'Nome',
+            price: 'Preço',
+            trialDays: 'Dias de trial',
+          },
+          updateSuccess: 'Plano atualizado com sucesso.',
+        },
+        limitsFormat: '{products} produtos · {marketplaces} marketplaces',
+        title: 'Planos',
+      },
+    },
     billingCycleFilter: {
       monthly: 'Mensal',
       yearly: 'Anual',
@@ -269,6 +314,9 @@ export default {
       unfavorite: 'Remover dos favoritos',
       view: 'Visualizar',
     },
+    filters: {
+      all: 'Todos',
+    },
     marketplaces: {
       amazon: 'Amazon',
       magalu: 'Magalu',
@@ -279,6 +327,10 @@ export default {
     },
     search: {
       placeholder: 'Buscar',
+    },
+    status: {
+      active: 'Ativo',
+      inactive: 'Inativo',
     },
   },
   dashboard: {
@@ -527,6 +579,61 @@ export default {
       title: 'Minha conta',
       updateSuccess: 'Dados atualizados com sucesso.',
     },
+    admin: {
+      impersonation: {
+        bannerText: 'Você está logado como {name} (impersonando).',
+        stopCta: 'Voltar a ser admin',
+      },
+      users: {
+        columns: {
+          createdAt: 'Criado em',
+          email: 'E-mail',
+          name: 'Nome',
+          role: 'Perfil',
+          status: 'Status',
+        },
+        createButton: 'Novo usuário',
+        editModal: {
+          fields: {
+            role: 'Perfil',
+            status: 'Status',
+          },
+          success: 'Usuário atualizado com sucesso.',
+          title: 'Editar usuário',
+        },
+        empty: 'Nenhum usuário encontrado.',
+        form: {
+          createSuccess: 'Usuário criado com sucesso.',
+          createTitle: 'Novo usuário',
+          errors: {
+            emailInvalid: 'Informe um e-mail válido.',
+            emailRequired: 'E-mail é obrigatório.',
+            nameRequired: 'Nome é obrigatório.',
+            passwordConfirmationMismatch: 'As senhas não coincidem.',
+            passwordConfirmationRequired: 'Confirme a senha.',
+            passwordMin: 'A senha precisa ter pelo menos 8 caracteres.',
+          },
+          fields: {
+            email: 'E-mail',
+            name: 'Nome',
+            password: 'Senha',
+            passwordConfirmation: 'Confirmar senha',
+            role: 'Perfil',
+          },
+        },
+        impersonateButton: 'Impersonar',
+        roles: {
+          admin_master: 'Administrador',
+          user: 'Usuário',
+        },
+        statuses: {
+          active: 'Ativo',
+          deleted: 'Excluído',
+          suspended: 'Suspenso',
+        },
+        title: 'Usuários',
+      },
+    },
     forgotPassword: {
       errors: {
         emailInvalid: 'Informe um e-mail válido.',
@@ -640,6 +747,141 @@ export default {
       stillNotVerified: 'Seu e-mail ainda não foi verificado.',
       subtitle: 'Enviamos um link de confirmação para {email}. Clique nele para continuar.',
       title: 'Verifique seu e-mail',
+    },
+  },
+  /**
+   * `NotificationMessageKey` real do backend (`Domain/Platform/Enums/NotificationMessageKey.php`)
+   * — mesma disciplina do `ApiMessageKey` acima: `NOTIFICATION.title`/
+   * `.message` aceitam essas chaves OU texto livre (quando o admin manda
+   * seu próprio texto no broadcast/envio direto), resolvidas via
+   * `useApiMessage().resolveMessage()` (`NotificationItem.vue`), nunca um
+   * `switch` manual.
+   */
+  notificationMessageAdminAnnouncement: 'Um administrador enviou um aviso.',
+  notificationMessageImpersonationStarted: 'Um administrador começou a acessar sua conta.',
+  notificationMessageSubscriptionActivated: 'Sua assinatura foi ativada com sucesso.',
+  notificationTitleAdminAnnouncement: 'Aviso do administrador',
+  notificationTitleImpersonationStarted: 'Acesso administrativo iniciado',
+  notificationTitleSubscriptionActivated: 'Assinatura ativada',
+  platform: {
+    admin: {
+      auditLogs: {
+        columns: {
+          action: 'Ação',
+          createdAt: 'Data',
+          description: 'Descrição',
+          impersonatedBy: 'Via impersonation',
+          ipAddress: 'IP',
+          module: 'Módulo',
+          userId: 'Usuário',
+        },
+        empty: 'Nenhum registro de auditoria encontrado.',
+        error: 'Não foi possível carregar o log de auditoria agora.',
+        filters: {
+          action: 'Ação',
+          actionPlaceholder: 'ex: subscription.activated',
+          module: 'Módulo',
+          modulePlaceholder: 'ex: billing',
+        },
+        title: 'Auditoria',
+      },
+      notifications: {
+        broadcastButton: 'Transmitir notificação',
+        broadcastModal: {
+          description:
+            'Envia pra TODOS os usuários da plataforma. Deixe os campos em branco pra usar o texto padrão de aviso do administrador.',
+          fields: {
+            message: 'Mensagem',
+            title: 'Título',
+          },
+          placeholders: {
+            message: 'Mensagem opcional...',
+            title: 'Título opcional...',
+          },
+          submit: 'Transmitir',
+          success: 'Notificação enviada para todos os usuários.',
+          title: 'Transmitir notificação',
+        },
+        columns: {
+          createdAt: 'Criado em',
+          status: 'Status',
+          title: 'Título',
+          type: 'Tipo',
+        },
+        deleteConfirm: {
+          description: 'Essa ação não pode ser desfeita.',
+          title: 'Excluir notificação?',
+        },
+        deleteSuccess: 'Notificação excluída.',
+        empty: 'Nenhuma notificação enviada ainda.',
+        error: 'Não foi possível carregar as notificações agora.',
+        status: {
+          cancelled: 'Cancelado',
+          pending: 'Pendente',
+          sending: 'Enviando',
+          sent: 'Enviado',
+        },
+        title: 'Notificações',
+        types: {
+          admin_announcement: 'Aviso do admin',
+          impersonation_started: 'Impersonation iniciada',
+          subscription_activated: 'Assinatura ativada',
+        },
+      },
+      settings: {
+        columns: {
+          createdAt: 'Criado em',
+          hash: 'Identificador',
+          name: 'Nome',
+          type: 'Tipo',
+          value: 'Valor',
+        },
+        createButton: 'Nova configuração',
+        deleteConfirm: {
+          description: 'Essa ação não pode ser desfeita.',
+          title: 'Excluir configuração?',
+        },
+        deleteSuccess: 'Configuração excluída com sucesso.',
+        empty: 'Nenhuma configuração cadastrada ainda.',
+        form: {
+          createSuccess: 'Configuração criada com sucesso.',
+          createTitle: 'Nova configuração',
+          editTitle: 'Editar configuração',
+          errors: {
+            hashFormat:
+              'Use só letras minúsculas, números, ponto e underscore (ex: billing.trial_days).',
+            hashRequired: 'Identificador é obrigatório.',
+            nameRequired: 'Nome é obrigatório.',
+            valueRequired: 'Valor é obrigatório.',
+          },
+          fields: {
+            hash: 'Identificador',
+            name: 'Nome',
+            type: 'Tipo',
+            value: 'Valor',
+          },
+          placeholders: {
+            hash: 'ex: billing.trial_days',
+          },
+          updateSuccess: 'Configuração atualizada com sucesso.',
+        },
+        title: 'Configurações',
+        types: {
+          bool: 'Booleano',
+          enum: 'Enum',
+          float: 'Decimal',
+          int: 'Inteiro',
+          json: 'JSON',
+          string: 'Texto curto',
+          text: 'Texto longo',
+        },
+      },
+    },
+    notifications: {
+      empty: 'Nenhuma notificação por enquanto.',
+      error: 'Não foi possível carregar suas notificações agora.',
+      title: 'Notificações',
+      unread: 'Não lida',
     },
   },
   pricing: {
@@ -797,15 +1039,17 @@ export default {
   sidebar: {
     favoritesTab: 'Favoritos',
     nav: {
-      admin: 'Administração',
       adminAuditLogs: 'Auditoria',
+      adminFinanceGroup: 'Financeiro',
       adminMarketplaces: 'Marketplaces',
       adminNotifications: 'Notificações',
       adminPlans: 'Planos',
+      adminPlatformGroup: 'Plataforma',
       adminSettings: 'Configurações',
       adminSubscriptions: 'Assinaturas',
       adminTransactions: 'Transações',
-      adminUsers: 'Usuários',
+      adminUsers: 'Contas de usuário',
+      adminUsersGroup: 'Usuários',
       catalog: 'Catálogo',
       dashboardDefault: 'Padrão',
       dashboards: 'Dashboards',

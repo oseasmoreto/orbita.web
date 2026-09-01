@@ -1,7 +1,13 @@
 import { apiClient } from '@/core/api/client'
 import type { components } from '@/core/api/schema'
 import type { ApiResponse, Paginated } from '@/shared/types/api.type'
-import { type BillingCycle, type Plan, toPlan } from '../types/plan.type'
+import {
+  type AdminPlan,
+  type BillingCycle,
+  type Plan,
+  toAdminPlan,
+  toPlan,
+} from '../types/plan.type'
 import {
   type Subscription,
   type SubscriptionCheckout,
@@ -11,6 +17,9 @@ import {
 import { type Transaction, toTransaction } from '../types/transaction.type'
 
 type PlanResource = components['schemas']['PlanResource']
+type AdminPlanResource = components['schemas']['AdminPlanResource']
+type CreatePlanRequest = components['schemas']['CreatePlanRequest']
+type UpdatePlanRequest = components['schemas']['UpdatePlanRequest']
 type SubscribeToPlanRequest = components['schemas']['SubscribeToPlanRequest']
 type ChangeSubscriptionPlanRequest = components['schemas']['ChangeSubscriptionPlanRequest']
 type SubscriptionResource = components['schemas']['SubscriptionResource']
@@ -18,6 +27,11 @@ type TransactionResource = components['schemas']['TransactionResource']
 
 interface PlansEnvelope {
   items: PlanResource[]
+  meta: { current_page: number; per_page: number; total: number }
+}
+
+interface AdminPlansEnvelope {
+  items: AdminPlanResource[]
   meta: { current_page: number; per_page: number; total: number }
 }
 
@@ -57,6 +71,50 @@ export async function listPlans(params: ListPlansParams = {}): Promise<Paginated
     items: data.data.items.map(toPlan),
     meta: data.data.meta,
   }
+}
+
+// ---------------------------------------------------------------------------
+// ADMIN PLAN — CRUD completo (`/admin/plans`), restrito a `admin_master`
+// (cadastro de plano é exclusivo do admin, Fase 6).
+// ---------------------------------------------------------------------------
+
+export interface ListAdminPlansParams {
+  billingCycle?: string
+  page?: number
+  perPage?: number
+  sort?: string
+}
+
+export async function listAdminPlans(
+  params: ListAdminPlansParams = {},
+): Promise<Paginated<AdminPlan>> {
+  const { data } = await apiClient.get<ApiResponse<AdminPlansEnvelope>>('/admin/plans', {
+    params: {
+      'filter[billing_cycle]': params.billingCycle,
+      page: params.page,
+      per_page: params.perPage,
+      sort: params.sort,
+    },
+  })
+
+  return { items: data.data.items.map(toAdminPlan), meta: data.data.meta }
+}
+
+export async function createAdminPlan(payload: CreatePlanRequest): Promise<AdminPlan> {
+  const { data } = await apiClient.post<ApiResponse<AdminPlanResource>>('/admin/plans', payload)
+  return toAdminPlan(data.data)
+}
+
+export async function updateAdminPlan(id: string, payload: UpdatePlanRequest): Promise<AdminPlan> {
+  const { data } = await apiClient.patch<ApiResponse<AdminPlanResource>>(
+    `/admin/plans/${id}`,
+    payload,
+  )
+  return toAdminPlan(data.data)
+}
+
+export async function deleteAdminPlan(id: string): Promise<void> {
+  await apiClient.delete(`/admin/plans/${id}`)
 }
 
 /**

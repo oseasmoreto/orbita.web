@@ -91,4 +91,14 @@ export const identityAppRoutes: RouteRecordRaw[] = [
     name: 'account',
     path: 'account',
   },
+  {
+    // Fase 6 — CRUD de usuário do lado do admin + impersonation
+    // (`useImpersonation.ts`). `skipOnboardingChecks` não é necessário
+    // aqui (diferente de `/account`) — só `admin_master` acessa, que já
+    // é isento do guard de assinatura/onboarding em `core/router/guards.ts`.
+    component: () => import('./views/AdminUsersView.vue'),
+    meta: { roles: ['admin_master'], title: 'identity.admin.users.title' },
+    name: 'admin-users',
+    path: 'admin/users',
+  },
 ]

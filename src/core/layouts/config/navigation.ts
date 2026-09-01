@@ -162,30 +162,77 @@ export const billingGroup: NavGroup = {
 
 /**
  * Só `admin_master` (`NavGroup.roles`) — namespace `/v1/admin/*` inteiro
- * já implementado no backend (Identity/Billing/Pricing/Platform), Fase 6
- * (`docs/planejamento/plano-implementacao.md`) ainda não construída no
- * frontend. Notificações do admin (`AdminNotificationController`) é
- * gerenciamento/broadcast — diferente do sino do `AppHeader`, que é
- * sempre a caixa de entrada do PRÓPRIO usuário, comum a todo mundo.
+ * já implementado no backend (Identity/Billing/Pricing/Platform).
+ *
+ * **Segmentado em 3 grupos em 2026-09-01, pedido direto do usuário**
+ * ("reordenar o menu, tem muita coisa num grupo chamado administração,
+ * da pra segmentar por plataforma, financeiro, usuarios") — antes era 1
+ * grupo só ("Administração") com 8 itens sem nenhuma hierarquia visual
+ * entre eles, misturando conta/cobrança/config num scroll só. Dividido
+ * por área, não por Bounded Context 1:1 (o pedido do usuário foi por
+ * ÁREA de produto, não por camada técnica) — `adminUsersGroup` (Identity),
+ * `adminFinanceGroup` (Billing), `adminPlatformGroup` (Pricing admin +
+ * Platform, já que "canais de venda"/"configuração"/"notificação"/
+ * "auditoria" são todos operação da plataforma em si, não dinheiro nem
+ * conta de usuário). Nenhum item mudou de `to`/ícone — só reagrupados.
  */
-export const adminGroup: NavGroup = {
+export const adminUsersGroup: NavGroup = {
   items: [
-    { icon: UsersThree, id: 'admin-users', label: t('sidebar.nav.adminUsers') },
-    { icon: Tag, id: 'admin-plans', label: t('sidebar.nav.adminPlans') },
+    {
+      icon: UsersThree,
+      id: 'admin-users',
+      label: t('sidebar.nav.adminUsers'),
+      to: { name: 'admin-users' },
+    },
+  ],
+  roles: ['admin_master'],
+  title: t('sidebar.nav.adminUsersGroup'),
+}
+
+export const adminFinanceGroup: NavGroup = {
+  items: [
+    {
+      icon: Tag,
+      id: 'admin-plans',
+      label: t('sidebar.nav.adminPlans'),
+      to: { name: 'admin-plans' },
+    },
+    { icon: Wallet, id: 'admin-subscriptions', label: t('sidebar.nav.adminSubscriptions') },
+    { icon: Receipt, id: 'admin-transactions', label: t('sidebar.nav.adminTransactions') },
+  ],
+  roles: ['admin_master'],
+  title: t('sidebar.nav.adminFinanceGroup'),
+}
+
+export const adminPlatformGroup: NavGroup = {
+  items: [
     {
       icon: Storefront,
       id: 'admin-marketplaces',
       label: t('sidebar.nav.adminMarketplaces'),
       to: { name: 'admin-marketplaces' },
     },
-    { icon: Wallet, id: 'admin-subscriptions', label: t('sidebar.nav.adminSubscriptions') },
-    { icon: Receipt, id: 'admin-transactions', label: t('sidebar.nav.adminTransactions') },
-    { icon: Bell, id: 'admin-notifications', label: t('sidebar.nav.adminNotifications') },
-    { icon: Gear, id: 'admin-settings', label: t('sidebar.nav.adminSettings') },
-    { icon: Clipboard, id: 'admin-audit-logs', label: t('sidebar.nav.adminAuditLogs') },
+    {
+      icon: Bell,
+      id: 'admin-notifications',
+      label: t('sidebar.nav.adminNotifications'),
+      to: { name: 'admin-notifications' },
+    },
+    {
+      icon: Gear,
+      id: 'admin-settings',
+      label: t('sidebar.nav.adminSettings'),
+      to: { name: 'admin-settings' },
+    },
+    {
+      icon: Clipboard,
+      id: 'admin-audit-logs',
+      label: t('sidebar.nav.adminAuditLogs'),
+      to: { name: 'admin-audit-logs' },
+    },
   ],
   roles: ['admin_master'],
-  title: t('sidebar.nav.admin'),
+  title: t('sidebar.nav.adminPlatformGroup'),
 }
 
 export const navGroups: NavGroup[] = [
@@ -193,5 +240,7 @@ export const navGroups: NavGroup[] = [
   catalogGroup,
   marketplacesGroup,
   billingGroup,
-  adminGroup,
+  adminUsersGroup,
+  adminFinanceGroup,
+  adminPlatformGroup,
 ]

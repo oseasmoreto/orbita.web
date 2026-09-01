@@ -86,4 +86,13 @@ export const billingAppRoutes: RouteRecordRaw[] = [
     name: 'billing-transactions',
     path: 'billing/transactions',
   },
+  {
+    // Fase 6 — CRUD de plano do lado do admin (`docs/planejamento/plano-implementacao.md`,
+    // "adicione tbm planos e configurações já que vamos tratar de
+    // módulos do admin", pedido direto do usuário em 2026-09-01).
+    component: () => import('./views/AdminPlansView.vue'),
+    meta: { roles: ['admin_master'], title: 'billing.admin.plans.title' },
+    name: 'admin-plans',
+    path: 'admin/plans',
+  },
 ]

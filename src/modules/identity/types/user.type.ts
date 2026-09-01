@@ -1,5 +1,11 @@
 import type { components } from '@/core/api/schema'
-import type { AuthUser, FavoriteItem, PlanLimits, UserRole } from '@/core/store/types/auth.type'
+import type {
+  AuthUser,
+  FavoriteItem,
+  ImpersonatedBy,
+  PlanLimits,
+  UserRole,
+} from '@/core/store/types/auth.type'
 
 type UserResource = components['schemas']['UserResource']
 
@@ -38,12 +44,14 @@ export function toAuthUser(
   resource: UserResource,
   favorites: FavoriteItem[] = [],
   planLimits: PlanLimits | null = null,
+  impersonatedBy: ImpersonatedBy | null = null,
 ): AuthUser {
   return {
     email: resource.email,
     emailVerifiedAt: resource.email_verified_at,
     favorites,
     id: resource.id,
+    impersonatedBy,
     name: resource.name,
     planLimits,
     role: resource.role as UserRole,
