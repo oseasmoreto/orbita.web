@@ -33,19 +33,30 @@ export function buildTicketSortParam(
 
 /**
  * Wrapper de `useResourceList` pra `Ticket` (próprios chamados). Filtro
- * de `status` (`ListToolbar` `#filters`, `Select`, sentinel `'all'`,
- * mesmo padrão do resto do projeto) — sem filtro de data
- * (`created_from/to`/`resolved_from/to`, a API aceita mas exigiria um
- * `DateRangePicker` que não foi pedido nesta rodada).
+ * de `status` (`Select`, sentinel `'all'`) + intervalo de data de
+ * abertura/resolução (`DateRangePicker`, Fase 9 — fechamento de gaps do
+ * OpenAPI, 2026-09-01: `created_from/to`/`resolved_from/to` existiam na
+ * API desde o início, sem UI porque "exigiria um `DateRangePicker` que
+ * não foi pedido" — já existe no design system agora, sem motivo pra
+ * continuar sem). `''` do `DateRangePicker` (sem data escolhida) vira
+ * `undefined` no payload, nunca uma string vazia solta pro backend.
  */
 export function useTicketList() {
   const statusFilter = ref('all')
+  const createdFrom = ref('')
+  const createdTo = ref('')
+  const resolvedFrom = ref('')
+  const resolvedTo = ref('')
 
   const list = useResourceList<Ticket>({
     fetchPage: async ({ page, perPage, sortDirection, sortKey }) => {
       const result = await listTickets({
+        createdFrom: createdFrom.value || undefined,
+        createdTo: createdTo.value || undefined,
         page,
         perPage,
+        resolvedFrom: resolvedFrom.value || undefined,
+        resolvedTo: resolvedTo.value || undefined,
         sort: buildTicketSortParam(sortKey, sortDirection) ?? '-created_at',
         status: statusFilter.value === 'all' ? undefined : statusFilter.value,
       })
@@ -58,5 +69,18 @@ export function useTicketList() {
     await list.setPage(1)
   }
 
-  return { ...list, setStatusFilter, statusFilter }
+  async function applyDateFilters(): Promise<void> {
+    await list.setPage(1)
+  }
+
+  return {
+    ...list,
+    applyDateFilters,
+    createdFrom,
+    createdTo,
+    resolvedFrom,
+    resolvedTo,
+    setStatusFilter,
+    statusFilter,
+  }
 }

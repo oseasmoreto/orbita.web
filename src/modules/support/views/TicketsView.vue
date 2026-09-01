@@ -15,6 +15,7 @@ import DataTable from '@/shared/components/blocks/DataTable.vue'
 import ListToolbar from '@/shared/components/blocks/ListToolbar.vue'
 import PaginationNav from '@/shared/components/blocks/PaginationNav.vue'
 import Button from '@/shared/components/ui/Button.vue'
+import DateRangePicker from '@/shared/components/ui/DateRangePicker.vue'
 import Drawer from '@/shared/components/ui/Drawer.vue'
 import Select from '@/shared/components/ui/Select.vue'
 import StatusDot from '@/shared/components/ui/StatusDot.vue'
@@ -82,10 +83,24 @@ function handleUpdated(): void {
     >
       <template #filters>
         <Select
+          :label="$t('support.tickets.filters.status')"
           :model-value="list.statusFilter.value"
           :options="statusFilterOptions"
           @update:model-value="(value) => list.setStatusFilter(value)"
         />
+        <DateRangePicker
+          v-model:end="list.createdTo.value"
+          v-model:start="list.createdFrom.value"
+          :label="$t('support.tickets.filters.createdBetween')"
+        />
+        <DateRangePicker
+          v-model:end="list.resolvedTo.value"
+          v-model:start="list.resolvedFrom.value"
+          :label="$t('support.tickets.filters.resolvedBetween')"
+        />
+        <Button variant="outline" @click="list.applyDateFilters()">
+          {{ $t('common.actions.filter') }}
+        </Button>
       </template>
     </ListToolbar>
 

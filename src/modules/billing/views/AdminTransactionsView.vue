@@ -17,8 +17,10 @@ import { useI18n } from 'vue-i18n'
 import DataTable from '@/shared/components/blocks/DataTable.vue'
 import ListToolbar from '@/shared/components/blocks/ListToolbar.vue'
 import PaginationNav from '@/shared/components/blocks/PaginationNav.vue'
+import Combobox from '@/shared/components/ui/Combobox.vue'
 import Select from '@/shared/components/ui/Select.vue'
 import StatusDot from '@/shared/components/ui/StatusDot.vue'
+import { useAdminUserOptions } from '@/core/composables/useAdminUserOptions'
 import { useApiMessage } from '@/shared/composables/useApiMessage'
 import { formatMoney } from '@/shared/services/formatNumber'
 import { parseApiError } from '@/shared/services/parseApiError'
@@ -32,6 +34,14 @@ const { resolveMessage } = useApiMessage()
 
 const list = useAdminTransactionList()
 onMounted(list.refresh)
+
+const userOptions = useAdminUserOptions()
+onMounted(userOptions.load)
+
+const userFilterOptions = computed<SelectOption[]>(() => [
+  { label: t('common.filters.all'), value: 'all' },
+  ...userOptions.options.value,
+])
 
 const statusFilterOptions = computed<SelectOption[]>(() => [
   { label: t('common.filters.all'), value: 'all' },
@@ -71,9 +81,16 @@ function formatCreatedAt(value: string | null): string {
     <ListToolbar :addable="false" :filterable="false" :searchable="false" :sortable="false">
       <template #filters>
         <Select
+          :label="$t('billing.admin.transactions.filters.status')"
           :model-value="list.statusFilter.value"
           :options="statusFilterOptions"
           @update:model-value="(value) => list.setStatusFilter(value)"
+        />
+        <Combobox
+          :label="$t('billing.admin.transactions.filters.user')"
+          :model-value="list.userIdFilter.value"
+          :options="userFilterOptions"
+          @update:model-value="(value) => list.setUserIdFilter(value)"
         />
       </template>
     </ListToolbar>

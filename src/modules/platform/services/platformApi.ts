@@ -165,10 +165,12 @@ export async function broadcastNotification(
 
 export interface ListAuditLogsParams {
   action?: string
+  impersonatedBy?: string
   module?: string
   page?: number
   perPage?: number
   sort?: string
+  userId?: string
 }
 
 export async function listAuditLogs(
@@ -179,7 +181,9 @@ export async function listAuditLogs(
     {
       params: {
         'filter[action]': params.action,
+        'filter[impersonated_by]': params.impersonatedBy,
         'filter[module]': params.module,
+        'filter[user_id]': params.userId,
         page: params.page,
         per_page: params.perPage,
         sort: params.sort,

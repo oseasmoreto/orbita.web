@@ -758,6 +758,80 @@ Mesmo tratamento visual do Input (fundo `{colors.bg-1}`, borda
   dentro de um `:global(...)` do Vue** — sempre escrever o seletor completo
   dentro do próprio `:global(...)`.
 
+### Combobox (`shared/components/ui/Combobox.vue`)
+
+**Sem frame próprio no Figma** — pedido direto pelo usuário em
+2026-09-01, junto com o achado de um bug real (ver abaixo), pra resolver
+o caso "lista de opções grande demais pra rolar" (ex.: escolher 1
+usuário entre uma centena, digitando pra filtrar). Construído sobre a
+família `Combobox*` da Reka UI (`ComboboxRoot`/`ComboboxAnchor`/
+`ComboboxInput`/`ComboboxTrigger`/`ComboboxContent` via `ComboboxPortal`/
+`ComboboxItem`/`ComboboxEmpty`) — mesmo primitivo já citado nominalmente
+desde a Tier 0 (`docs/infra/convencoes-frontend-infra.md` seção 3.1:
+"componente com comportamento complexo... `Combobox`... construído em
+cima do primitivo headless equivalente da Reka UI"), nunca implementado
+até agora por falta de caso de uso real.
+
+- **Não substitui `Select.vue`** — mesmo shape de props/`SelectOption`,
+  mesmos tokens visuais (caixa/borda/raio idênticos, variante `label`
+  "boxed" também disponível), mas o trigger vira um campo de texto
+  digitável em vez de um botão. `Select.vue` continua sendo a escolha
+  padrão pra lista curta/enumerada (status, role, ciclo de cobrança) —
+  `Combobox.vue` é só pra picker com lista grande/dinâmica (usuário,
+  plano — alimentado por `useAdminUserOptions`/`useAdminPlanOptions`).
+- **Filtro nativo da Reka UI** (`useFilter({ sensitivity: 'base' })`,
+  Intl `Collator`) — busca case-insensitive E ignora acento
+  (`sensitivity: 'base'` da ICU collation), então digitar "joao" já
+  encontra "João" sem nenhum tratamento manual de string no componente.
+- `displayValue` (prop do `ComboboxInput`) resolve o texto exibido a
+  partir do `value` selecionado (`options.find(...).label`) — o model
+  público continua sendo só a string do `value`, igual ao `Select.vue`,
+  nunca o objeto inteiro da opção.
+- Mesmos achados de portal/`:global()` já documentados em `Select.vue`
+  (`ComboboxPortal` teletransporta `ComboboxContent` pro fim do
+  `<body>`, seletores sempre "planos" dentro do `:global()`, nunca
+  `&[attr]` aninhado) — aplicados de propósito desde a primeira versão,
+  não descobertos de novo por tentativa e erro.
+- `z-index: 200`, mesmo motivo do `Select.vue`/`DatePicker.vue` (precisa
+  ficar acima de `Modal.vue`/`Drawer.vue`).
+
+**Achado real, motivou a criação do componente**: `AdminSubscriptionsView.vue`/
+`AdminTransactionsView.vue`/`AdminTicketsView.vue` (Fase 9) tinham
+misturado `Select` **com** `label` (variante "boxed", caixa mais alta)
+ao lado do `Select` de status **sem** `label` (compacto) na mesma
+`ListToolbar` — renderizava com alturas diferentes na mesma linha,
+lendo como bug visual (reportado pelo usuário com screenshot: "veja um
+exemplo de como ficou bugado").
+
+**Primeira correção, revertida no mesmo dia** — a 1ª tentativa tirou o
+`label` dos pickers de usuário/plano/respondido-por pra bater com o
+`Select` de status (que nunca tinha tido `label`). O usuário corrigiu o
+raciocínio: **"eu preferia q vc adicionasse o label nos q faltaram do
+q tirar, pq se nao o usuario nao sabe o q vai filtrar, sempre coloque
+label nos campos em todos"** — tirar label resolve a altura, mas piora a
+identificação (2+ caixas mostrando só "Todos", indistinguíveis antes de
+abrir). **Regra definitiva, sem exceção**: todo filtro de `ListToolbar`
+(`Select`/`Combobox`/`Input`) sempre tem `label` — nunca o inverso
+(remover de um pra bater com outro que não tem). Auditoria completa da
+Fase 9 nesse critério, `label` adicionado onde faltava em **10 telas**:
+`AdminSubscriptionsView` (status/usuário/plano),
+`AdminTransactionsView` (status/usuário), `AdminTicketsView`
+(status/usuário/respondido por), `TicketsView` (status),
+`AdminPlansView` (ciclo de cobrança), `AdminSettingsView` (tipo),
+`AdminNotificationsView` (tipo/status), `AdminMarketplacesView`
+(status), `AdminUsersView` (perfil/status) — `AdminAuditLogsView` já
+estava correto (todo filtro ali sempre teve `label`, incluindo o
+`Combobox` desde a criação). Verificado em browser real, tela a tela:
+todas as caixas de filtro de cada `ListToolbar` mostram legenda visível
+e mesma altura entre si.
+
+Verificado em browser real: as 3 caixas de filtro de
+`AdminSubscriptionsView` (status/usuário/plano) medem a mesma altura
+(`35px` nos três, via `getBoundingClientRect()`); digitar "combobox" no
+picker de usuário filtra a lista pra só o item que contém o texto
+(sensível a substring, testado com um usuário de teste real); selecionar
+um item atualiza o texto exibido no campo corretamente.
+
 ### Badge (`shared/components/ui/Badge.vue`)
 
 - **`ghost`**: sem fundo, texto `{colors.ink}`.
@@ -803,6 +877,22 @@ Construído sobre `TooltipProvider`/`TooltipRoot`/`TooltipContent` (via
 - **Achado real, mesma classe do Select**: `TooltipContent` também é
   teletransportado via `TooltipPortal` — todas as classes (`.ui-tooltip`,
   `.ui-tooltip__shortcut`) precisam de `:global(...)`.
+
+**Primeiro consumidor real com ícone (não `Button`) como trigger**,
+`ProductForm.vue` (2026-09-01, pedido direto do usuário) — título
+"Dimensões da embalagem" acima dos 4 campos (`weight`/`height`/`width`/
+`length`) com um ícone `Info` (16px, `{colors.ink-40}`) ao lado,
+explicando que essas medidas são usadas pelo sistema pra calcular a
+tabela de frete (mesma disciplina de i18n do resto do projeto — texto
+via `dimensionsTooltip` no catálogo, nunca hardcoded). O `TooltipTrigger`
+(`as-child`) precisa de um elemento focável/interativo pra funcionar
+como trigger de verdade — como não é um `Button` aqui (só um ícone
+decorativo-informativo, sem ação de clique), o trigger é um `<span
+tabindex="0">` em vez de um elemento nativamente focável, garantindo que
+o tooltip também abra via teclado (`:focus-visible`, mesmo `focus-ring`
+do resto do design system), não só no hover do mouse. Verificado em
+browser real: hover no ícone abre o tooltip com o texto correto
+("Usado pelo sistema para calcular a tabela de frete.").
 
 ### Spinner (`shared/components/ui/Spinner.vue`)
 
@@ -1356,6 +1446,97 @@ de formulário). Verificado em browser real: os 2 `Select` de
 `AdminNotificationsView.vue` renderizam na mesma linha
 (`getBoundingClientRect()` confirmando mesmo `top`, `left` diferente),
 160px cada.
+
+**Filtros alinhados à direita, botão de cadastrar fixo à esquerda,
+pedido direto do usuário em 2026-09-01** ("deixe todos os selects de
+filtros alinhados a direita, dai o botão de cadastrar fica full a
+esquerda e os filtros a direita") — `.ui-toolbar__filters` ganhou
+`margin-left: auto`, empurrando o slot (e tudo que viesse depois dele
+no fluxo — `Search`, se ligado) pra ponta direita da barra;
+`.ui-toolbar__actions` (botão de criar) permanece na ponta esquerda por
+ser o primeiro filho. Seguro porque **todo** consumidor real do slot
+`#filters` já desliga `searchable` (confirmado auditando os 9 usos) —
+`Search` nunca compete pelo mesmo espaço.
+
+- **Achado real, descoberto durante a verificação, não causado por esta
+  mudança** — `AdminTicketsView.vue` (3 `Select`/`Combobox` + 2
+  `DateRangePicker` + botão "Filtrar", o `#filters` mais carregado do
+  projeto) vazava pra fora da borda direita do toolbar mesmo ANTES do
+  `margin-left: auto` (reproduzido revertendo a mudança e comparando
+  `getBoundingClientRect()`: a borda direita dos filtros já batia em
+  `1372px` contra um toolbar de `1232px`, um bug pré-existente que só
+  ficou mais visível agora). Causa: `.ui-toolbar__filters` tinha
+  `flex-shrink: 0` — um item flex que não pode encolher usa seu
+  `max-content` (todos os filhos numa linha só) como piso de largura
+  dentro do container PAI, ignorando o próprio `flex-wrap: wrap` que ele
+  declara pros FILHOS dele. **Corrigido** trocando `flex-shrink: 0` →
+  `1` (agora pode encolher) + `min-width: 0` (remove o piso implícito de
+  `max-content` que um flex item carrega por padrão) — com os dois, o
+  navegador finalmente respeita a largura do `.ui-toolbar` pai e quebra
+  os filtros em várias linhas quando não cabem numa só.
+- Verificado em browser real, desktop (1280px) e mobile (390px):
+  `AdminSubscriptionsView`/`AdminTransactionsView` (sem botão de criar)
+  mostram os filtros colados na borda direita com espaço vazio à
+  esquerda; `AdminUsersView`/`AdminPlansView` mostram "Novo usuário"/
+  "Novo plano" na ponta esquerda e os `Select` na ponta direita, mesma
+  linha; `AdminTicketsView` não vaza mais da borda direita
+  (`getBoundingClientRect()` confirmando `right: 1224px` dentro de um
+  toolbar de `1232px`, antes `1372px`); no mobile, os 3 têm os filtros
+  quebrando em linhas próprias sem overflow horizontal.
+
+**Correção real, reportada pelo usuário em 2026-09-01 com 4 screenshots**
+("era pra estarem lado a lado alinhado a esquerda, todos ficaram
+empilhados") — o `right-align` acima tinha 2 problemas reais que só
+apareceram testando telas com `DateRangePicker`/muitos filtros:
+
+1. **`Combobox.vue`/`DateRangePicker.vue` tinham o mesmo `width: 100%`
+   no wrapper que `Select.vue` já tinha (e já tinha sido corrigido) —
+   nunca corrigido pros dois novos.** Cada `DateRangePicker` reivindicava
+   a largura inteira do `.ui-toolbar__filters`, empurrando o próximo
+   filtro pra própria linha mesmo sobrando espaço — o efeito visual era
+   cada filtro empilhado numa barra esticada, em vez de lado a lado.
+   **Corrigido** com o mesmo `:deep()` já usado pro `Select`
+   (`.ui-combobox-wrapper`/`.ui-date-range-picker-wrapper`,
+   `width: auto` + `min-width` — 160px pro Combobox, igual ao Select;
+   280px pro DateRangePicker, cujo conteúdo — 2 datas + separador + 2
+   ícones — precisa de mais espaço mínimo).
+2. **Right-align (`margin-left: auto`) fazia sentido só quando existe um
+   botão de criar competindo pela ponta esquerda** — nas telas
+   read-only (`addable="false"`: Auditoria, Chamados admin,
+   Assinaturas...), `.ui-toolbar__filters` é o ÚNICO filho do
+   `.ui-toolbar`, e right-align deixava uma faixa cinza vazia enorme à
+   esquerda com os filtros espremidos numa coluna estreita à direita —
+   pior ainda combinado com o problema 1 (`DateRangePicker` esticado
+   dentro de uma coluna já estreita). Pedido explícito do usuário:
+   **"quando nao tiver o botão de criar novo, faça com q os filtros
+   fiquem full"**. Resolvido com `.ui-toolbar__filters:only-child {
+   width: 100%; margin-left: 0; }` — sem precisar de uma prop nova no
+   bloco, o CSS detecta sozinho quando não há `.ui-toolbar__actions`
+   (todo consumidor do slot `#filters` já desliga `searchable`, então
+   `.ui-toolbar__filters` nunca disputa esse `:only-child` com `Search`).
+   Com os filtros já compactos (correção 1), eles passam a fluir lado a
+   lado a partir da borda esquerda (`justify-content` continua o
+   default, `flex-start`), preenchendo a barra inteira em vez de uma
+   coluna estreita.
+- Verificado em browser real: `TicketsView`/`AdminTicketsView` (COM e
+  sem botão de criar, respectivamente) mostram os 2 `DateRangePicker`
+  lado a lado na mesma linha do `Select` de status (antes, cada um numa
+  linha própria esticada); `AdminAuditLogsView`/`AdminSubscriptionsView`
+  (sem botão) mostram os filtros começando da borda esquerda, ocupando a
+  largura toda, sem mais faixa cinza vazia; `AdminUsersView` (com botão)
+  continua com o right-align de antes, inalterado.
+
+**`size="large"` nos botões de criar/"Filtrar", tentado e revertido no
+mesmo dia** — pedido inicial do usuário ("os botões de filtrar e criar
+novo, deixe com a variant large pra nao ficar tao estranho"),
+implementado nos 3 `Button` internos do `ListToolbar` e nos 3 `Button`
+"Filtrar" soltos (`AdminAuditLogsView.vue`/`TicketsView.vue`/
+`AdminTicketsView.vue`). Revertido pelo próprio usuário logo em seguida
+("vamos sem o large, ficou muito muito, deixe os botões como estavam")
+— `medium` (default do `Button`, sem prop `size`) é o tamanho definitivo
+aqui, apesar de ficar um pouco menor que as caixas de filtro ao lado
+(`Select`/`Combobox`/`DateRangePicker`). Registrado pra não reabrir essa
+mudança sem motivo novo.
 
 ### DropdownMenu (`shared/components/ui/DropdownMenu.vue`)
 
@@ -3443,9 +3624,18 @@ modela).
 - **Filtro de `status`** (`ListToolbar` `#filters`, `Select`, sentinel
   `'all'`) — reaproveita as mesmas chaves i18n de
   `billing.mySubscription.status.*` (tela "Meu plano" do próprio
-  usuário), sem duplicar tradução. Sem filtro por `user_id`/`plan_id` —
-  a API aceita, mas exigiriam um seletor de busca por texto que não
-  existe pra usuário/plano ainda.
+  usuário), sem duplicar tradução.
+- **Filtros de `user_id`/`plan_id`, Fase 9 (2026-09-01)** — fecham o gap
+  real reportado na auditoria de integração do OpenAPI (a API já aceitava
+  os dois, sem controle de UI correspondente). 2 `Select` novos,
+  alimentados por `useAdminUserOptions` (`core/composables/`, novo —
+  ponte cross-módulo pra listar usuários pra picker, reutilizada por
+  `AdminTransactionsView`/`AdminTicketsView`/`AdminNotificationsView`) e
+  `useAdminPlanOptions` (`modules/billing/composables/`, LOCAL — só este
+  consumidor existe até aqui, não cruzou o critério de promoção pra
+  `core/`). Os dois auto-aplicam ao trocar (mesmo padrão do `Select` de
+  status, sem botão "Filtrar" — só os filtros de DATA exigem confirmação
+  explícita nesse projeto).
 - **`OverrideSubscriptionModal.vue`**: `status` via `Select` (5 valores
   de `SubscriptionStatus`), `end_date` via `DatePicker.vue` (`v-model`
   de string ISO, `''` = sem data) — convertido pra `null` só na hora do
@@ -3470,17 +3660,25 @@ filtro de `status` (todos os 9 valores de `TransactionStatus`,
 reaproveitando `billing.transactions.status.*` já existente, sem
 duplicar tradução).
 
-- **Sem filtro de `gateway`** — hoje só existe 1 gateway integrado
-  (Mercado Pago, `docs/infra/convencoes-frontend-infra.md` seção 15.1);
-  um `Select` sem segunda opção real pra escolher não vale a pena,
-  mesma régua de "sem dimensão real pra oferecer" já usada noutros
-  lugares do design system (ex.: busca de Marketplace/`Product`). O
-  service (`listAdminTransactions`) já aceita o param — mapeamento
-  1:1 com o `QueryParameter` real do controller, só sem UI.
+- **Sem filtro de `gateway`/`subscription_id`, decisão mantida na
+  auditoria da Fase 9** — hoje só existe 1 gateway integrado (Mercado
+  Pago, `docs/infra/convencoes-frontend-infra.md` seção 15.1); um
+  `Select` sem segunda opção real pra escolher não vale a pena, mesma
+  régua de "sem dimensão real pra oferecer" já usada noutros lugares do
+  design system (ex.: busca de Marketplace/`Product`). `subscription_id`
+  é busca por UUID cru, sem UI natural sem já saber o ID de antemão. Os
+  2 services já aceitam os params — mapeamento 1:1 com o
+  `QueryParameter` real do controller, deliberadamente só sem UI.
+- **Filtro de `user_id`, Fase 9 (2026-09-01)** — 1 `Select` novo
+  (`useAdminUserOptions`, mesmo composable cross-módulo do
+  `AdminSubscriptionsView` acima), fechando o gap real que a auditoria
+  de integração encontrou (`filter[user_id]` documentado no controller,
+  sem controle de UI).
 - **`user` embutido desde o início**, mesmo caso de `AdminSubscription`
   acima — reportado pra sessão de backend antes de construir a tela.
 - Verificado em browser real: tabela mostra nome de usuário real, valor
-  formatado (`formatMoney`), `StatusDot` na cor certa.
+  formatado (`formatMoney`), `StatusDot` na cor certa; filtro de usuário
+  produz `filter[user_id]=...` correto na URL da requisição.
 
 ### AccountView (`modules/identity/views/AccountView.vue`)
 
@@ -3861,9 +4059,8 @@ próprio `Input`).
 (`useResourceList`/`DataTable`/`PaginationNav`, sem `ListToolbar`/
 `useCrudDrawer`/`ConfirmDialog`). Filtro por `module`/`action` (2
 `Input`s + botão "Filtrar", `filter[module]`/`filter[action]` exatos da
-API) — sem filtro por `user_id`/`impersonated_by`, mesmo motivo do "sem
-enviar pra 1 usuário" do `AdminNotificationsView` (exigiria seletor de
-usuário, Fase 6).
+API) + `user_id`/`impersonated_by` (2 `Select` novos, Fase 9 — ver
+addendum abaixo).
 
 - **Achado real, só descoberto na verificação (Fase 5)**: nenhuma das 3
   ações que disparam log de auditoria hoje (`SubscriptionActivated`/
@@ -3915,6 +4112,22 @@ resource, mas a UI não usa mais nenhum dos dois pra exibição.
   mais UUID), coluna "Via impersonation" aparece e mostra o nome do
   admin impersonador quando setado, `—` quando não há impersonation
   (linha de `product.deleted`, sem `impersonated_by`).
+
+**Filtros de `user_id`/`impersonated_by`, Fase 9 (2026-09-01)** — gap
+real que a PRÓPRIA auditoria de integração do OpenAPI da Fase 9 deixou
+passar na primeira rodada (o levantamento original citou só
+`AdminSubscription`/`AdminTransaction`/`AdminTicket`, sem reconferir
+`AdminAuditLogController`) — encontrado ao revisar esta seção do
+documento durante a atualização de doc pós-Fase-9, cruzando os
+`#[QueryParameter]` reais do controller de novo. 2 `Select` novos
+(`useAdminUserOptions`, mesmo composable cross-módulo já usado nas
+outras 3 telas), auto-aplicam ao trocar — `impersonated_by` reaproveita
+a MESMA lista de usuários que `user_id` (ambos são admin/usuário real,
+sem endpoint separado de "só admins"). Verificado em browser real:
+tabela renderiza normalmente com os `user`/`impersonator` já embutidos
+(achado da Fase 6, acima), os 2 `Select` aparecem lado a lado dos
+`Input` de texto livre na mesma `ListToolbar`, filtro de usuário produz
+`filter[user_id]=...` correto na URL da requisição.
 
 ### AdminUsersView / CreateAdminUserForm / EditUserRoleModal (`modules/identity/`)
 

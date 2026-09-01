@@ -130,11 +130,13 @@ function canImpersonateRow(user: AdminUser): boolean {
     >
       <template #filters>
         <Select
+          :label="$t('identity.admin.users.filters.role')"
           :model-value="list.roleFilter.value"
           :options="roleFilterOptions"
           @update:model-value="(value) => list.setRoleFilter(value)"
         />
         <Select
+          :label="$t('identity.admin.users.filters.status')"
           :model-value="list.statusFilter.value"
           :options="statusFilterOptions"
           @update:model-value="(value) => list.setStatusFilter(value)"

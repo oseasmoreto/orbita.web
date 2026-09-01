@@ -33,24 +33,29 @@ export function buildAdminSubscriptionSortParam(
 }
 
 /**
- * Wrapper de `useResourceList` pra `AdminSubscription` (Fase 7). Filtro
- * de `status` (`ListToolbar` `#filters`, mesmo padrão de
- * `useAdminMarketplaceList.ts`, inclusive o sentinel `'all'` pra "limpar
- * filtro" — `SelectItem` da Reka UI rejeita `value=""`). Sem busca — a
- * API não tem filtro de texto livre, só `filter[user_id]`/`filter[plan_id]`/
- * `filter[status]`, os 2 primeiros sem UI útil sem uma tela de busca de
- * usuário/plano por texto.
+ * Wrapper de `useResourceList` pra `AdminSubscription` (Fase 7). Filtros
+ * de `status` (`Select`, sentinel `'all'`), `user_id` e `plan_id`
+ * (`ListToolbar` `#filters`, Fase 9 — fechamento de gaps do OpenAPI,
+ * 2026-09-01: os 2 últimos existiam na API desde sempre, sem UI porque
+ * "exigiriam um seletor de busca de usuário/plano" — `useAdminUserOptions`
+ * (`core/composables/`) resolveu o primeiro, `listAdminPlans` (já
+ * existente, mesmo módulo) resolve o segundo sem precisar de nada novo.
+ * Sem busca de texto livre — a API não tem esse filtro.
  */
 export function useAdminSubscriptionList() {
   const statusFilter = ref('all')
+  const userIdFilter = ref('all')
+  const planIdFilter = ref('all')
 
   const list = useResourceList<AdminSubscription>({
     fetchPage: async ({ page, perPage, sortDirection, sortKey }) => {
       const result = await listAdminSubscriptions({
         page,
         perPage,
+        planId: planIdFilter.value === 'all' ? undefined : planIdFilter.value,
         sort: buildAdminSubscriptionSortParam(sortKey, sortDirection) ?? '-created_at',
         status: statusFilter.value === 'all' ? undefined : statusFilter.value,
+        userId: userIdFilter.value === 'all' ? undefined : userIdFilter.value,
       })
       return { items: result.items, total: result.meta.total }
     },
@@ -61,5 +66,23 @@ export function useAdminSubscriptionList() {
     await list.setPage(1)
   }
 
-  return { ...list, setStatusFilter, statusFilter }
+  async function setUserIdFilter(value: string): Promise<void> {
+    userIdFilter.value = value
+    await list.setPage(1)
+  }
+
+  async function setPlanIdFilter(value: string): Promise<void> {
+    planIdFilter.value = value
+    await list.setPage(1)
+  }
+
+  return {
+    ...list,
+    planIdFilter,
+    setPlanIdFilter,
+    setStatusFilter,
+    setUserIdFilter,
+    statusFilter,
+    userIdFilter,
+  }
 }

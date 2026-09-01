@@ -33,9 +33,13 @@ export function buildAuditLogSortParam(
 /**
  * Wrapper de `useResourceList` pra `AuditLog` — mesmo padrão de
  * `useTransactionList.ts`. Filtros exatos por `module`/`action`
- * (`filter[module]`/`filter[action]` reais da API) — sem filtro por
- * `user_id`/`impersonated_by` ainda: exigiriam um seletor de usuário, que
- * depende da tela de admin de usuários (Fase 6, não construída).
+ * (`filter[module]`/`filter[action]` reais da API, aplicados via botão
+ * "Filtrar" explícito) + `user_id`/`impersonated_by` (`Select` de
+ * usuário, auto-aplica ao trocar — mesmo padrão dos filtros de usuário
+ * de `useAdminSubscriptionList.ts`/`useAdminTransactionList.ts`,
+ * Fase 9). Os 2 filtros de usuário reaproveitam `useAdminUserOptions`
+ * pra ambos os papéis (`user_id`=dono do log, `impersonated_by`=admin
+ * que agiu via impersonation) — mesma lista de usuários serve pros dois.
  *
  * `-created_at` como sort padrão (não exige clicar no cabeçalho) — mesmo
  * critério de `useAdminNotificationList.ts`: log de auditoria é uma
@@ -45,15 +49,20 @@ export function buildAuditLogSortParam(
 export function useAuditLogList() {
   const action = ref('')
   const module = ref('')
+  const userIdFilter = ref('all')
+  const impersonatedByFilter = ref('all')
 
   const list = useResourceList<AuditLog>({
     fetchPage: async ({ page, perPage, sortDirection, sortKey }) => {
       const result = await listAuditLogs({
         action: action.value || undefined,
+        impersonatedBy:
+          impersonatedByFilter.value === 'all' ? undefined : impersonatedByFilter.value,
         module: module.value || undefined,
         page,
         perPage,
         sort: buildAuditLogSortParam(sortKey, sortDirection) ?? '-created_at',
+        userId: userIdFilter.value === 'all' ? undefined : userIdFilter.value,
       })
       return { items: result.items, total: result.meta.total }
     },
@@ -64,5 +73,24 @@ export function useAuditLogList() {
     await list.setPage(1)
   }
 
-  return { ...list, action, applyFilters, module }
+  async function setUserIdFilter(value: string): Promise<void> {
+    userIdFilter.value = value
+    await list.setPage(1)
+  }
+
+  async function setImpersonatedByFilter(value: string): Promise<void> {
+    impersonatedByFilter.value = value
+    await list.setPage(1)
+  }
+
+  return {
+    ...list,
+    action,
+    applyFilters,
+    impersonatedByFilter,
+    module,
+    setImpersonatedByFilter,
+    setUserIdFilter,
+    userIdFilter,
+  }
 }

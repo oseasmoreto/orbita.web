@@ -14,10 +14,13 @@ import DataTable from '@/shared/components/blocks/DataTable.vue'
 import ListToolbar from '@/shared/components/blocks/ListToolbar.vue'
 import PaginationNav from '@/shared/components/blocks/PaginationNav.vue'
 import Button from '@/shared/components/ui/Button.vue'
+import Combobox from '@/shared/components/ui/Combobox.vue'
+import DateRangePicker from '@/shared/components/ui/DateRangePicker.vue'
 import Drawer from '@/shared/components/ui/Drawer.vue'
 import Select from '@/shared/components/ui/Select.vue'
 import StatusDot from '@/shared/components/ui/StatusDot.vue'
 import { Eye } from '@/shared/components/icons/regular.generated'
+import { useAdminUserOptions } from '@/core/composables/useAdminUserOptions'
 import { useApiMessage } from '@/shared/composables/useApiMessage'
 import { parseApiError } from '@/shared/services/parseApiError'
 import AdminTicketThreadPanel from '../components/AdminTicketThreadPanel.vue'
@@ -32,10 +35,18 @@ const { resolveMessage } = useApiMessage()
 const list = useAdminTicketList()
 onMounted(list.refresh)
 
+const userOptions = useAdminUserOptions()
+onMounted(userOptions.load)
+
 const statusFilterOptions = computed<SelectOption[]>(() => [
   { label: t('common.filters.all'), value: 'all' },
   { label: t('support.tickets.status.open'), value: 'open' },
   { label: t('support.tickets.status.resolved'), value: 'resolved' },
+])
+
+const userFilterOptions = computed<SelectOption[]>(() => [
+  { label: t('common.filters.all'), value: 'all' },
+  ...userOptions.options.value,
 ])
 
 const listErrorMessage = computed(() =>
@@ -75,10 +86,36 @@ function handleUpdated(): void {
     <ListToolbar :addable="false" :filterable="false" :searchable="false" :sortable="false">
       <template #filters>
         <Select
+          :label="$t('support.admin.tickets.filters.status')"
           :model-value="list.statusFilter.value"
           :options="statusFilterOptions"
           @update:model-value="(value) => list.setStatusFilter(value)"
         />
+        <Combobox
+          :label="$t('support.admin.tickets.filters.user')"
+          :model-value="list.userIdFilter.value"
+          :options="userFilterOptions"
+          @update:model-value="(value) => list.setUserIdFilter(value)"
+        />
+        <Combobox
+          :label="$t('support.admin.tickets.filters.repliedBy')"
+          :model-value="list.repliedByFilter.value"
+          :options="userFilterOptions"
+          @update:model-value="(value) => list.setRepliedByFilter(value)"
+        />
+        <DateRangePicker
+          v-model:end="list.createdTo.value"
+          v-model:start="list.createdFrom.value"
+          :label="$t('support.tickets.filters.createdBetween')"
+        />
+        <DateRangePicker
+          v-model:end="list.resolvedTo.value"
+          v-model:start="list.resolvedFrom.value"
+          :label="$t('support.tickets.filters.resolvedBetween')"
+        />
+        <Button variant="outline" @click="list.applyDateFilters()">
+          {{ $t('common.actions.filter') }}
+        </Button>
       </template>
     </ListToolbar>
 

@@ -123,6 +123,7 @@ function handleSaved(): void {
     >
       <template #filters>
         <Select
+          :label="$t('pricing.admin.marketplaces.filters.active')"
           :model-value="list.activeFilter.value"
           :options="activeFilterOptions"
           @update:model-value="(value) => list.setActiveFilter(value)"

@@ -24,8 +24,12 @@ interface Envelope<T> {
 // ---------------------------------------------------------------------------
 
 export interface ListTicketsParams {
+  createdFrom?: string
+  createdTo?: string
   page?: number
   perPage?: number
+  resolvedFrom?: string
+  resolvedTo?: string
   sort?: string
   status?: string
 }
@@ -33,6 +37,10 @@ export interface ListTicketsParams {
 export async function listTickets(params: ListTicketsParams = {}): Promise<Paginated<Ticket>> {
   const { data } = await apiClient.get<ApiResponse<Envelope<TicketResource>>>('/tickets', {
     params: {
+      'filter[created_from]': params.createdFrom,
+      'filter[created_to]': params.createdTo,
+      'filter[resolved_from]': params.resolvedFrom,
+      'filter[resolved_to]': params.resolvedTo,
       'filter[status]': params.status,
       page: params.page,
       per_page: params.perPage,
@@ -45,11 +53,6 @@ export async function listTickets(params: ListTicketsParams = {}): Promise<Pagin
 
 export async function createTicket(payload: CreateTicketRequest): Promise<Ticket> {
   const { data } = await apiClient.post<ApiResponse<TicketResource>>('/tickets', payload)
-  return toTicket(data.data)
-}
-
-export async function getTicket(id: string): Promise<Ticket> {
-  const { data } = await apiClient.get<ApiResponse<TicketResource>>(`/tickets/${id}`)
   return toTicket(data.data)
 }
 
@@ -99,10 +102,16 @@ export async function createTicketMessage(id: string, body: string): Promise<Tic
 // ---------------------------------------------------------------------------
 
 export interface ListAdminTicketsParams {
+  createdFrom?: string
+  createdTo?: string
   page?: number
   perPage?: number
+  repliedBy?: string
+  resolvedFrom?: string
+  resolvedTo?: string
   sort?: string
   status?: string
+  userId?: string
 }
 
 export async function listAdminTickets(
@@ -112,7 +121,13 @@ export async function listAdminTickets(
     '/admin/tickets',
     {
       params: {
+        'filter[created_from]': params.createdFrom,
+        'filter[created_to]': params.createdTo,
+        'filter[replied_by]': params.repliedBy,
+        'filter[resolved_from]': params.resolvedFrom,
+        'filter[resolved_to]': params.resolvedTo,
         'filter[status]': params.status,
+        'filter[user_id]': params.userId,
         page: params.page,
         per_page: params.perPage,
         sort: params.sort,
@@ -121,11 +136,6 @@ export async function listAdminTickets(
   )
 
   return { items: data.data.items.map(toAdminTicket), meta: data.data.meta }
-}
-
-export async function getAdminTicket(id: string): Promise<AdminTicket> {
-  const { data } = await apiClient.get<ApiResponse<AdminTicketResource>>(`/admin/tickets/${id}`)
-  return toAdminTicket(data.data)
 }
 
 export async function resolveAdminTicket(id: string): Promise<AdminTicket> {

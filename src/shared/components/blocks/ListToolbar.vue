@@ -174,12 +174,34 @@ const search = defineModel<string>('search', { default: '' })
   gap: $spacing-8;
 }
 
+// `margin-left: auto` empurra o slot inteiro (e tudo que vier depois
+// dele no fluxo — `Search`, quando ligado) pra ponta direita da barra,
+// deixando `.ui-toolbar__actions` (botão de cadastrar) fixo na ponta
+// esquerda — pedido direto do usuário em 2026-09-01. Seguro porque todo
+// consumidor real do slot `#filters` já desliga `searchable` (`Search`
+// nunca aparece ao lado dos filtros de domínio, confirmado em auditoria
+// de todos os usos) — sem esse cuidado, `Search` (que já é `flex: 1`)
+// ficaria espremido entre o `margin-left: auto` e a borda, em vez de
+// ocupar o espaço à esquerda dos filtros como um campo de busca deveria.
 .ui-toolbar__filters {
   display: flex;
-  flex-shrink: 0;
+  flex-shrink: 1;
   flex-wrap: wrap;
   align-items: center;
   gap: $spacing-8;
+  margin-left: auto;
+  // `min-width: 0` — sem isso, um item flex com `flex-wrap` PRÓPRIO
+  // ainda usa seu `max-content` (todos os filhos numa linha só, sem
+  // quebrar) como largura mínima dentro do container PAI, ignorando o
+  // `flex-wrap` do pai. Achado real: `AdminTicketsView.vue` (3 filtros +
+  // 2 `DateRangePicker` + botão "Filtrar") ultrapassava a borda direita
+  // do toolbar mesmo com `flex-wrap: wrap` nos dois níveis — o item
+  // nunca herdava um teto de largura pra decidir quebrar linha. Trocado
+  // `flex-shrink: 0` → `1` (agora pode encolher) + `min-width: 0`
+  // (remove o piso implícito de `max-content`) — com os dois, o
+  // navegador finalmente respeita a largura do container pai e quebra
+  // os filtros em várias linhas quando não cabem numa só.
+  min-width: 0;
 }
 
 // Achado real, reportado pelo usuário em 2026-09-01: `Select.vue` tem
@@ -192,13 +214,49 @@ const search = defineModel<string>('search', { default: '' })
 // fixa `width: 100%` no próprio wrapper). Corrigido travando a largura
 // do `Select` só dentro do toolbar, mesma técnica já usada pro `Search`
 // logo abaixo.
-.ui-toolbar__filters :deep(.ui-select-wrapper) {
+//
+// **Mesmo achado, `Combobox.vue`/`DateRangePicker.vue`, reportado pelo
+// usuário em 2026-09-01** ("era pra estarem lado a lado alinhado a
+// esquerda, todos ficaram empilhados") — os dois têm o mesmo
+// `width: 100%` no wrapper (`.ui-combobox-wrapper`/
+// `.ui-date-range-picker-wrapper`, mesma origem de "boxed" do resto da
+// família Form), com o mesmo efeito: cada um reivindicava a largura
+// inteira do container, empurrando o próximo filtro pra própria linha
+// mesmo sobrando espaço — pior ainda no `DateRangePicker`, cuja caixa
+// virava uma barra esticada quase do tamanho do toolbar inteiro, em vez
+// da caixa compacta esperada. Mesma correção, mesma técnica.
+.ui-toolbar__filters :deep(.ui-select-wrapper),
+.ui-toolbar__filters :deep(.ui-combobox-wrapper) {
   width: auto;
   min-width: 160px;
+}
+
+.ui-toolbar__filters :deep(.ui-date-range-picker-wrapper) {
+  width: auto;
+  min-width: 280px;
 }
 
 .ui-toolbar :deep(.ui-search) {
   flex: 1;
   min-width: 160px;
+}
+
+// **`margin-left: auto` só quando há algo à esquerda pra empurrar contra
+// (o botão de cadastrar), pedido direto do usuário em 2026-09-01**
+// ("quando nao tiver o botão de criar novo, faça com q os filtros
+// fiquem full") — sem `.ui-toolbar__actions` (telas read-only:
+// `addable="false"`), `.ui-toolbar__filters` é o ÚNICO filho do
+// `.ui-toolbar` (todo consumidor do slot `#filters` já desliga
+// `searchable`, confirmado em auditoria — nunca sobra um 3º elemento
+// competindo). Right-align nesse cenário só deixava uma faixa cinza
+// vazia enorme à esquerda com os filtros espremidos numa coluna estreita
+// à direita. `:only-child` detecta esse caso sem precisar de uma prop
+// nova no bloco: zera o `margin-left` e estica o container pra 100% da
+// barra — os filtros (já compactos pela correção acima) então fluem
+// lado a lado a partir da borda esquerda, como qualquer flex row normal
+// (`justify-content` continua `flex-start`, o default).
+.ui-toolbar__filters:only-child {
+  width: 100%;
+  margin-left: 0;
 }
 </style>

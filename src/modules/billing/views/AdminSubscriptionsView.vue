@@ -15,8 +15,27 @@
  * em `AdminAuditLogResource` no mesmo dia.
  *
  * Filtro de `status` (`ListToolbar` `#filters`, `Select`, sentinel
- * `'all'`) — sem `user_id`/`plan_id` na UI (a API aceita, mas exigiriam
- * um seletor de busca por texto que não existe pra usuário/plano ainda).
+ * `'all'`). **Fase 9 (fechamento de gaps do OpenAPI), 2026-09-01**:
+ * `user_id`/`plan_id` ganharam filtro também — `useAdminUserOptions`
+ * (`core/composables/`) e `useAdminPlanOptions` (local, só este módulo
+ * consome) resolvem a listagem.
+ *
+ * **`Combobox.vue` no lugar de `Select.vue`, pedido direto do usuário
+ * em 2026-09-01** — usuário pediu explicitamente uma variante buscável
+ * (com 100 usuários, digitar "joao" pra filtrar em vez de rolar a lista
+ * inteira). `Combobox.vue` (novo, `shared/components/ui/`) é a mesma
+ * caixa/borda/raio do `Select`, só com o trigger virando campo de texto
+ * que filtra a lista embutida da Reka UI (`ComboboxRoot` com filtro
+ * nativo, sensibilidade `base` — ignora acento/caixa).
+ *
+ * **`label` em TODO filtro desta barra, correção pedida pelo usuário
+ * no mesmo dia** — a 1ª versão do `Combobox` tinha saído sem `label`
+ * pra bater com a altura do `Select` de status (que também não tinha),
+ * só que aí nada identificava visualmente "isso filtra por usuário"/
+ * "isso filtra por plano" antes de abrir. Usuário corrigiu o raciocínio:
+ * prefere `label` em TODOS os campos, sempre — nunca tirar de um pra
+ * bater com o outro que não tem. `status` (que nunca teve `label`)
+ * ganhou um agora, pra ficar igual aos outros 2 da mesma barra.
  */
 import { computed, onMounted, ref } from 'vue'
 import dayjs from 'dayjs'
@@ -25,12 +44,15 @@ import DataTable from '@/shared/components/blocks/DataTable.vue'
 import ListToolbar from '@/shared/components/blocks/ListToolbar.vue'
 import PaginationNav from '@/shared/components/blocks/PaginationNav.vue'
 import Button from '@/shared/components/ui/Button.vue'
+import Combobox from '@/shared/components/ui/Combobox.vue'
 import Select from '@/shared/components/ui/Select.vue'
 import StatusDot from '@/shared/components/ui/StatusDot.vue'
 import { PencilSimpleLine } from '@/shared/components/icons/regular.generated'
+import { useAdminUserOptions } from '@/core/composables/useAdminUserOptions'
 import { useApiMessage } from '@/shared/composables/useApiMessage'
 import { parseApiError } from '@/shared/services/parseApiError'
 import OverrideSubscriptionModal from '../components/OverrideSubscriptionModal.vue'
+import { useAdminPlanOptions } from '../composables/useAdminPlanOptions'
 import { useAdminSubscriptionList } from '../composables/useAdminSubscriptionList'
 import { type AdminSubscription, subscriptionStatusColor } from '../types/subscription.type'
 import type { DataTableColumn } from '@/shared/components/ui/types/dataTable.type'
@@ -42,6 +64,12 @@ const { resolveMessage } = useApiMessage()
 const list = useAdminSubscriptionList()
 onMounted(list.refresh)
 
+const userOptions = useAdminUserOptions()
+onMounted(userOptions.load)
+
+const planOptions = useAdminPlanOptions()
+onMounted(planOptions.load)
+
 const statusFilterOptions = computed<SelectOption[]>(() => [
   { label: t('common.filters.all'), value: 'all' },
   { label: t('billing.mySubscription.status.pending'), value: 'pending' },
@@ -49,6 +77,16 @@ const statusFilterOptions = computed<SelectOption[]>(() => [
   { label: t('billing.mySubscription.status.canceled'), value: 'canceled' },
   { label: t('billing.mySubscription.status.expired'), value: 'expired' },
   { label: t('billing.mySubscription.status.payment_failed'), value: 'payment_failed' },
+])
+
+const userFilterOptions = computed<SelectOption[]>(() => [
+  { label: t('common.filters.all'), value: 'all' },
+  ...userOptions.options.value,
+])
+
+const planFilterOptions = computed<SelectOption[]>(() => [
+  { label: t('common.filters.all'), value: 'all' },
+  ...planOptions.options.value,
 ])
 
 const listErrorMessage = computed(() =>
@@ -88,9 +126,22 @@ function handleEdited(): void {
     <ListToolbar :addable="false" :filterable="false" :searchable="false" :sortable="false">
       <template #filters>
         <Select
+          :label="$t('billing.admin.subscriptions.filters.status')"
           :model-value="list.statusFilter.value"
           :options="statusFilterOptions"
           @update:model-value="(value) => list.setStatusFilter(value)"
+        />
+        <Combobox
+          :label="$t('billing.admin.subscriptions.filters.user')"
+          :model-value="list.userIdFilter.value"
+          :options="userFilterOptions"
+          @update:model-value="(value) => list.setUserIdFilter(value)"
+        />
+        <Combobox
+          :label="$t('billing.admin.subscriptions.filters.plan')"
+          :model-value="list.planIdFilter.value"
+          :options="planFilterOptions"
+          @update:model-value="(value) => list.setPlanIdFilter(value)"
         />
       </template>
     </ListToolbar>

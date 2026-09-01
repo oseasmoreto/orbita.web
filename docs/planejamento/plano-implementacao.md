@@ -1856,6 +1856,98 @@ corretamente.
 
 ---
 
+## Fase 9 — Fechamento de gaps do OpenAPI — concluída, 2026-09-01
+
+Pedido direto do usuário, depois de eu levantar (a pedido dele, "com base
+no openapi spec o q ainda não integramos?") o diff completo entre as 89
+operações do OpenAPI e o uso real de `apiClient` no frontend: **"vamos
+elencar um plano de implementação e vamos fazer todos q faltaram, quero
+zerar os gaps pra podermos falar de outra parte do sistema"**. Diferente
+de toda fase anterior (module novo/feature nova), esta é uma auditoria
+de INTEGRAÇÃO — todo endpoint já tinha equivalente de tela em algum
+lugar do frontend, o que faltava era exposição completa da API já
+servida pelo backend (filtro documentado sem `Select`/`DatePicker`
+correspondente, ou service function nunca chamada).
+
+**Método**: extração via `awk` de todo par `"/path": { method:
+operations["opId"] }` de `core/api/schema.d.ts`, cruzado via `grep`
+contra toda chamada `apiClient.get/post/patch/delete` do projeto. Antes
+de implementar, reconferi os 4 controllers envolvidos lendo o código-
+fonte fresco (`grep -n "QueryParameter"`) — achei um gap que a primeira
+passagem tinha deixado passar (`filter[user_id]` em
+`AdminTransactionController`), corrigido antes de começar.
+
+**Gaps reais fechados:**
+
+1. **`POST /admin/notifications` (`sendNotificationToUser`) nunca
+   chamado** — service function existia desde a Fase 5, sem UI nenhuma
+   (só o broadcast-pra-todos tinha botão). Implementado como um 2º
+   modal em `AdminNotificationsView.vue` ("Notificar usuário"), NUNCA
+   como ação de linha em `AdminUsersView.vue` — decisão de fronteira de
+   módulo: a feature nasce conceitualmente ao olhar um usuário
+   (`Identity`), mas o service/Request pertence a `Platform`, e um
+   módulo nunca importa de outro. `useAdminUserOptions` (novo,
+   `core/composables/` — pasta nova, primeiro composable ali) é o
+   ponte de leitura pura reutilizada por 3 módulos (billing/support/
+   platform), mesmo precedente já usado por `core/router/guards.ts`
+   importando de `modules/identity/`.
+2. **Filtros documentados sem controle de UI**:
+   - `GET /admin/subscriptions`: `filter[user_id]`/`filter[plan_id]` —
+     2 `Select` novos em `AdminSubscriptionsView.vue`
+     (`useAdminUserOptions` + `useAdminPlanOptions`, este último LOCAL
+     a `modules/billing/composables/` porque só tem 1 consumidor).
+   - `GET /admin/transactions`: `filter[user_id]` — 1 `Select` novo em
+     `AdminTransactionsView.vue`. `filter[gateway]`/`filter[subscription_id]`
+     deliberadamente NÃO implementados (só existe 1 gateway na prática;
+     buscar por UUID cru não tem UI natural sem já saber o ID — mesmo
+     critério já usado alhures no projeto pra "sem dimensão real pra
+     oferecer").
+   - `GET /tickets`/`GET /admin/tickets`: `filter[created_from/to]`/
+     `filter[resolved_from/to]` — 2 `DateRangePicker` novos em
+     `TicketsView.vue`/`AdminTicketsView.vue`, com botão "Filtrar"
+     explícito (não auto-apply, mesmo padrão já usado em
+     `useAuditLogList.ts` pra filtro de texto/data).
+   - `GET /admin/tickets`: `filter[user_id]`/`filter[replied_by]` — 2
+     `Select` novos em `AdminTicketsView.vue` (`useAdminUserOptions`
+     reaproveitado pros dois, mesma lista de usuários serve pra "quem
+     abriu" e "quem respondeu").
+3. **Dead code removido**: `getTicket`/`getAdminTicket`
+   (`supportApi.ts`) — confirmado zero call site em todo o projeto
+   antes de deletar (`grep -rln`).
+
+**Gap adicional, encontrado na própria revisão da Fase 9** — ao
+atualizar `docs/design/design-system.md` depois da 1ª rodada acima,
+reconferi cada seção tocada contra o controller real de novo e achei
+que o levantamento original tinha deixado passar `GET /admin/audit-logs`:
+`filter[user_id]`/`filter[impersonated_by]` (`AdminAuditLogController`)
+também documentados sem `Select` correspondente em
+`AdminAuditLogsView.vue`. Corrigido no mesmo espírito: 2 `Select` novos
+(`useAdminUserOptions`, mesmo composable), auto-aplicam ao trocar.
+Verificado em browser real (mesmo roteiro de setup/limpeza de ambiente
+das rodadas anteriores) — `typecheck`/`eslint`/`biome`/`vitest`
+(295/295) limpos, filtro produz `filter[user_id]=...` correto na URL.
+
+**`Textarea.vue` (Fase 8) ganhou um 2º consumidor real** — o campo de
+mensagem do modal de broadcast já existente (`AdminNotificationsView.vue`)
+foi retrofitado de `Input` pra `Textarea`, mesmo motivo já documentado
+na Fase 8 ("input é ruim pra texto longo").
+
+Verificado em browser real contra o backend local (usuário admin
+seedado via tinker, removido depois): notificar 1 usuário disparou
+`POST /admin/notifications` de verdade (toast "Notificação enviada.",
+item aparece na listagem com tipo "Aviso do admin"/status "Enviado");
+campo de broadcast virou `<textarea>` de verdade; os 3 filtros novos de
+`AdminSubscriptionsView`/2 de `AdminTransactionsView` produziram
+`filter[user_id]=...`/`filter[plan_id]=...` corretos na URL da
+requisição; `AdminTicketsView` renderizou os 3 `Select` (status/
+usuário/respondido por) + 2 `DateRangePicker` + botão "Filtrar",
+clicá-lo disparou requisição nova; `TicketsView` (usuário comum)
+renderizou o `Select` de status + 2 `DateRangePicker` + "Filtrar" na
+mesma `ListToolbar`. Todos os `typecheck`/`eslint`/`biome`/`vitest`
+(295/295) passaram limpos antes da verificação em browser.
+
+---
+
 ## Fase 99 — Preço sugerido por canal (última fase do projeto)
 
 **Renumerada de "Fase 7" pra "Fase 99" em 2026-09-01, pedido direto do

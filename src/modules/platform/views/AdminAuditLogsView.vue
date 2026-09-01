@@ -7,10 +7,16 @@
  * auditoria).
  *
  * Filtros por `module`/`action` (exatos, `filter[module]`/`filter[action]`
- * reais da API) — sem filtro por `user_id`/`impersonated_by` ainda,
- * exigiria um seletor de usuário que depende da tela de admin de
- * usuários (Fase 6 — construída, mas ainda sem um `Select` de busca por
- * usuário, revisitável sob demanda).
+ * reais da API, texto livre + botão "Filtrar") + `user_id`/
+ * `impersonated_by` (`Combobox` de usuário buscável, Fase 9 —
+ * 2026-09-01, gap real que a auditoria de integração do OpenAPI
+ * encontrou: os 2 filtros já eram aceitos pelo controller, sem controle
+ * de UI correspondente até então). `Combobox.vue`, não `Select.vue` —
+ * pedido do usuário no mesmo dia (ver seção `Combobox` de
+ * `docs/design/design-system.md`). Todo filtro desta barra usa `label`
+ * — regra reforçada pelo usuário no mesmo dia: `label` sempre, em todo
+ * campo de filtro, sem exceção (nunca tirar de um pra bater com outro
+ * que não tem — o correto é o inverso, completar o que falta).
  *
  * **`user`/`impersonator` embutidos, 2026-09-01** — achado real
  * corrigido no mesmo dia: até então `userId`/`impersonatedBy` só vinham
@@ -40,17 +46,28 @@ import DataTable from '@/shared/components/blocks/DataTable.vue'
 import ListToolbar from '@/shared/components/blocks/ListToolbar.vue'
 import PaginationNav from '@/shared/components/blocks/PaginationNav.vue'
 import Button from '@/shared/components/ui/Button.vue'
+import Combobox from '@/shared/components/ui/Combobox.vue'
 import Input from '@/shared/components/ui/Input.vue'
+import { useAdminUserOptions } from '@/core/composables/useAdminUserOptions'
 import { useApiMessage } from '@/shared/composables/useApiMessage'
 import { parseApiError } from '@/shared/services/parseApiError'
 import { useAuditLogList } from '../composables/useAuditLogList'
 import type { DataTableColumn } from '@/shared/components/ui/types/dataTable.type'
+import type { SelectOption } from '@/shared/components/ui/types/select.type'
 
 const { t } = useI18n()
 const { resolveMessage } = useApiMessage()
 
 const list = useAuditLogList()
 onMounted(list.refresh)
+
+const userOptions = useAdminUserOptions()
+onMounted(userOptions.load)
+
+const userFilterOptions = computed<SelectOption[]>(() => [
+  { label: t('common.filters.all'), value: 'all' },
+  ...userOptions.options.value,
+])
 
 const listErrorMessage = computed(() =>
   list.error.value ? resolveMessage(parseApiError(list.error.value).messageKey) : null,
@@ -92,6 +109,18 @@ function formatCreatedAt(value: string | null): string {
         <Button variant="outline" @click="list.applyFilters()">
           {{ $t('common.actions.filter') }}
         </Button>
+        <Combobox
+          :label="$t('platform.admin.auditLogs.filters.user')"
+          :model-value="list.userIdFilter.value"
+          :options="userFilterOptions"
+          @update:model-value="(value) => list.setUserIdFilter(value)"
+        />
+        <Combobox
+          :label="$t('platform.admin.auditLogs.filters.impersonatedBy')"
+          :model-value="list.impersonatedByFilter.value"
+          :options="userFilterOptions"
+          @update:model-value="(value) => list.setImpersonatedByFilter(value)"
+        />
       </template>
     </ListToolbar>
 

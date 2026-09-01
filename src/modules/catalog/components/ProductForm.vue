@@ -20,7 +20,10 @@ import type { ProductFormValues } from '../schemas/productFormSchema'
 import type { Product } from '../types/product.type'
 import CrudFormActions from '@/shared/components/blocks/CrudFormActions.vue'
 import FormGroup from '@/shared/components/blocks/FormGroup.vue'
+import Icon from '@/shared/components/ui/Icon.vue'
 import Input from '@/shared/components/ui/Input.vue'
+import Tooltip from '@/shared/components/ui/Tooltip.vue'
+import { Info } from '@/shared/components/icons/regular.generated'
 
 const props = defineProps<{
   mode: 'create' | 'edit'
@@ -111,6 +114,17 @@ async function handleSubmit(): Promise<void> {
         />
       </FormGroup>
 
+      <div class="product-form__section-header">
+        <h3 class="product-form__section-title">
+          {{ $t('catalog.products.form.dimensionsTitle') }}
+        </h3>
+        <Tooltip :text="$t('catalog.products.form.dimensionsTooltip')">
+          <span class="product-form__section-info" tabindex="0">
+            <Icon :icon="Info" :size="16" />
+          </span>
+        </Tooltip>
+      </div>
+
       <div class="product-form__row">
         <FormGroup :label="$t('catalog.products.form.fields.weight')">
           <Input v-model="weightInput" type="number" />
@@ -145,6 +159,7 @@ async function handleSubmit(): Promise<void> {
 
 <style scoped lang="scss">
 @use '@/core/styles/variables' as *;
+@use '@/core/styles/mixins' as *;
 
 .product-form {
   display: flex;
@@ -171,5 +186,27 @@ async function handleSubmit(): Promise<void> {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: $spacing-16;
+}
+
+.product-form__section-header {
+  display: flex;
+  align-items: center;
+  gap: $spacing-8;
+}
+
+.product-form__section-title {
+  font-size: $font-size-md;
+  font-weight: $font-weight-semibold;
+  color: $color-ink;
+}
+
+.product-form__section-info {
+  display: inline-flex;
+  color: $color-ink-40;
+  cursor: default;
+
+  &:focus-visible {
+    @include focus-ring;
+  }
 }
 </style>

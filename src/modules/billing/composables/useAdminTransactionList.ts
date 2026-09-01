@@ -33,16 +33,18 @@ export function buildAdminTransactionSortParam(
 
 /**
  * Wrapper de `useResourceList` pra `AdminTransaction` (Fase 7), read-only
- * (`AdminTransactionController` só tem `index`/`show`). Filtro de
- * `status` (`ListToolbar` `#filters`, mesmo padrão de
- * `useAdminMarketplaceList.ts`, inclusive o sentinel `'all'`) — sem
- * `gateway` na UI: hoje só existe 1 gateway integrado (Mercado Pago,
- * `docs/infra/convencoes-frontend-infra.md` seção 15.1), um filtro sem
- * segunda opção real pra escolher não vale a pena (mesma régua de "sem
- * dimensão real pra oferecer" já usada noutros lugares do projeto).
+ * (`AdminTransactionController` só tem `index`/`show`). Filtros de
+ * `status` e `user_id` (`ListToolbar` `#filters`, sentinel `'all'`,
+ * `user_id` resolvido via `useAdminUserOptions`, Fase 9) — sem `gateway`
+ * nem `subscription_id` na UI: hoje só existe 1 gateway integrado
+ * (Mercado Pago, `docs/infra/convencoes-frontend-infra.md` seção 15.1) e
+ * buscar por UUID de assinatura sem já saber o ID não tem UI natural —
+ * mesma régua de "sem dimensão real pra oferecer" já usada noutros
+ * lugares do projeto.
  */
 export function useAdminTransactionList() {
   const statusFilter = ref('all')
+  const userIdFilter = ref('all')
 
   const list = useResourceList<AdminTransaction>({
     fetchPage: async ({ page, perPage, sortDirection, sortKey }) => {
@@ -51,6 +53,7 @@ export function useAdminTransactionList() {
         perPage,
         sort: buildAdminTransactionSortParam(sortKey, sortDirection) ?? '-created_at',
         status: statusFilter.value === 'all' ? undefined : statusFilter.value,
+        userId: userIdFilter.value === 'all' ? undefined : userIdFilter.value,
       })
       return { items: result.items, total: result.meta.total }
     },
@@ -61,5 +64,10 @@ export function useAdminTransactionList() {
     await list.setPage(1)
   }
 
-  return { ...list, setStatusFilter, statusFilter }
+  async function setUserIdFilter(value: string): Promise<void> {
+    userIdFilter.value = value
+    await list.setPage(1)
+  }
+
+  return { ...list, setStatusFilter, setUserIdFilter, statusFilter, userIdFilter }
 }

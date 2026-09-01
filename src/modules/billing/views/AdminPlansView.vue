@@ -97,6 +97,7 @@ function handleSaved(): void {
     >
       <template #filters>
         <Select
+          :label="$t('billing.admin.plans.filters.billingCycle')"
           :model-value="list.billingCycleFilter.value"
           :options="billingCycleFilterOptions"
           @update:model-value="(value) => list.setBillingCycleFilter(value)"

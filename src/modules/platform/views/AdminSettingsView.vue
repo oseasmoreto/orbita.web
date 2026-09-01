@@ -97,6 +97,7 @@ function handleSaved(): void {
     >
       <template #filters>
         <Select
+          :label="$t('platform.admin.settings.filters.type')"
           :model-value="list.typeFilter.value"
           :options="typeFilterOptions"
           @update:model-value="(value) => list.setTypeFilter(value)"

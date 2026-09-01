@@ -256,8 +256,10 @@ export async function listTransactions(
 export interface ListAdminSubscriptionsParams {
   page?: number
   perPage?: number
+  planId?: string
   sort?: string
   status?: string
+  userId?: string
 }
 
 export async function listAdminSubscriptions(
@@ -267,7 +269,9 @@ export async function listAdminSubscriptions(
     '/admin/subscriptions',
     {
       params: {
+        'filter[plan_id]': params.planId,
         'filter[status]': params.status,
+        'filter[user_id]': params.userId,
         page: params.page,
         per_page: params.perPage,
         sort: params.sort,
@@ -295,6 +299,7 @@ export interface ListAdminTransactionsParams {
   perPage?: number
   sort?: string
   status?: string
+  userId?: string
 }
 
 export async function listAdminTransactions(
@@ -306,6 +311,7 @@ export async function listAdminTransactions(
       params: {
         'filter[gateway]': params.gateway,
         'filter[status]': params.status,
+        'filter[user_id]': params.userId,
         page: params.page,
         per_page: params.perPage,
         sort: params.sort,

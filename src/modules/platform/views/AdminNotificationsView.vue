@@ -8,13 +8,18 @@
  * `Modal` (não `Drawer`) pro broadcast — é uma ação "fire-and-forget",
  * não um recurso que se edita depois (`useBroadcastNotificationForm.ts`).
  *
- * **Fora de escopo nesta rodada**: "enviar pra 1 usuário"
- * (`POST /admin/notifications`, `SendNotificationToUserRequest`) exige
- * escolher um `user_id` — sem uma tela de busca/lista de usuários (Fase
- * 6, `/admin/users`, ainda não construída), não dá pra montar esse
- * seletor sem inventar UI sem propósito real. Só o broadcast (pra todos)
- * está implementado, que é a rota explícita do plano
- * (`docs/planejamento/plano-implementacao.md`, Fase 5).
+ * **"Enviar pra 1 usuário" implementado na Fase 9 (fechamento de gaps
+ * do OpenAPI, 2026-09-01)** — `POST /admin/notifications`
+ * (`SendNotificationToUserRequest`) já tinha service function desde a
+ * Fase 5 (`sendNotificationToUser`), nunca chamada: exigia um seletor de
+ * usuário, que só fazia sentido depois de `AdminUsersView.vue` (Fase 6)
+ * existir. **Vive aqui, não em `AdminUsersView.vue`** — mesmo a ação
+ * "nascer" olhando pra um usuário específico, `identity` nunca pode
+ * importar de `platform` nem vice-versa (regra de fronteira de módulo,
+ * seção 2 de `docs/infra/convencoes-frontend-infra.md`); o seletor de
+ * usuário (`useAdminUserOptions`, `core/composables/`) resolve isso sem
+ * cruzar módulo — botão "Notificar usuário" abre um 2º `Modal` com
+ * `Select` de usuário + `title`/`message` opcionais.
  *
  * `title`/`message` da listagem passam por `useApiMessage().resolveMessage()`
  * (chave catalogada ou texto livre, mesma disciplina de sempre) — nunca
@@ -42,13 +47,16 @@ import Input from '@/shared/components/ui/Input.vue'
 import Modal from '@/shared/components/ui/Modal.vue'
 import Select from '@/shared/components/ui/Select.vue'
 import StatusDot from '@/shared/components/ui/StatusDot.vue'
+import Textarea from '@/shared/components/ui/Textarea.vue'
 import { Trash } from '@/shared/components/icons/regular.generated'
+import { useAdminUserOptions } from '@/core/composables/useAdminUserOptions'
 import { useApiMessage } from '@/shared/composables/useApiMessage'
 import { useConfirmAction } from '@/shared/composables/useConfirmAction'
 import { useToast } from '@/shared/composables/useToast'
 import { parseApiError } from '@/shared/services/parseApiError'
 import { useAdminNotificationList } from '../composables/useAdminNotificationList'
 import { useBroadcastNotificationForm } from '../composables/useBroadcastNotificationForm'
+import { useSendNotificationToUserForm } from '../composables/useSendNotificationToUserForm'
 import { deleteAdminNotification } from '../services/platformApi'
 import { notificationStatusColor } from '../types/adminNotification.type'
 import type { AdminNotification } from '../types/adminNotification.type'
@@ -119,6 +127,25 @@ async function handleBroadcastSubmit(): Promise<void> {
   }
 }
 
+const userOptions = useAdminUserOptions()
+const isSendToUserModalOpen = ref(false)
+const sendToUserForm = useSendNotificationToUserForm()
+
+function openSendToUserModal(): void {
+  sendToUserForm.reset()
+  isSendToUserModalOpen.value = true
+  void userOptions.load()
+}
+
+async function handleSendToUserSubmit(): Promise<void> {
+  const succeeded = await sendToUserForm.submit()
+
+  if (succeeded) {
+    isSendToUserModalOpen.value = false
+    await list.refresh()
+  }
+}
+
 const deleteConfirmation = useConfirmAction<AdminNotification>()
 
 async function handleDelete(): Promise<void> {
@@ -132,9 +159,14 @@ async function handleDelete(): Promise<void> {
 
 <template>
   <div class="admin-notifications-view">
-    <h1 class="admin-notifications-view__title">
-      {{ $t('platform.admin.notifications.title') }}
-    </h1>
+    <div class="admin-notifications-view__header">
+      <h1 class="admin-notifications-view__title">
+        {{ $t('platform.admin.notifications.title') }}
+      </h1>
+      <Button variant="outline" @click="openSendToUserModal">
+        {{ $t('platform.admin.notifications.sendToUserButton') }}
+      </Button>
+    </div>
 
     <ListToolbar
       :add-label="$t('platform.admin.notifications.broadcastButton')"
@@ -145,11 +177,13 @@ async function handleDelete(): Promise<void> {
     >
       <template #filters>
         <Select
+          :label="$t('platform.admin.notifications.filters.type')"
           :model-value="list.typeFilter.value"
           :options="typeFilterOptions"
           @update:model-value="(value) => list.setTypeFilter(value)"
         />
         <Select
+          :label="$t('platform.admin.notifications.filters.status')"
           :model-value="list.statusFilter.value"
           :options="statusFilterOptions"
           @update:model-value="(value) => list.setStatusFilter(value)"
@@ -213,7 +247,7 @@ async function handleDelete(): Promise<void> {
       </FormGroup>
 
       <FormGroup :label="$t('platform.admin.notifications.broadcastModal.fields.message')">
-        <Input
+        <Textarea
           v-model="broadcastForm.values.message"
           :placeholder="$t('platform.admin.notifications.broadcastModal.placeholders.message')"
         />
@@ -225,6 +259,47 @@ async function handleDelete(): Promise<void> {
         </Button>
         <Button :disabled="broadcastForm.isSubmitting.value" variant="primary" @click="handleBroadcastSubmit">
           {{ $t('platform.admin.notifications.broadcastModal.submit') }}
+        </Button>
+      </template>
+    </Modal>
+
+    <Modal
+      v-model="isSendToUserModalOpen"
+      :title="$t('platform.admin.notifications.sendToUserModal.title')"
+    >
+      <FormGroup :label="$t('platform.admin.notifications.sendToUserModal.fields.user')">
+        <Select
+          v-model="sendToUserForm.values.userId"
+          :options="userOptions.options.value"
+          :placeholder="$t('platform.admin.notifications.sendToUserModal.placeholders.user')"
+        />
+      </FormGroup>
+
+      <FormGroup :label="$t('platform.admin.notifications.sendToUserModal.fields.title')">
+        <Input
+          v-model="sendToUserForm.values.title"
+          maxlength="255"
+          :placeholder="$t('platform.admin.notifications.broadcastModal.placeholders.title')"
+        />
+      </FormGroup>
+
+      <FormGroup :label="$t('platform.admin.notifications.sendToUserModal.fields.message')">
+        <Textarea
+          v-model="sendToUserForm.values.message"
+          :placeholder="$t('platform.admin.notifications.broadcastModal.placeholders.message')"
+        />
+      </FormGroup>
+
+      <template #footer>
+        <Button variant="outline" @click="isSendToUserModalOpen = false">
+          {{ $t('common.actions.cancel') }}
+        </Button>
+        <Button
+          :disabled="sendToUserForm.isSubmitting.value || !sendToUserForm.values.userId"
+          variant="primary"
+          @click="handleSendToUserSubmit"
+        >
+          {{ $t('platform.admin.notifications.sendToUserModal.submit') }}
         </Button>
       </template>
     </Modal>
@@ -249,6 +324,13 @@ async function handleDelete(): Promise<void> {
   flex-direction: column;
   gap: $spacing-16;
   padding: $spacing-24;
+}
+
+.admin-notifications-view__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: $spacing-16;
 }
 
 .admin-notifications-view__title {

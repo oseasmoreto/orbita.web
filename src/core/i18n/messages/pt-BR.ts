@@ -43,6 +43,9 @@ export default {
         },
         deleteSuccess: 'Plano excluído com sucesso.',
         empty: 'Nenhum plano cadastrado ainda.',
+        filters: {
+          billingCycle: 'Ciclo',
+        },
         form: {
           createSuccess: 'Plano criado com sucesso.',
           createTitle: 'Novo plano',
@@ -90,6 +93,11 @@ export default {
         },
         empty: 'Nenhuma assinatura encontrada.',
         error: 'Não foi possível carregar as assinaturas agora.',
+        filters: {
+          plan: 'Plano',
+          status: 'Status',
+          user: 'Usuário',
+        },
         title: 'Assinaturas',
         updateSuccess: 'Assinatura atualizada com sucesso.',
       },
@@ -104,6 +112,10 @@ export default {
         },
         empty: 'Nenhuma transação encontrada.',
         error: 'Não foi possível carregar as transações agora.',
+        filters: {
+          status: 'Status',
+          user: 'Usuário',
+        },
         title: 'Transações',
       },
     },
@@ -255,6 +267,8 @@ export default {
       form: {
         createSuccess: 'Produto criado com sucesso.',
         createTitle: 'Novo produto',
+        dimensionsTitle: 'Dimensões da embalagem',
+        dimensionsTooltip: 'Usado pelo sistema para calcular a tabela de frete.',
         editTitle: 'Editar produto',
         errors: {
           eanRequired: 'EAN é obrigatório.',
@@ -640,6 +654,10 @@ export default {
           title: 'Editar usuário',
         },
         empty: 'Nenhum usuário encontrado.',
+        filters: {
+          role: 'Perfil',
+          status: 'Status',
+        },
         form: {
           createSuccess: 'Usuário criado com sucesso.',
           createTitle: 'Novo usuário',
@@ -820,8 +838,10 @@ export default {
         filters: {
           action: 'Ação',
           actionPlaceholder: 'ex: subscription.activated',
+          impersonatedBy: 'Via impersonation',
           module: 'Módulo',
           modulePlaceholder: 'ex: billing',
+          user: 'Usuário',
         },
         title: 'Auditoria',
       },
@@ -855,6 +875,24 @@ export default {
         deleteSuccess: 'Notificação excluída.',
         empty: 'Nenhuma notificação enviada ainda.',
         error: 'Não foi possível carregar as notificações agora.',
+        filters: {
+          status: 'Status',
+          type: 'Tipo',
+        },
+        sendToUserButton: 'Notificar usuário',
+        sendToUserModal: {
+          fields: {
+            message: 'Mensagem',
+            title: 'Título',
+            user: 'Usuário',
+          },
+          placeholders: {
+            user: 'Selecione um usuário',
+          },
+          submit: 'Enviar',
+          success: 'Notificação enviada.',
+          title: 'Notificar usuário',
+        },
         status: {
           cancelled: 'Cancelado',
           pending: 'Pendente',
@@ -884,6 +922,9 @@ export default {
         },
         deleteSuccess: 'Configuração excluída com sucesso.',
         empty: 'Nenhuma configuração cadastrada ainda.',
+        filters: {
+          type: 'Tipo',
+        },
         form: {
           createSuccess: 'Configuração criada com sucesso.',
           createTitle: 'Nova configuração',
@@ -940,6 +981,9 @@ export default {
         },
         deleteSuccess: 'Marketplace excluído com sucesso.',
         empty: 'Nenhum marketplace cadastrado ainda.',
+        filters: {
+          active: 'Status',
+        },
         form: {
           createSuccess: 'Marketplace criado com sucesso.',
           createTitle: 'Novo marketplace',
@@ -1113,6 +1157,11 @@ export default {
         },
         empty: 'Nenhum chamado encontrado.',
         error: 'Não foi possível carregar os chamados agora.',
+        filters: {
+          repliedBy: 'Respondido por',
+          status: 'Status',
+          user: 'Usuário',
+        },
         thread: {
           openedBy: 'Aberto por {name}',
         },
@@ -1129,6 +1178,11 @@ export default {
       createButton: 'Novo chamado',
       empty: 'Você ainda não abriu nenhum chamado.',
       error: 'Não foi possível carregar seus chamados agora.',
+      filters: {
+        createdBetween: 'Aberto entre',
+        resolvedBetween: 'Resolvido entre',
+        status: 'Status',
+      },
       form: {
         createSuccess: 'Chamado aberto com sucesso.',
         createTitle: 'Novo chamado',
