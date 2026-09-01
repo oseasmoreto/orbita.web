@@ -53,6 +53,7 @@ export default {
       card: {
         cta: 'Começar agora',
         ctaHighlighted: 'Assinar com desconto',
+        ctaTrial: 'Testar grátis',
         equivalentNote: '*Valor equivalente para comparação.',
         maxMarketplaces: 'Até {count} marketplaces conectados',
         maxProducts: 'Até {count} produtos cadastrados',
@@ -61,6 +62,8 @@ export default {
         payUpfront: 'Pagamento anual à vista de {price}.',
         perMonth: '/mês',
         savings: 'Economize {amount}/ano',
+        trialDescription: 'Acesso completo por {days} dias, sem cobrança no cartão.',
+        trialSuffix: 'por {days} dias',
         yearlyDescription: 'Mesmo conjunto de recursos do plano mensal, com melhor preço efetivo.',
       },
       empty: 'Nenhum plano disponível no momento.',
@@ -403,6 +406,7 @@ export default {
   errorMessageSubscriptionAlreadyActive: 'Você já tem uma assinatura ativa.',
   errorMessageSubscriptionNotActive: 'Sua assinatura não está ativa no momento.',
   errorMessageTooManyRequests: 'Muitas tentativas. Aguarde um momento e tente de novo.',
+  errorMessageTrialNotEligible: 'O plano de teste grátis é só para quem ainda não assinou antes.',
   errorMessageUnauthorized: 'Sua sessão expirou. Faça login novamente.',
   errorMessageUserMarketplaceNotActive:
     'Essa conexão está pausada — reative antes de vincular um produto.',

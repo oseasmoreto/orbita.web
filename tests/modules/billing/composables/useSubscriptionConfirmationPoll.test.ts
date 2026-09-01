@@ -1,5 +1,20 @@
 import { isSubscriptionConfirmed } from '@/modules/billing/composables/useSubscriptionConfirmationPoll'
+import type { Plan } from '@/modules/billing/types/plan.type'
 import type { Subscription } from '@/modules/billing/types/subscription.type'
+
+function makePlan(overrides: Partial<Plan> = {}): Plan {
+  return {
+    billingCycle: 'monthly',
+    id: 'plan-a',
+    isTrial: false,
+    maxMarketplaces: 3,
+    maxProducts: 100,
+    name: 'Plano A',
+    price: '49.90',
+    trialDays: null,
+    ...overrides,
+  }
+}
 
 function makeSubscription(overrides: Partial<Subscription> = {}): Subscription {
   return {
@@ -8,6 +23,7 @@ function makeSubscription(overrides: Partial<Subscription> = {}): Subscription {
     endDate: null,
     id: 'sub-1',
     pendingPlanId: null,
+    plan: makePlan(),
     planId: 'plan-a',
     startDate: '2026-01-01',
     status: 'pending',

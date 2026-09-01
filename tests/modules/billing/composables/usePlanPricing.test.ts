@@ -9,10 +9,12 @@ function buildPlan(overrides: Partial<Plan> = {}): Plan {
   return {
     billingCycle: 'monthly',
     id: 'plan-1',
+    isTrial: false,
     maxMarketplaces: 3,
     maxProducts: 100,
     name: 'Plano Mensal',
     price: '49.90',
+    trialDays: null,
     ...overrides,
   }
 }
@@ -75,5 +77,24 @@ describe('findMostEconomicalPlan', () => {
   it('returns the single plan when there is only one', () => {
     const onlyPlan = buildPlan({ id: 'solo' })
     expect(findMostEconomicalPlan([onlyPlan])?.id).toBe('solo')
+  })
+
+  it('never picks a trial plan, even though it is always the cheapest (R$0)', () => {
+    const trial = buildPlan({
+      billingCycle: 'trial',
+      id: 'trial-1',
+      isTrial: true,
+      price: '0',
+      trialDays: 10,
+    })
+    const starter = buildPlan({ billingCycle: 'monthly', id: 'starter', price: '49.90' })
+    const pro = buildPlan({ billingCycle: 'monthly', id: 'pro', price: '99.90' })
+
+    expect(findMostEconomicalPlan([trial, starter, pro])?.id).toBe('starter')
+  })
+
+  it('returns null when every plan is trial', () => {
+    const trial = buildPlan({ billingCycle: 'trial', id: 'trial-1', isTrial: true, price: '0' })
+    expect(findMostEconomicalPlan([trial])).toBeNull()
   })
 })

@@ -42,13 +42,22 @@ export function getYearlySavings(yearlyPlan: Plan, plans: Plan[]): number | null
  * menor equivalente mensal entre os listados, nunca um plano fixo por
  * nome/id: se a lista de planos mudar (admin cadastra um novo), o badge
  * segue o preço de verdade, não uma suposição hardcoded.
+ *
+ * Trial (`isTrial`) é excluído do comparativo — `PLAN.price = 0` o
+ * tornaria trivialmente "o mais econômico" sempre que aparecesse na
+ * lista (aparece em toda listagem pra quem nunca assinou,
+ * `docs/negocio/contexto-plataforma-precificacao.md` seção 6), o que não
+ * comunica nada útil: o badge existe pra destacar o melhor plano PAGO,
+ * não pra apontar o óbvio de um teste grátis.
  */
 export function findMostEconomicalPlan(plans: Plan[]): Plan | null {
-  if (plans.length === 0) {
+  const eligiblePlans = plans.filter((plan) => !plan.isTrial)
+
+  if (eligiblePlans.length === 0) {
     return null
   }
 
-  return plans.reduce((cheapest, plan) =>
+  return eligiblePlans.reduce((cheapest, plan) =>
     getMonthlyEquivalent(plan) < getMonthlyEquivalent(cheapest) ? plan : cheapest,
   )
 }

@@ -14,6 +14,15 @@
  * existe), mesmo critério de não inventar affordance sem propósito já
  * usado no resto do design system.
  *
+ * **Botão de voltar reposicionado, 2026-09-01, pedido direto do usuário**:
+ * morava em `__actions` (fim do header, depois do tema) com o ícone
+ * `ClockCounterClockwise` — movido pra `__left`, logo ao lado do botão de
+ * ocultar/exibir a sidebar (antes do favorito e do breadcrumb, mesmo
+ * agrupamento de "controles de navegação do shell"), e o ícone trocado
+ * pra `ArrowLeft` (seta simples), mais lido como "voltar" do que o ícone
+ * de relógio/histórico anterior. `goBack()` continua a mesma função —
+ * só a posição/ícone do botão mudaram.
+ *
  * **Botão de favoritar ligado em 2026-08-31** (endpoint `POST /favorites`
  * implementado pela sessão `backend-c5`) — era casca inerte até aqui
  * ("não existe favoritar página no domínio do Orbita hoje"), agora
@@ -34,8 +43,8 @@ import { useMediaQuery } from '@vueuse/core'
 import { useRoute, useRouter } from 'vue-router'
 import { i18n } from '@/core/i18n'
 import {
+  ArrowLeft,
   Bell,
-  ClockCounterClockwise,
   SidebarSimple,
   Star,
   Sun,
@@ -128,6 +137,14 @@ function goBack(): void {
         <Icon :icon="SidebarSimple" :size="20" />
       </button>
       <button
+        :aria-label="$t('header.goBack')"
+        class="app-header__icon-button"
+        type="button"
+        @click="goBack"
+      >
+        <Icon :icon="ArrowLeft" :size="20" />
+      </button>
+      <button
         v-if="isCurrentRouteFavoritable"
         :aria-label="isCurrentRouteFavorite ? $t('common.actions.unfavorite') : $t('common.actions.favorite')"
         :class="['app-header__icon-button', { 'app-header__icon-button--favorite': isCurrentRouteFavorite }]"
@@ -150,14 +167,6 @@ function goBack(): void {
         @click="toggleTheme"
       >
         <Icon :icon="Sun" :size="20" />
-      </button>
-      <button
-        :aria-label="$t('header.goBack')"
-        class="app-header__icon-button"
-        type="button"
-        @click="goBack"
-      >
-        <Icon :icon="ClockCounterClockwise" :size="20" />
       </button>
       <button
         :aria-label="$t('header.notifications')"

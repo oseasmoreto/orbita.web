@@ -26,6 +26,7 @@
  */
 import { onMounted, onUnmounted, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import { refreshCurrentUser } from '@/core/router/guards'
 import {
   CheckCircle,
   HourglassMedium,
@@ -58,9 +59,23 @@ const ICONS = {
   success: CheckCircle,
 } as const
 
-function handleCta(): void {
-  const target = displayVariant.value === 'failure' ? { name: 'choose-plan' } : { name: 'home' }
-  void router.push(target)
+async function handleCta(): Promise<void> {
+  if (displayVariant.value === 'failure') {
+    await router.push({ name: 'choose-plan' })
+    return
+  }
+
+  // Achado real, 2026-09-01 (mesma causa do bug corrigido em
+  // `useSubscribeToPlan.subscribe()`): a assinatura pode ter sido
+  // confirmada só AGORA, via `isConfirmed` do poll — nunca saímos da SPA
+  // pra isso acontecer, então `authStore.requiresSubscription` (hidratado
+  // uma vez só, `bootstrapSession()`) continua com o valor de quando a
+  // tela abriu, ainda pendente. Sem isso, ir "pro dashboard" cai de volta
+  // no guard de `/choose-plan`. Idempotente/inofensivo quando a
+  // assinatura já veio confirmada desde o primeiro load (F5 real
+  // acontecido de verdade ao voltar do Mercado Pago).
+  await refreshCurrentUser()
+  await router.push({ name: 'home' })
 }
 </script>
 

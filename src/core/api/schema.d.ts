@@ -951,6 +951,8 @@ export interface components {
             max_marketplaces: number;
             max_products: number;
             active: boolean;
+            is_trial: boolean;
+            trial_days: number | null;
             /** Format: date-time */
             created_at: string | null;
         };
@@ -959,6 +961,13 @@ export interface components {
             id: string;
             user_id: string;
             plan_id: string;
+            /**
+             * @description Mesmo gap do SubscriptionResource (achado real, 2026-09-01) —
+             *     GET /admin/plans também só lista active=true, admin também
+             *     precisa resolver o nome de um plano desativado/trial na
+             *     listagem de assinaturas sem depender daquele endpoint.
+             */
+            plan: components["schemas"]["PlanResource"];
             status: components["schemas"]["SubscriptionStatus"];
             cancel_at_period_end: boolean;
             payment_id: string | null;
@@ -1003,7 +1012,7 @@ export interface components {
          * BillingCycle
          * @enum {string}
          */
-        BillingCycle: "monthly" | "yearly";
+        BillingCycle: "monthly" | "yearly" | "trial";
         /** BroadcastNotificationRequest */
         BroadcastNotificationRequest: {
             title?: string;
@@ -1036,6 +1045,13 @@ export interface components {
             max_marketplaces: number;
             max_products: number;
             active?: boolean;
+            /**
+             * @description is_trial/trial_days — decisão 2026-08-31. trial_days só é
+             *     exigido quando is_trial=true (senão fica sem sentido: nenhum
+             *     outro plano tem prazo de trial).
+             */
+            is_trial?: boolean;
+            trial_days?: number | null;
         };
         /** CreatePricingRuleRequest */
         CreatePricingRuleRequest: {
@@ -1186,6 +1202,13 @@ export interface components {
             billing_cycle: components["schemas"]["BillingCycle"];
             max_marketplaces: number;
             max_products: number;
+            /**
+             * @description is_trial: front usa pra decidir o CTA ("Testar grátis" vs
+             *     "Assinar"). trial_days só faz sentido junto (null pros demais
+             *     planos) — decisão 2026-08-31.
+             */
+            is_trial: boolean;
+            trial_days: number | null;
         };
         /** PricingRuleResource */
         PricingRuleResource: {
@@ -1326,7 +1349,7 @@ export interface components {
             status: string;
             start_date: string;
             end_date: string | null;
-            checkout_url: string;
+            checkout_url: string | null;
         };
         /** SubscriptionResource */
         SubscriptionResource: {
@@ -1341,6 +1364,17 @@ export interface components {
              *     sinal de troca pendente num carregamento novo de página).
              */
             pending_plan_id: string | null;
+            /**
+             * @description Nome/preço/etc. do plano embutidos direto aqui (achado real,
+             *     reportado pelo front 2026-09-01): GET /plans só lista planos
+             *     active=true e esconde o trial pra quem já tem histórico —
+             *     inclusive a própria assinatura trial ATIVA do usuário conta
+             *     como histórico, então o front não tinha como resolver o nome
+             *     do próprio plano atual cruzando com aquela listagem. Nunca
+             *     depender de GET /plans pra isso — pode ser qualquer plano
+             *     desativado no futuro, não só o trial.
+             */
+            plan: components["schemas"]["PlanResource"];
             status: components["schemas"]["SubscriptionStatus"];
             cancel_at_period_end: boolean;
             /** Format: date-time */
@@ -1394,6 +1428,8 @@ export interface components {
             max_marketplaces?: number;
             max_products?: number;
             active?: boolean;
+            is_trial?: boolean;
+            trial_days?: number | null;
         };
         /** UpdatePricingRuleRequest */
         UpdatePricingRuleRequest: {

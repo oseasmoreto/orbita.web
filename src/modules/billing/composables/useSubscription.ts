@@ -1,5 +1,7 @@
 import { ref } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { useRouter } from 'vue-router'
+import { refreshCurrentUser } from '@/core/router/guards'
 import { useApiMessage } from '@/shared/composables/useApiMessage'
 import { useToast } from '@/shared/composables/useToast'
 import { parseApiError } from '@/shared/services/parseApiError'
@@ -9,6 +11,7 @@ import {
   getCurrentSubscription,
 } from '../services/billingApi'
 import type { Subscription } from '../types/subscription.type'
+import { isCheckoutSkipped } from './useSubscribeToPlan'
 
 /**
  * Se pode cancelar a renovação agora — só falso quando já não há
@@ -56,6 +59,7 @@ export function useSubscription() {
   const toast = useToast()
   const { resolveMessage } = useApiMessage()
   const { t } = useI18n()
+  const router = useRouter()
 
   async function load(): Promise<void> {
     isLoading.value = true
@@ -97,6 +101,22 @@ export function useSubscription() {
 
     try {
       const checkout = await changeSubscriptionPlan(subscription.value.id, planId)
+
+      // Trial nunca aparece como opção de TROCA (só oferecido a quem
+      // ainda não tem nenhum histórico de assinatura — `docs/negocio/
+      // contexto-plataforma-precificacao.md` seção 6), então na prática
+      // `checkout_url` nunca deveria vir nulo aqui. Mesma guarda de
+      // `useSubscribeToPlan.subscribe()` por segurança de tipo/defesa,
+      // não porque o caminho seja esperado.
+      if (isCheckoutSkipped(checkout.checkoutUrl)) {
+        // Mesmo achado real de `useSubscribeToPlan.subscribe()` — sem
+        // refazer `/auth/me`, `authStore.requiresSubscription`/`planLimits`
+        // ficam presos no valor de antes da troca.
+        await refreshCurrentUser()
+        await router.push({ name: 'billing-success' })
+        return
+      }
+
       window.location.href = checkout.checkoutUrl
     } catch (caughtError) {
       const apiError = parseApiError(caughtError)

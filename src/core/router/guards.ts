@@ -46,21 +46,31 @@ declare module 'vue-router' {
 }
 
 /**
- * A store de auth (Pinia) não persiste entre reloads — só o cookie httpOnly
- * do Sanctum persiste de verdade. Sem isso, `authStore.isAuthenticated`
- * começaria `false` em todo F5, mesmo com sessão válida, e o guard abaixo
- * bateria um usuário real pro login o tempo todo. Roda uma única vez por
- * carregamento do app (não por navegação) — chamadas seguintes de login/
- * registro/401 já mantêm a store em dia sozinhas.
+ * Refaz `GET /auth/me` e sincroniza a store inteira (`user`/`favorites`/
+ * `planLimits`/`requiresSubscription`) — extraído de dentro de
+ * `bootstrapSession()` (que só chama isso uma vez por carregamento) pra
+ * ser reaproveitável por qualquer fluxo que mude o estado de assinatura
+ * do usuário SEM sair da SPA (sem reload de página nenhum).
+ *
+ * **Achado real, reportado pelo usuário em 2026-09-01**: assinar o plano
+ * trial (`useSubscribeToPlan.ts` — pula checkout, `router.push` client-side
+ * direto pra `/billing/success`, nunca sai da SPA) deixava
+ * `authStore.requiresSubscription` PRESO no valor `true` de antes da
+ * assinatura existir — a store só é hidratada uma vez por carregamento
+ * (`sessionBootstrapped`), e criar uma assinatura não atualiza esse campo
+ * sozinho. Resultado: `/v1/auth/me` já respondia `requires_subscription:
+ * false` (conferido pelo usuário direto na network), mas o guard
+ * (`setupRouterGuards` abaixo) continuava lendo o valor velho da store e
+ * mandava de volta pra `/choose-plan` em toda navegação seguinte — mesma
+ * classe de bug adormecida em `BillingCheckoutResultView.vue`
+ * (`handleCta`), que também só sai da SPA quando o poll de confirmação do
+ * Mercado Pago (`useSubscriptionConfirmationPoll.ts`) resolve DEPOIS do
+ * primeiro carregamento da tela, nunca refazendo esse fetch. Corrigido
+ * chamando `refreshCurrentUser()` nos dois lugares antes de navegar pro
+ * dashboard — ver `useSubscribeToPlan.subscribe()` e
+ * `BillingCheckoutResultView.handleCta()`.
  */
-let sessionBootstrapped = false
-
-async function bootstrapSession(): Promise<void> {
-  if (sessionBootstrapped) {
-    return
-  }
-  sessionBootstrapped = true
-
+export async function refreshCurrentUser(): Promise<void> {
   const authStore = useAuthStore()
 
   try {
@@ -78,6 +88,25 @@ async function bootstrapSession(): Promise<void> {
   } catch {
     authStore.clear()
   }
+}
+
+/**
+ * A store de auth (Pinia) não persiste entre reloads — só o cookie httpOnly
+ * do Sanctum persiste de verdade. Sem isso, `authStore.isAuthenticated`
+ * começaria `false` em todo F5, mesmo com sessão válida, e o guard abaixo
+ * bateria um usuário real pro login o tempo todo. Roda uma única vez por
+ * carregamento do app (não por navegação) — chamadas seguintes de login/
+ * registro/401 já mantêm a store em dia sozinhas.
+ */
+let sessionBootstrapped = false
+
+async function bootstrapSession(): Promise<void> {
+  if (sessionBootstrapped) {
+    return
+  }
+  sessionBootstrapped = true
+
+  await refreshCurrentUser()
 }
 
 /**

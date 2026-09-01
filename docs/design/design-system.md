@@ -2631,6 +2631,34 @@ campo), mesmo padrão já usado ali pra `requiresSubscription`.
   desfavoritar pela lista da sidebar chegam ao mesmo estado (lista vazia,
   botão do header volta a cinza); `/login` não renderiza o botão.
 
+**Botão de voltar reposicionado, 2026-09-01, pedido direto do usuário**
+("adicione o botão de volta da navbar ao lado do botão de sumir com a
+sidebar antes do breadcrumb e coloque uma seta de ir pra trás como
+ícone") — morava em `.app-header__actions` (fim do header, depois do
+toggle de tema), com o ícone `ClockCounterClockwise` (relógio/histórico).
+Movido pra `.app-header__left`, como o 2º botão (depois do toggle de
+sidebar, antes do botão de favoritar e do breadcrumb) — mesmo agrupamento
+visual de "controles de navegação do shell" que o toggle de sidebar já
+ocupava, separado das ações de página (tema/notificações) que
+permaneceram à direita. Ícone trocado pra `ArrowLeft` (seta simples) — o
+ícone de relógio, apesar de correto quanto à MECÂNICA (é literalmente
+`router.back()`, não um histórico com dado próprio — ver bullet acima),
+lia mal como "voltar" à primeira vista; uma seta é a leitura padrão desse
+tipo de ação em qualquer produto. `goBack()` em si não mudou — mesma
+função, mesma guarda `window.history.state?.back` (evita escapar do app
+numa aba sem navegação interna, achado real já documentado acima), só a
+posição/ícone do botão.
+
+- Verificado em browser real (Playwright, viewport 1280×800 e depois
+  390×844, luz): `.app-header__left` renderiza na ordem
+  `SidebarSimple`/"Ocultar/exibir menu" → `ArrowLeft`/"Voltar" →
+  `Star`/"Favoritar", com o breadcrumb logo em seguida — a mesma ordem
+  no mobile (linha 1 de ícones, breadcrumb quebrando pra linha 2, mesmo
+  layout de sub-bar já documentado acima, sem regressão). Clique no botão
+  com `window.history.state.back` ausente (aba sem navegação interna, o
+  mesmo cenário do achado real documentado acima) confirma que a guarda
+  continua ativa — o botão não navega pra fora do app.
+
 ### AppFooter (`core/layouts/AppFooter.vue`)
 
 **Pedido direto pelo usuário em 2026-08-28, com captura real do Figma**
@@ -2830,6 +2858,154 @@ não cruzado):
   essa prop). Corrigido passando `$t('billing.mySubscription.changePlan.cta')`
   ("Trocar de plano") — `null` por padrão preserva o comportamento
   original em `ChoosePlanView.vue`, que não passa a prop.
+
+**Botão de logout em `ChoosePlanView.vue`, 2026-09-01, pedido direto pelo
+usuário** — esta view fica fora do `AppLayout` (sem `AppSidebar`/
+`AppHeader`; é o passo de onboarding entre cadastro e pagamento,
+`skipOnboardingChecks`), então não herdava o botão de logout que já mora
+no topo da sidebar (`AppSidebarContent.vue`) — sem saída visível, quem
+chegasse aqui numa conta errada (ou só quisesse desistir do onboarding)
+ficava preso. Adicionado um `.choose-plan-view__topbar` (`display: flex;
+justify-content: space-between`) envolvendo a marca "Orbita" (já
+existente) e um `Button` `variant="ghost"` com `icon-before="SignOut"` no
+canto superior direito, texto visível (`$t('common.actions.logout')`,
+"Sair") — mesmo `useLogout()` (`modules/identity/composables`), mesmo
+ícone e mesma chave de tradução já usados no botão da sidebar, mas com o
+texto ao lado do ícone (não ícone-só como na sidebar) porque aqui não há
+nenhum outro indício visual de "isso é sair" (sem avatar/nome ao lado).
+Verificado em browser real: botão aparece no canto superior direito da
+tela de planos, clique chama `POST /auth/logout` e redireciona pra
+`/login`.
+
+**Feature de trial integrada no front, 2026-09-01** — backend concluiu a
+tarefa 54 (`docs/negocio/contexto-plataforma-precificacao.md` seção 6,
+`PLAN.is_trial`/`trial_days`) e avisou via mensagem cross-session; usuário
+confirmou implementar na hora ("já faça"). 4 pontos de integração:
+
+1. **Tipos regenerados** (`npm run generate:api-types`) — `PlanResource`
+   ganhou `is_trial`/`trial_days`, `BillingCycle` ganhou o terceiro valor
+   `'trial'`, `SubscriptionCheckoutResource.checkout_url` virou nullable.
+   `Plan` (`modules/billing/types/plan.type.ts`) ganhou os 2 campos em
+   cima do schema gerado, mesmo padrão de sempre — nunca redigitado à
+   mão.
+2. **`checkout_url: null` → redirect direto, sem Mercado Pago** —
+   assinar/trocar pra um plano trial pula Payment/Transaction/checkout
+   inteiro no backend; a resposta chega com `checkout_url: null` em vez
+   do link de sempre. `isCheckoutSkipped(checkoutUrl): checkoutUrl is null`
+   (type guard, testado em `tests/modules/billing/composables/useSubscribeToPlan.test.ts`)
+   isola essa única ramificação de decisão nova — `useSubscribeToPlan.subscribe()`
+   e `useSubscription.changePlan()` checam essa guarda antes do
+   `window.location.href = checkout.checkoutUrl` de sempre; quando
+   `true`, `router.push({ name: 'billing-success' })` no lugar do
+   redirect de página inteira. `changePlan()` ganhou a mesma guarda por
+   defesa de tipo (o `SubscriptionCheckout` é o mesmo shape das duas
+   ações), mesmo trial nunca sendo uma TROCA de plano válida na prática
+   (só oferecido a quem não tem nenhum histórico de assinatura — quem já
+   está trocando de plano já tem histórico, por definição).
+3. **`PlanCard.vue` — texto próprio pro trial, não o genérico
+   mensal/anual** (`plan.isTrial`, checado ANTES dos ramos
+   `isYearly`/senão): sufixo de preço "por N dias" em vez de "/mês"
+   (`billing.choosePlan.card.trialSuffix`), descrição "Acesso completo
+   por N dias, sem cobrança no cartão" em vez de "Tenha acesso... pagando
+   mensalmente" (`trialDescription`), CTA "Testar grátis" em vez de
+   "Começar agora"/"Assinar com desconto" (`ctaTrial`) — sem isso, o
+   card mostrava "R$0,00/mês" com o texto de assinatura paga normal, o
+   tipo de detalhe que faz um usuário desconfiar que é golpe/bug antes
+   de clicar. **`findMostEconomicalPlan` (`usePlanPricing.ts`) passou a
+   excluir plano trial do comparativo** (`plans.filter(p => !p.isTrial)`,
+   testado) — R$0 sempre venceria trivialmente qualquer plano pago,
+   fazendo o badge "Mais econômico" pousar no trial sempre que ele
+   aparecesse na lista (aparece pra todo usuário sem histórico) em vez de
+   destacar o melhor plano PAGO, que é o propósito real do badge.
+4. **`errorMessageTrialNotEligible`** — chave nova no catálogo flat de
+   `errorMessage*` (`core/i18n/messages/pt-BR.ts`, mesmo padrão de
+   `errorMessageSamePlan`/`errorMessageDocumentRequired` etc.), string
+   conferida 1:1 contra `ApiMessageKey::ErrorTrialNotEligible` do backend
+   (`app/Domain/Shared/Enums/ApiMessageKey.php`). Nenhuma lógica nova de
+   composable precisou — o catch genérico de `useSubscribeToPlan.subscribe()`
+   (`toast.error(resolveMessage(apiError.messageKey))`) já cobria
+   qualquer chave desconhecida/nova só de existir no catálogo.
+
+Verificado em browser real contra o backend local (seed real, plano
+trial `trial_days: 10`): card do Trial renderiza "R$ 0,00 / por 10 dias",
+descrição e CTA "Testar grátis" corretos; badge "Mais econômico" pousa no
+Starter (plano pago mais barato), não mais no Trial; clicar "Testar
+grátis" dispara `POST /subscriptions` (`201`) e redireciona DIRETO pra
+`/billing/success` sem passar pelo Mercado Pago; usuário com histórico de
+assinatura (simulado via assinatura `expired`) não vê mais o card do
+Trial na listagem (comportamento do backend, já correto sem mudança
+nenhuma no front) e uma chamada direta pro endpoint com o `plan_id` do
+trial devolve `422 errorMessageTrialNotEligible` — a chave nova bate
+exatamente com o que o backend manda.
+
+**Bug real, reportado pelo usuário em 2026-09-01 testando o fluxo
+completo**: assinou o trial, caiu em "Pagamento aprovado" normalmente,
+mas clicar "Ir para o dashboard" travava de volta em `/choose-plan` —
+mesmo o usuário confirmando, direto na aba de rede, que `/v1/auth/me` já
+respondia `requires_subscription: false`. Causa raiz:
+`authStore.requiresSubscription` (`core/router/guards.ts`) só é
+hidratado UMA VEZ por carregamento de página (`bootstrapSession()`,
+flag `sessionBootstrapped`) — o redirect pro trial é 100% client-side
+(`router.push`, nunca sai da SPA), então a store continuava com o valor
+de ANTES da assinatura existir, e o guard de rota (que lê a store, não
+o backend de novo) mandava de volta pra `/choose-plan` em toda navegação
+seguinte. **Mesma classe de bug também adormecida** (não causada por
+esta feature, só nunca tinha sido exercitada) em
+`BillingCheckoutResultView.handleCta()`: se o poll de confirmação do
+Mercado Pago (`useSubscriptionConfirmationPoll.ts`) resolve a assinatura
+DEPOIS do primeiro carregamento da tela — cenário realista, é
+exatamente pra isso que o poll existe —, a store também nunca era
+re-sincronizada antes do clique em "Ir para o dashboard".
+
+Corrigido extraindo `refreshCurrentUser()` (exportado,
+`core/router/guards.ts`) de dentro de `bootstrapSession()` — mesma
+lógica de sempre (refaz `GET /auth/me`, atualiza `user`/`favorites`/
+`planLimits`/`requiresSubscription` na store), só que agora reaproveitável
+sem a guarda de "uma vez só". Chamado em 3 pontos, todos ANTES de
+navegar: `useSubscribeToPlan.subscribe()` (ramo `isCheckoutSkipped`, antes
+do `router.push` pro `/billing/success`), `useSubscription.changePlan()`
+(mesmo ramo, defesa de tipo — trial nunca é troca de plano válida na
+prática) e `BillingCheckoutResultView.handleCta()` (antes de navegar pro
+`home`, cobre tanto o caso do trial quanto o caso do poll). Módulo
+`billing` importando de `core/router/guards.ts` é permitido pela regra
+de fronteira (`docs/infra/convencoes-frontend-infra.md` seção 2: módulo
+pode importar de `core/`, nunca de outro módulo) — mesmo precedente já
+registrado em `useLogout.ts` (Identity → `core/store`).
+
+Reverificado em browser real reproduzindo o relato exato do usuário: login
+→ assinar trial → `/billing/success` → clicar "Ir para o dashboard" →
+`GET /auth/me` disparado de novo → aterrissa em `/` (dashboard renderiza
+de verdade, sidebar/header com o usuário certo) → reload confirma que não
+é só rota client-side desatualizada (sessão persistida corretamente no
+backend).
+
+**2º bug real do mesmo dia, reportado pelo usuário**: na tela "Meu plano"
+(`MySubscriptionView.vue`), o campo "Plano atual" mostrava "—" pra quem
+está no trial. Causa raiz: `currentPlan` era resolvido cruzando
+`subscription.planId` com `plans.plans` (a lista de `GET /plans`,
+`useChoosePlan.ts`) — mas `ListActivePlansAction::hidesTrialFor()`
+esconde o plano trial de `GET /plans` pra qualquer usuário que já tenha
+**qualquer** histórico de assinatura, e a própria assinatura trial ATIVA
+do usuário conta como esse histórico. Resultado: assim que alguém assina
+o trial, ele some da lista de planos pra ele mesmo, e o front nunca mais
+consegue achar o nome pra exibir. Confirmado via `curl` autenticado antes
+de pedir a correção — não é bug exclusivo do trial, é sistêmico (qualquer
+plano que um dia vire `active: false` teria o mesmo problema).
+
+Não dava pra corrigir só no front — não existe `GET /plans/{id}` nem o
+plano embutido em `GET /subscriptions`. Pedido pro backend
+(`SubscriptionResource`/`AdminSubscriptionResource` ganharem `plan`
+embutido, mesmo shape do `PlanResource`), resolvido no mesmo dia.
+`Subscription` (`subscription.type.ts`) ganhou o campo `plan: Plan`
+(mapeado via `toPlan(resource.plan)`, reaproveitando o mapper que já
+existia) — `MySubscriptionView.currentPlan` virou simplesmente
+`subscription.value?.plan`, sem cruzar mais com `plans.plans` (que
+continua usada só pro que realmente precisa dela: grade de troca de
+plano e `pendingPlan`, este último ainda resolvido por cruzamento porque
+o backend não embutiu um `pendingPlan` — trial nunca é alvo de troca de
+plano válida, então esse caso específico não recai no mesmo bug).
+Reverificado em browser real contra o backend local: "Plano atual" mostra
+"Trial" corretamente pra um usuário na assinatura trial.
 
 ### DocumentPromptModal (`modules/billing/components/blocks/DocumentPromptModal.vue`)
 

@@ -1,4 +1,5 @@
 import type { components } from '@/core/api/schema'
+import { type Plan, toPlan } from './plan.type'
 
 export type SubscriptionStatus = components['schemas']['SubscriptionStatus']
 
@@ -10,6 +11,17 @@ export type SubscriptionStatus = components['schemas']['SubscriptionStatus']
  * o campo antes, só `SubscriptionCheckoutResource` tinha) — só preenchido
  * quando existe uma troca de plano aguardando confirmação de pagamento;
  * `planId` continua o ATUAL até o webhook do Mercado Pago aprovar.
+ *
+ * `plan` — pedido pra sessão de backend em 2026-09-01, resolvido no mesmo
+ * dia: achado real reportado pelo usuário (tela "Meu plano" mostrando "—"
+ * no nome do plano pra quem está no trial). `GET /plans` só lista planos
+ * `active: true` e esconde o trial de quem já tem QUALQUER histórico de
+ * assinatura — inclusive a própria assinatura trial ATIVA do usuário
+ * conta como esse histórico, então cruzar `planId` com aquela listagem
+ * (`plans.plans` de `useChoosePlan.ts`) nunca resolvia o nome do próprio
+ * plano atual. `plan` vem embutido direto na resposta agora — nunca mais
+ * depender de `GET /plans` pra saber o nome do plano de UMA assinatura já
+ * existente (vale pra qualquer plano desativado no futuro, não só trial).
  */
 export interface Subscription {
   cancelAtPeriodEnd: boolean
@@ -17,6 +29,7 @@ export interface Subscription {
   endDate: string | null
   id: string
   pendingPlanId: string | null
+  plan: Plan
   planId: string
   startDate: string
   status: SubscriptionStatus
@@ -54,6 +67,7 @@ export function toSubscription(
     endDate: resource.end_date,
     id: resource.id,
     pendingPlanId: resource.pending_plan_id,
+    plan: toPlan(resource.plan),
     planId: resource.plan_id,
     startDate: resource.start_date,
     status: resource.status,
@@ -66,9 +80,16 @@ export function toSubscription(
  * Pago (Checkout Pro, hospedado), por isso o mesmo shape serve pras duas
  * ações; `status` chega como `string` solto (não o enum `SubscriptionStatus`)
  * porque `SubscriptionCheckoutResource` (backend) tipa o campo assim.
+ *
+ * `checkoutUrl` virou `string | null` em 2026-09-01 (feature de trial,
+ * backend tarefa 54): assinar um plano trial (`Plan.isTrial`) pula
+ * Payment/Transaction/Mercado Pago inteiramente — a assinatura já nasce
+ * `status: 'active'` e a resposta vem com `checkout_url: null`, sinal pro
+ * front redirecionar direto pra `/billing/success` em vez de abrir o
+ * checkout hospedado (`useSubscribeToPlan.isCheckoutSkipped`).
  */
 export interface SubscriptionCheckout {
-  checkoutUrl: string
+  checkoutUrl: string | null
   id: string
   pendingPlanId: string | null
   planId: string

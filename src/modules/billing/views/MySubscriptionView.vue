@@ -62,9 +62,14 @@ const billingCycleOptions = computed<BlockTabOption[]>(() => [
   { key: 'yearly', label: t('billing.billingCycleFilter.yearly') },
 ])
 
-const currentPlan = computed<Plan | undefined>(() =>
-  plans.plans.value.find((plan) => plan.id === subscription.value?.planId),
-)
+// Achado real, 2026-09-01, corrigido no mesmo dia pelo backend: nunca
+// resolver o plano ATUAL cruzando `planId` com `plans.plans` — `GET /plans`
+// só lista planos `active: true` e esconde o trial de quem já tem
+// histórico de assinatura (a própria assinatura trial ATIVA conta como
+// esse histórico), então o nome do plano nunca resolvia pra quem estava
+// no trial ("—" na tela). `plan` agora vem embutido direto na resposta
+// de `GET /subscriptions` (`Subscription.plan`, `subscription.type.ts`).
+const currentPlan = computed<Plan | undefined>(() => subscription.value?.plan)
 
 /**
  * `pending_plan_id` — resolvido pra sessão de backend em 2026-08-31

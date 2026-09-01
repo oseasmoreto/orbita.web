@@ -14,10 +14,29 @@
  * semelhante" (oferta de upgrade ao bater limite de plano,
  * `docs/negocio/jornada-usuario.mmd`) reaproveita o MESMO componente
  * quando esse fluxo existir, sem duplicar UI de card de plano.
+ *
+ * **Botão de logout, pedido direto pelo usuário em 2026-09-01**: esta
+ * view é fora do `AppLayout` (sem `AppSidebar`/`AppHeader`, é o passo de
+ * onboarding entre cadastro e pagamento — `skipOnboardingChecks`), então
+ * não tem o botão de logout que já existe no topo da sidebar
+ * (`AppSidebarContent.vue`) — sem saída visível, quem chegasse aqui numa
+ * conta errada (ou só quisesse desistir do onboarding) ficaria preso.
+ * Mesmo `useLogout()` (`modules/identity/composables`), mesmo ícone
+ * (`SignOut`) e mesma chave de tradução (`common.actions.logout`) já
+ * usados no botão da sidebar — mas com o texto visível ao lado do ícone
+ * (`variant="ghost"`), não ícone-só, porque aqui não há nenhum outro
+ * indício visual de "isso é sair" (sem avatar/nome ao lado, como na
+ * sidebar).
  */
 import { computed, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { ArrowsClockwise, Headset, ShieldCheck } from '@/shared/components/icons/regular.generated'
+import {
+  ArrowsClockwise,
+  Headset,
+  ShieldCheck,
+  SignOut,
+} from '@/shared/components/icons/regular.generated'
+import { useLogout } from '@/modules/identity/composables/useLogout'
 import BlockTab from '@/shared/components/ui/BlockTab.vue'
 import Button from '@/shared/components/ui/Button.vue'
 import Icon from '@/shared/components/ui/Icon.vue'
@@ -38,6 +57,7 @@ const { t } = useI18n()
 const { billingCycle, hasError, isLoading, load, plans, setBillingCycle, visiblePlans } =
   useChoosePlan()
 const { confirmDocument, isDocumentPromptOpen, isSubscribing, subscribe } = useSubscribeToPlan()
+const { isLoggingOut, logout } = useLogout()
 
 onMounted(load)
 
@@ -67,7 +87,17 @@ function savingsFor(plan: Plan): number | null {
 
 <template>
   <div class="choose-plan-view">
-    <div class="choose-plan-view__brand">Orbita</div>
+    <div class="choose-plan-view__topbar">
+      <div class="choose-plan-view__brand">Orbita</div>
+      <Button
+        :disabled="isLoggingOut"
+        :icon-before="SignOut"
+        variant="ghost"
+        @click="logout"
+      >
+        {{ $t('common.actions.logout') }}
+      </Button>
+    </div>
 
     <header class="choose-plan-view__header">
       <h1 class="choose-plan-view__title">{{ $t('billing.choosePlan.heading') }}</h1>
@@ -138,6 +168,12 @@ function savingsFor(plan: Plan): number | null {
   min-height: 100vh;
   padding: $spacing-24 $spacing-24 $spacing-48;
   background-color: $color-bg-1;
+}
+
+.choose-plan-view__topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
 }
 
 .choose-plan-view__brand {

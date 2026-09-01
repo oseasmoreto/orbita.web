@@ -1337,6 +1337,82 @@ continua em `/products`. Regra geral documentada em `.ai/rules/app-shell.md`.
    dados de seed) corretamente NÃO mostra nenhum badge de economia (nunca
    um valor zerado/negativo).
 
+**2 ajustes pedidos direto pelo usuário em 2026-09-01**:
+
+1. **Botão de logout em `ChoosePlanView.vue`** — a tela de escolha de
+   plano fica fora do `AppLayout` (sem sidebar/header, é passo de
+   onboarding entre cadastro e pagamento), então não tinha o botão de
+   logout que já existe no topo da sidebar — sem saída visível pra quem
+   chegasse ali numa conta errada ou quisesse desistir do onboarding.
+   Adicionado um `Button` `variant="ghost"` (ícone `SignOut` + texto
+   "Sair") no canto superior direito, mesmo `useLogout()`/mesma chave de
+   tradução (`common.actions.logout`) já usados no botão da sidebar —
+   texto visível aqui (não ícone-só) porque não há avatar/nome ao lado
+   pra dar contexto, diferente da sidebar.
+2. **Botão de voltar reposicionado no `AppHeader`** — morava em
+   `.app-header__actions` (fim do header) com o ícone
+   `ClockCounterClockwise`; movido pra `.app-header__left`, ao lado do
+   botão de ocultar/exibir a sidebar (antes do favorito e do breadcrumb),
+   com o ícone trocado pra `ArrowLeft` (seta simples) — mais lido como
+   "voltar" que o ícone de relógio anterior. Mesma função `goBack()`
+   (mesma guarda contra escapar do app numa aba sem navegação interna),
+   só posição/ícone do botão mudaram.
+
+Ambos verificados em browser real (Playwright, desktop e mobile, contra o
+backend local) — detalhe completo em `docs/design/design-system.md`,
+seções `PlanCard`/`AppHeader`.
+
+**Feature de trial (10 dias grátis) integrada no front, 2026-09-01** —
+backend concluiu a tarefa 54 e avisou via mensagem cross-session; usuário
+pediu pra implementar na hora ("já faça"). Tipos regenerados
+(`npm run generate:api-types`: `PlanResource.is_trial`/`trial_days`,
+`BillingCycle` com o 3º valor `'trial'`, `SubscriptionCheckoutResource.checkout_url`
+nullable). `isCheckoutSkipped()` (type guard testado,
+`useSubscribeToPlan.ts`) trata `checkout_url: null` como "já ativado" e
+redireciona direto pra `/billing/success` em vez do checkout do Mercado
+Pago — usado tanto em `subscribe()` quanto em `changePlan()`
+(`useSubscription.ts`, por defesa de tipo, embora trial nunca seja opção
+de TROCA na prática). `PlanCard.vue` ganhou texto próprio pro trial (CTA
+"Testar grátis", descrição/sufixo com os dias, em vez de cair no texto
+genérico mensal) e `findMostEconomicalPlan` passou a excluir trial do
+comparativo (R$0 sempre venceria trivialmente, tirando o sentido do badge
+"Mais econômico"). Chave `errorMessageTrialNotEligible` nova no catálogo
+pt-BR, conferida 1:1 contra o `ApiMessageKey` real do backend — sem
+lógica nova de composable, o catch genérico de `subscribe()` já cobria
+qualquer chave nova só de existir no catálogo. Verificado em browser real
+contra o backend local (plano trial seedado, `trial_days: 10`): card
+renderiza certo, badge "Mais econômico" não pousa mais no trial, assinar
+o trial redireciona direto pra `/billing/success` sem Mercado Pago, e uma
+chamada com histórico de assinatura devolve `422 errorMessageTrialNotEligible`
+como esperado. Detalhe completo em `docs/design/design-system.md`, seção
+`PlanCard`.
+
+**Bug real encontrado pelo usuário testando o fluxo completo, mesmo dia**:
+assinar o trial e clicar "Ir para o dashboard" travava de volta em
+`/choose-plan`, mesmo o backend já respondendo `requires_subscription:
+false` — `authStore.requiresSubscription` só é hidratado uma vez por
+carregamento de página, e o redirect pro trial nunca sai da SPA, então a
+store ficava com o valor de antes da assinatura existir. Mesma classe de
+bug estava adormecida em `BillingCheckoutResultView.handleCta()` pro caso
+de confirmação via poll do Mercado Pago (nunca exercitada até aqui).
+Corrigido extraindo `refreshCurrentUser()` (exportado,
+`core/router/guards.ts`) e chamando antes de navegar nos 3 pontos que
+mudam o estado de assinatura sem sair da SPA. Reverificado reproduzindo o
+relato exato do usuário — dashboard carrega de verdade agora. Detalhe
+completo em `docs/design/design-system.md`, seção `PlanCard`.
+
+**3º bug real do mesmo dia, mesma tela ("Meu plano")**: "Plano atual"
+mostrava "—" pra quem está no trial — `currentPlan` cruzava `planId` com
+`GET /plans`, que esconde o trial de qualquer usuário com histórico de
+assinatura (a própria assinatura trial ativa conta como histórico).
+Sistêmico, não exclusivo do trial (qualquer plano desativado no futuro
+teria o mesmo problema). Sem correção possível só no front — pedido pro
+backend embutir `plan` em `SubscriptionResource`/`AdminSubscriptionResource`,
+resolvido no mesmo dia. `Subscription.plan` (`subscription.type.ts`)
+substitui o cruzamento manual; `MySubscriptionView.currentPlan` virou só
+`subscription.value?.plan`. Detalhe completo em
+`docs/design/design-system.md`, seção `PlanCard`.
+
 ---
 
 ## Fase 5 — Platform

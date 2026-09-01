@@ -21,6 +21,16 @@
  * plano, `docs/negocio/jornada-usuario.mmd` nó "Upgrade") — critério de
  * promoção já estabelecido na seção 2 do doc de convenções, não
  * antecipado agora.
+ *
+ * **Plano trial (`Plan.isTrial`/`trialDays`), 2026-09-01** — sobrescreve
+ * CTA/descrição/sufixo de preço com texto próprio ("Testar grátis"/"Acesso
+ * completo por N dias, sem cobrança no cartão"/"por N dias" em vez de
+ * "/mês") em vez de cair no texto genérico mensal (`billingCycle` do
+ * trial já não é nem 'monthly' nem 'yearly', mas o preço R$0,00 sozinho
+ * não comunica "é um teste, não um plano pago de graça"). O badge "Mais
+ * econômico" nunca aponta pro trial mesmo que ele apareça na lista —
+ * `findMostEconomicalPlan` (`usePlanPricing.ts`) já exclui plano trial do
+ * comparativo, R$0 sempre venceria trivialmente sem comunicar nada útil.
  */
 import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
@@ -64,19 +74,38 @@ const displayPrice = computed(() =>
   formatMoney(isYearly.value ? (props.monthlyEquivalent ?? 0) : props.plan.price),
 )
 
-const ctaLabel = computed(
-  () =>
-    props.ctaLabelOverride ??
-    (props.highlighted
-      ? t('billing.choosePlan.card.ctaHighlighted')
-      : t('billing.choosePlan.card.cta')),
+// Trial (`Plan.isTrial`) sobrescreve CTA/descrição/sufixo de preço — nunca
+// entra nos ramos mensal/anual abaixo, mesmo que `billingCycle` também
+// distinga o caso (nem 'monthly' nem 'yearly', ver `plan.type.ts`).
+const priceSuffix = computed(() =>
+  props.plan.isTrial
+    ? t('billing.choosePlan.card.trialSuffix', { days: props.plan.trialDays })
+    : t('billing.choosePlan.card.perMonth'),
 )
 
-const description = computed(() =>
-  isYearly.value
+const ctaLabel = computed(() => {
+  if (props.ctaLabelOverride) {
+    return props.ctaLabelOverride
+  }
+
+  if (props.plan.isTrial) {
+    return t('billing.choosePlan.card.ctaTrial')
+  }
+
+  return props.highlighted
+    ? t('billing.choosePlan.card.ctaHighlighted')
+    : t('billing.choosePlan.card.cta')
+})
+
+const description = computed(() => {
+  if (props.plan.isTrial) {
+    return t('billing.choosePlan.card.trialDescription', { days: props.plan.trialDays })
+  }
+
+  return isYearly.value
     ? t('billing.choosePlan.card.yearlyDescription')
-    : t('billing.choosePlan.card.monthlyDescription'),
-)
+    : t('billing.choosePlan.card.monthlyDescription')
+})
 </script>
 
 <template>
@@ -89,7 +118,7 @@ const description = computed(() =>
 
     <div class="plan-card__price">
       <span class="plan-card__price-value">{{ displayPrice }}</span>
-      <span class="plan-card__price-suffix">{{ $t('billing.choosePlan.card.perMonth') }}</span>
+      <span class="plan-card__price-suffix">{{ priceSuffix }}</span>
     </div>
 
     <p v-if="isYearly" class="plan-card__price-note">
