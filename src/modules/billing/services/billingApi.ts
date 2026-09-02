@@ -141,16 +141,15 @@ export async function deleteAdminPlan(id: string): Promise<void> {
  * `POST /subscriptions` (`SubscribeToPlanAction`, backend) cria a
  * assinatura E a preferência de checkout no Mercado Pago (Checkout Pro,
  * hospedado — nunca renderizado por nós, só redirecionamos pra
- * `checkout_url`) na mesma chamada. `document` só é obrigatório quando o
- * usuário ainda não tem CPF/CNPJ cadastrado — vem `undefined` na
- * primeira tentativa; se a resposta vier com `errorMessageDocumentRequired`,
- * `useSubscribeToPlan.ts` pede o documento e chama de novo com ele.
+ * `checkout_url`) na mesma chamada. **Perdeu o parâmetro `document`
+ * (tarefa 63, 2026-09-02)** — CPF/CNPJ saiu do checkout de assinatura pra
+ * virar cadastro de empresa próprio (`modules/identity`, ver
+ * `CompanyRegistrationView.vue`); o guard de rota já garante que ninguém
+ * chega aqui sem empresa cadastrada, então `errorMessageCompanyRequired`
+ * (`useSubscribeToPlan.ts`) é só defesa residual, não o caminho normal.
  */
-export async function subscribeToPlan(
-  planId: string,
-  document?: string,
-): Promise<SubscriptionCheckout> {
-  const payload: SubscribeToPlanRequest = { document, plan_id: planId }
+export async function subscribeToPlan(planId: string): Promise<SubscriptionCheckout> {
+  const payload: SubscribeToPlanRequest = { plan_id: planId }
   const { data } = await apiClient.post<
     ApiResponse<components['schemas']['SubscriptionCheckoutResource']>
   >('/subscriptions', payload)

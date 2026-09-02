@@ -18,10 +18,13 @@ function emptyValues(): LoginFormValues {
 /**
  * `login()` (`identityApi.ts`) já absorve a nuance de transporte do 402
  * (Payment Required = login válido sem assinatura ativa) — aqui só resta
- * decidir o que fazer com `requires_subscription: true`: manda pra
- * `choose-plan` (casca da Fase 2, `modules/billing`) em vez de continuar
- * pro dashboard/`?redirect=` — não faz sentido devolver o usuário pra uma
- * rota protegida se ele ainda nem escolheu um plano.
+ * decidir o que fazer com `requires_company: true`/`requires_subscription:
+ * true`: manda pra `company-registration` (tarefa 63) ou `choose-plan`
+ * (casca da Fase 2, `modules/billing`) em vez de continuar pro dashboard/
+ * `?redirect=` — não faz sentido devolver o usuário pra uma rota
+ * protegida se ele ainda não completou o onboarding. Empresa vem antes de
+ * plano na jornada (`docs/negocio/jornada-usuario.mmd`), daí a ordem do
+ * `if` abaixo.
  */
 export function useLoginForm() {
   const router = useRouter()
@@ -69,9 +72,15 @@ export function useLoginForm() {
           toImpersonatedBy(result.impersonated_by),
         ),
         {
+          requiresCompany: result.requires_company,
           requiresSubscription: result.requires_subscription,
         },
       )
+
+      if (result.requires_company) {
+        await router.push({ name: 'company-registration' })
+        return
+      }
 
       if (result.requires_subscription) {
         await router.push({ name: 'choose-plan' })

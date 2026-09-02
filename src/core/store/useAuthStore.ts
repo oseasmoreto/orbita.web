@@ -10,19 +10,25 @@ import type { AuthUser } from './types/auth.type'
 export const useAuthStore = defineStore('auth', () => {
   const user = ref<AuthUser | null>(null)
   const requiresSubscription = ref(false)
+  const requiresCompany = ref(false)
 
   const isAuthenticated = computed(() => user.value !== null)
   const isAdmin = computed(() => user.value?.role === 'admin_master')
 
-  function setUser(newUser: AuthUser, options?: { requiresSubscription?: boolean }): void {
+  function setUser(
+    newUser: AuthUser,
+    options?: { requiresSubscription?: boolean; requiresCompany?: boolean },
+  ): void {
     user.value = newUser
     requiresSubscription.value = options?.requiresSubscription ?? false
+    requiresCompany.value = options?.requiresCompany ?? false
   }
 
   function clear(): void {
     user.value = null
     requiresSubscription.value = false
+    requiresCompany.value = false
   }
 
-  return { clear, isAdmin, isAuthenticated, requiresSubscription, setUser, user }
+  return { clear, isAdmin, isAuthenticated, requiresCompany, requiresSubscription, setUser, user }
 })

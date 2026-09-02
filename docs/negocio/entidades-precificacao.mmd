@@ -15,6 +15,7 @@ erDiagram
     USER ||--o{ AUDIT_LOG : generates
     USER ||--o{ TRANSACTION : makes
     SUBSCRIPTION ||--o{ TRANSACTION : generates
+    USER ||--o{ COMPANY : owns
 
     PLAN {
         uuid id PK
@@ -34,19 +35,39 @@ erDiagram
         string email
         timestamp email_verified_at
         string password_hash
-        string document
         string role
         string status
         timestamp created_at
         timestamp updated_at
     }
-    %% USER.document stores CPF or CNPJ (billing/LGPD)
+    %% USER.document removido em 2026-09-02 — mora só em COMPANY agora
     %% USER.role accepted values: admin_master, user — único controle de acesso no MVP (sem group_id/menu granular)
     %% USER.status accepted values: active, deleted (default active) — deleted = soft
-    %% delete/anonimização (name/email/password/document apagados, nunca DELETE físico,
+    %% delete/anonimização (name/email/password apagados, nunca DELETE físico,
     %% histórico financeiro/auditoria ligado ao id continua íntegro). Não usa SoftDeletes/
     %% deleted_at nativo do Laravel de propósito — esconderia a linha de toda query por
     %% Global Scope, inclusive a tela de admin que precisa listar/ver qualquer usuário.
+
+    COMPANY {
+        uuid id PK
+        uuid user_id FK
+        string name
+        string document
+        string responsible_document
+        decimal sales_tax_percentage
+        timestamp created_at
+        timestamp updated_at
+    }
+    %% Novo em 2026-09-02 (pedido direto do usuário) — unique (user_id):
+    %% 1 empresa por usuário. document é CPF ou CNPJ (mesma Document VO que
+    %% já validava USER.document antes). responsible_document (nullable,
+    %% sempre CPF) só é obrigatório quando document é CNPJ — empresa PJ
+    %% precisa de um CPF de responsável; se document já é CPF, a própria
+    %% pessoa já é o responsável. sales_tax_percentage (imposto sobre
+    %% venda) ainda sem uso em nenhuma regra de precificação, mesmo status
+    %% de PRODUCT.operational_cost. Gate obrigatório antes de assinar um
+    %% plano (LoginResultResource.requires_company) — ver seção 5.
+    %% Sem DELETE: excluir a própria empresa quebraria esse gate.
 
     SUBSCRIPTION {
         uuid id PK
@@ -75,8 +96,8 @@ erDiagram
         string sku
         string ean
         string ncm
-        decimal full_sale_price
-        decimal purchase_price
+        decimal cost_price
+        decimal operational_cost
         decimal target_margin
         decimal weight
         decimal height
@@ -85,8 +106,11 @@ erDiagram
         timestamp created_at
         timestamp updated_at
     }
-    %% weight (kg) e height/width/length (cm) são nullable — opcionais no
-    %% cadastro, ainda sem uso em nenhuma regra de precificação/frete
+    %% operational_cost (nullable) soma custo operacional (combustível,
+    %% embalagem, etiqueta, mão de obra) — opcional, informativo, ainda
+    %% sem uso em nenhuma regra de precificação. weight (kg) e
+    %% height/width/length (cm) são nullable — opcionais no cadastro,
+    %% ainda sem uso em nenhuma regra de precificação/frete
 
     PRODUCT_LAUNCH {
         uuid id PK

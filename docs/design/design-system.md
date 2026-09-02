@@ -976,6 +976,17 @@ mensagem de erro, nunca decide regra de validação (isso é do composable
 - `error` (opcional): mensagem abaixo do controle, `{colors.accent-red}`,
   `role="alert"`.
 
+**Prop `labelTooltip`, 2026-09-02** — primeiro consumidor:
+`ProductForm.vue`, campo "Preço de custo" (pedido direto do usuário
+junto com a mudança de contrato `purchase_price`→`cost_price`, ver seção
+`ProductForm` abaixo). Ícone `Info` (14px) + `Tooltip.vue` ao lado do
+texto do label, dentro do mesmo `<label>` que já envolve o controle —
+`@click.stop` no trigger evita que o clique borbulhe pro `<label>` e
+foque o `<input>` por engano (o `<label>` já foca o primeiro descendente
+focável de propósito, ver bullet acima; sem o `.stop`, clicar no ícone de
+tooltip também focaria o campo). Opcional, `undefined` por padrão — todo
+consumidor existente continua sem nenhuma mudança visual.
+
 ### CrudFormActions (`shared/components/blocks/CrudFormActions.vue`)
 
 **Sem frame próprio no Figma** (mesma categoria de `FormGroup`/`Modal` —
@@ -3390,28 +3401,82 @@ plano válida, então esse caso específico não recai no mesmo bug).
 Reverificado em browser real contra o backend local: "Plano atual" mostra
 "Trial" corretamente pra um usuário na assinatura trial.
 
-### DocumentPromptModal (`modules/billing/components/blocks/DocumentPromptModal.vue`)
+### DocumentPromptModal — removido em 2026-09-02
 
-Aberto quando `useSubscribeToPlan.subscribe()` recebe
-`errorMessageDocumentRequired` do backend (`SubscribeToPlanAction`) —
-usuário ainda sem CPF/CNPJ cadastrado. "O próprio checkout de assinatura
-é o ponto de coleta" no MVP (comentário real do backend, sem tela de
-perfil dedicada ainda) — em vez de falhar pro usuário, o card de plano
-segue clicável e esse modal pede o documento, revalidando e reenviando a
-MESMA assinatura sem precisar clicar de novo no plano.
+**Existiu de 2026-08-31 a 2026-09-02** — aberto quando
+`useSubscribeToPlan.subscribe()` recebia `errorMessageDocumentRequired`
+do backend, pedindo CPF/CNPJ inline no checkout de assinatura ("o próprio
+checkout é o ponto de coleta", comentário real do backend na época, sem
+tela de cadastro dedicada ainda). **Removido junto com a tarefa 63**
+(`docs/api/ordem-de-implementacao.md` no repo `backend`, pedido direto do
+usuário) — CPF/CNPJ saiu de `USER` pra virar cadastro de empresa próprio
+(`COMPANY`), obrigatório ANTES de chegar em `/choose-plan`, não mais
+coletado no meio do checkout. Ver `CompanyRegistrationView.vue` abaixo,
+que substitui esse fluxo inteiro (tela própria, não mais um modal reativo
+a erro). `documentFormSchema.ts` foi removido junto — a mesma checagem de
+contagem de dígitos virou `companyFormSchema.ts`
+(`modules/identity/schemas/`).
 
-- Composição de `Modal.vue` + `FormGroup` + `Input` + 2 `Button`, mesmo
-  padrão de bloco de `ConfirmDialog.vue` — nunca decide o que fazer com o
-  documento validado, só emite `confirm` (quem decide reenviar é
-  `useSubscribeToPlan.confirmDocument`).
-- Validação (`documentFormSchema.ts`, testado) só confere a CONTAGEM de
-  dígitos (11 = CPF, 14 = CNPJ, aceitando formatado ou não) — espelha
-  `Document::fromString` (backend) só na parte barata; o dígito
-  verificador real (checksum) fica só pro 422 de volta, reimplementar
-  esse algoritmo no cliente não valia o custo pra este modal.
-- Verificado em browser real: fluxo completo (clicar plano → 422 sem
-  documento → modal abre → preenche CPF → confirma → segunda chamada com
-  `document` → sucesso → redirect de página inteira pra `checkout_url`).
+### CompanyForm / CompanyRegistrationView (`modules/identity/components/CompanyForm.vue`, `modules/identity/views/CompanyRegistrationView.vue`)
+
+`CompanyRegistrationView.vue` é o passo obrigatório de onboarding (tarefa
+63) — mesmo shell de `ChoosePlanView.vue` (topbar com marca + logout,
+fora do `AppLayout`, `skipOnboardingChecks: true`): é o mesmo tipo de
+tela, um passo do fluxo entre e-mail verificado e escolha de plano
+(`docs/negocio/jornada-usuario.mmd`, nó `RegisterCompany`), não uma
+página do app principal. `core/router/guards.ts` manda pra cá sempre que
+`authStore.requiresCompany` é `true` (`LoginResultResource.requires_company`,
+mesmo padrão de `requires_subscription`).
+
+**`CompanyForm.vue` extraído no mesmo dia, pedido direto do usuário**
+("precisamos editar os dados ou pelo menos visualizar os dados da
+empresa no account") — segundo consumidor real (`AccountView.vue`, seção
+abaixo) do mesmo formulário singleton, mesmo critério de promoção já
+usado no resto do projeto. Só os CAMPOS + estados de loading/erro, sem
+cabeçalho/moldura própria — cada consumidor decide isso: `CompanyRegistrationView.vue`
+envolve num card centralizado (`.company-registration-view__card`,
+`{radius.16}` + borda, mesmo tratamento visual de antes da extração);
+`AccountView.vue` encaixa direto dentro de um `<section>` que já tem essa
+moldura (mesma receita das outras seções da tela). Nunca decide o que
+fazer DEPOIS de salvar — só emite `saved` com a `Company` resultante
+(mesma régua de `ProductForm.vue`): `CompanyRegistrationView.vue` refaz
+`/auth/me` e navega pro próximo passo; `AccountView.vue` não passa
+handler nenhum pro evento — o toast de sucesso já vem de dentro do
+próprio `useCompanyForm.ts` (`useResourceForm`), não precisa de mais
+nada depois de uma edição pontual.
+
+- **Singleton, não CRUD de coleção** (`useCompanyForm.ts`, em cima de
+  `useResourceForm` — o mesmo motor genérico de `useProductForm.ts`, só
+  que `existing` nasce de um `GET /company` no `load()` em vez de vir por
+  prop de um Drawer): 404 (usuário ainda não cadastrou, o caminho normal
+  do onboarding) fica em modo create; um `GET` com sucesso preenche o
+  form e vira update — cobre o caso raro de navegar de volta pra essa URL
+  já com empresa cadastrada (verificado em browser real: revisitar a
+  rota manualmente depois do cadastro mostra os dados preenchidos e o
+  botão "Salvar alterações", não "Continuar").
+- **Campo "CPF do responsável" só aparece pra CNPJ** (`isCnpjDocument`,
+  `companyFormSchema.ts` — conta de dígitos do campo `document`, 14 =
+  CNPJ) — usa `FormGroup`'s `labelTooltip` (seção FormGroup acima,
+  extraído para este mesmo pedido) explicando o motivo ("empresas com
+  CNPJ precisam do CPF de uma pessoa responsável"). Regra cruzada
+  espelhada no Zod via `.superRefine()` no schema inteiro — mesmo padrão
+  já usado (e removido) em `productFormSchema.ts` antes do rename pra
+  `cost_price`.
+- **Depois de salvar, refaz `/auth/me`** (`refreshCurrentUser()`, mesmo
+  achado real já documentado em `core/router/guards.ts` pro trial de
+  plano) antes de navegar — sem isso,
+  `authStore.requiresCompany` ficaria preso em `true` e o guard mandaria
+  de volta pra cá na próxima navegação. Destino final depende de
+  `authStore.requiresSubscription`: `/choose-plan` (caminho normal do
+  onboarding) ou `/` (caso raro de editar a empresa já com assinatura
+  ativa).
+- Verificado em browser real contra o backend local: login sem empresa
+  redireciona pra cá; digitar um CNPJ revela o campo de responsável e
+  bloqueia o submit sem ele (erro client-side, sem round-trip);
+  trocar pra CPF esconde o campo de novo; submit grava
+  `document`/`sales_tax_percentage` corretos no banco
+  (`responsible_document: null` pro caso CPF); login seguinte pula
+  direto pra `/choose-plan`, sem re-redirecionar pra cá.
 
 ### BillingCheckoutResultView (`modules/billing/views/BillingCheckoutResultView.vue`)
 
@@ -3698,6 +3763,18 @@ Descoberta via clique no bloco de usuário (avatar + nome) no topo do
 `RouterLink` pra `account` em vez de `<div>` estático, com
 `text-decoration:none; color:inherit` pra não parecer um link azul
 sublinhado tradicional, só hover/focus-ring de affordance.
+
+**Seção "Empresa", 2026-09-02, pedido direto do usuário** ("precisamos
+editar os dados ou pelo menos visualizar os dados da empresa no
+account") — 4ª `<section>` da grade, mesma receita de borda/raio das
+outras 3, encaixando `<CompanyForm />` (ver seção `CompanyForm /
+CompanyRegistrationView` acima) sem passar handler pro `@saved` — o
+toast de sucesso já vem de dentro do próprio `useCompanyForm.ts`, editar
+a empresa aqui não precisa de nenhuma navegação depois, diferente do
+onboarding. Verificado em browser real contra o backend local (usuário
+com empresa CNPJ já cadastrada): seção carrega prefilida (nome/CPF-CNPJ/
+CPF do responsável/imposto), editar o nome e salvar mostra "Empresa
+atualizada com sucesso." e persiste no banco.
 
 ### DeleteAccountModal (`modules/identity/components/DeleteAccountModal.vue`)
 

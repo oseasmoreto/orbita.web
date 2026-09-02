@@ -27,6 +27,7 @@ import Button from '@/shared/components/ui/Button.vue'
 import Icon from '@/shared/components/ui/Icon.vue'
 import Input from '@/shared/components/ui/Input.vue'
 import Spinner from '@/shared/components/ui/Spinner.vue'
+import CompanyForm from '../components/CompanyForm.vue'
 import DeleteAccountModal from '../components/DeleteAccountModal.vue'
 import { useDeleteAccount } from '../composables/useDeleteAccount'
 import { useSsoAccounts } from '../composables/useSsoAccounts'
@@ -120,6 +121,11 @@ async function handleDeleteConfirm(password: string): Promise<void> {
             {{ $t('identity.account.profile.save') }}
           </Button>
         </form>
+      </section>
+
+      <section class="account-view__section">
+        <h2 class="account-view__section-title">{{ $t('identity.account.company.title') }}</h2>
+        <CompanyForm />
       </section>
 
       <div class="account-view__side">

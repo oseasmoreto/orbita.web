@@ -12,15 +12,15 @@ type ProductResource = components['schemas']['ProductResource']
  * (`shared/services/formatNumber.ts`) esperam receber.
  */
 export interface Product {
+  costPrice: ProductResource['cost_price']
   createdAt: ProductResource['created_at']
   ean: ProductResource['ean']
-  fullSalePrice: ProductResource['full_sale_price']
   height: ProductResource['height']
   id: ProductResource['id']
   length: ProductResource['length']
   name: ProductResource['name']
   ncm: ProductResource['ncm']
-  purchasePrice: ProductResource['purchase_price']
+  operationalCost: ProductResource['operational_cost']
   sku: ProductResource['sku']
   targetMargin: ProductResource['target_margin']
   weight: ProductResource['weight']
@@ -29,15 +29,15 @@ export interface Product {
 
 export function toProduct(resource: ProductResource): Product {
   return {
+    costPrice: resource.cost_price,
     createdAt: resource.created_at,
     ean: resource.ean,
-    fullSalePrice: resource.full_sale_price,
     height: resource.height,
     id: resource.id,
     length: resource.length,
     name: resource.name,
     ncm: resource.ncm,
-    purchasePrice: resource.purchase_price,
+    operationalCost: resource.operational_cost,
     sku: resource.sku,
     targetMargin: resource.target_margin,
     weight: resource.weight,

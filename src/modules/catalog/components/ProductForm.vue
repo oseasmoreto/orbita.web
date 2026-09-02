@@ -39,8 +39,8 @@ const { errors, isSubmitting, reset, submit, values } = useProductForm()
 
 reset(props.product ?? undefined)
 
-const fullSalePriceInput = useNumberFieldModel(values, 'fullSalePrice')
-const purchasePriceInput = useNumberFieldModel(values, 'purchasePrice')
+const costPriceInput = useNumberFieldModel(values, 'costPrice')
+const operationalCostInput = useNumberFieldModel(values, 'operationalCost', { nullable: true })
 const targetMarginInput = useNumberFieldModel(values, 'targetMargin')
 const weightInput = useNumberFieldModel(values, 'weight', { nullable: true })
 const heightInput = useNumberFieldModel(values, 'height', { nullable: true })
@@ -82,22 +82,23 @@ async function handleSubmit(): Promise<void> {
 
       <div class="product-form__row">
         <FormGroup
-          :error="fieldError('purchasePrice')"
-          :label="$t('catalog.products.form.fields.purchasePrice')"
+          :error="fieldError('costPrice')"
+          :label="$t('catalog.products.form.fields.costPrice')"
+          :label-tooltip="$t('catalog.products.form.costPriceTooltip')"
         >
           <Input
-            v-model="purchasePriceInput"
-            :invalid="Boolean(fieldError('purchasePrice'))"
+            v-model="costPriceInput"
+            :invalid="Boolean(fieldError('costPrice'))"
             type="number"
           />
         </FormGroup>
         <FormGroup
-          :error="fieldError('fullSalePrice')"
-          :label="$t('catalog.products.form.fields.fullSalePrice')"
+          :error="fieldError('operationalCost')"
+          :label="$t('catalog.products.form.fields.operationalCost')"
         >
           <Input
-            v-model="fullSalePriceInput"
-            :invalid="Boolean(fieldError('fullSalePrice'))"
+            v-model="operationalCostInput"
+            :invalid="Boolean(fieldError('operationalCost'))"
             type="number"
           />
         </FormGroup>

@@ -73,6 +73,22 @@ export const identityRoutes: RouteRecordRaw[] = [
     name: 'verify-email',
     path: '/verify-email',
   },
+  {
+    // Novo passo obrigatório de onboarding (tarefa 63,
+    // `docs/api/ordem-de-implementacao.md` no repo `backend`), entre
+    // e-mail verificado e escolha de plano — `LoginResultResource.requires_company`
+    // (`core/router/guards.ts`). `skipOnboardingChecks`: essa rota É o
+    // check de empresa cadastrada, aplicá-lo aqui criaria loop de
+    // redirect, mesmo raciocínio de `verify-email`/`choose-plan`.
+    component: () => import('./views/CompanyRegistrationView.vue'),
+    meta: {
+      requiresAuth: true,
+      skipOnboardingChecks: true,
+      title: 'identity.companyRegistration.title',
+    },
+    name: 'company-registration',
+    path: '/company-registration',
+  },
 ]
 
 /**

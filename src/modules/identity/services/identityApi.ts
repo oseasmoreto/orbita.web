@@ -3,6 +3,7 @@ import { apiClient } from '@/core/api/client'
 import type { components } from '@/core/api/schema'
 import { type AdminUser, toAdminUser } from '@/core/types/adminUser.type'
 import type { ApiResponse, Paginated } from '@/shared/types/api.type'
+import { type Company, toCompany } from '../types/company.type'
 import { type SsoAccount, type SsoProvider, toSsoAccount } from '../types/ssoAccount.type'
 
 type LoginRequest = components['schemas']['LoginRequest']
@@ -16,6 +17,9 @@ type SsoAccountResource = components['schemas']['SsoAccountResource']
 type AdminUserResource = components['schemas']['AdminUserResource']
 type CreateUserByAdminRequest = components['schemas']['CreateUserByAdminRequest']
 type UpdateUserByAdminRequest = components['schemas']['UpdateUserByAdminRequest']
+type CompanyResource = components['schemas']['CompanyResource']
+type CreateCompanyRequest = components['schemas']['CreateCompanyRequest']
+type UpdateCompanyRequest = components['schemas']['UpdateCompanyRequest']
 
 interface AdminUsersEnvelope {
   items: AdminUserResource[]
@@ -298,4 +302,56 @@ export async function impersonateUser(userId: string): Promise<UserResource> {
 export async function stopImpersonation(): Promise<UserResource> {
   const { data } = await apiClient.post<ApiResponse<UserResource>>('/auth/impersonation/stop')
   return data.data
+}
+
+// ---------------------------------------------------------------------------
+// COMPANY — singleton por usuário (`/company`, sem `{id}`, mesmo padrão de
+// `/auth/me`), Bounded Context Identity (tarefa 63 de
+// `docs/api/ordem-de-implementacao.md` no repo `backend`). Gate obrigatório
+// antes de assinar um plano — ver `LoginResultResource.requires_company` e
+// `core/router/guards.ts`.
+// ---------------------------------------------------------------------------
+
+/**
+ * `GET /company` (`company.show`) — 404 é o caso ESPERADO de "usuário
+ * ainda não cadastrou a empresa" (fluxo normal de onboarding, quem chega
+ * em `CompanyRegistrationView.vue` pela primeira vez), não um erro a
+ * propagar — devolve `null`, mesmo padrão já usado em
+ * `getCurrentSubscription()` (`billingApi.ts`) pra "sem assinatura ainda".
+ */
+export async function getOwnCompany(): Promise<Company | null> {
+  try {
+    const { data } = await apiClient.get<ApiResponse<CompanyResource>>('/company')
+    return toCompany(data.data)
+  } catch (error) {
+    if (isAxiosError(error) && error.response?.status === 404) {
+      return null
+    }
+
+    throw error
+  }
+}
+
+/**
+ * `POST /company` (`company.store`) — só funciona uma vez por usuário
+ * (`user_id` unique no backend); uma 2ª tentativa devolve 422
+ * `errorMessageCompanyAlreadyExists`. `responsible_document` só é
+ * exigido quando `document` é CNPJ — validado no cliente primeiro
+ * (`companyFormSchema.ts`), 422 `errorMessageResponsibleDocumentRequired`
+ * é o caminho residual (checksum de CPF/CNPJ, não reimplementado aqui).
+ */
+export async function createCompany(payload: CreateCompanyRequest): Promise<Company> {
+  const { data } = await apiClient.post<ApiResponse<CompanyResource>>('/company', payload)
+  return toCompany(data.data)
+}
+
+/**
+ * `PATCH /company` (`company.update`) — mesmo `UpdateCompanyRequest`
+ * usado pelo lado admin (`AdminCompanyController::update`, backend não
+ * duplica o Request pros dois lados) — este service só cobre o
+ * autoatendimento (dono da própria empresa), sem `companyId` na URL.
+ */
+export async function updateCompany(payload: UpdateCompanyRequest): Promise<Company> {
+  const { data } = await apiClient.patch<ApiResponse<CompanyResource>>('/company', payload)
+  return toCompany(data.data)
 }

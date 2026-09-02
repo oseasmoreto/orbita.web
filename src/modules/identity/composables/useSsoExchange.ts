@@ -12,10 +12,14 @@ import { toAuthUser } from '../types/user.type'
  * Segundo hop do fluxo SSO (`SsoExchangeView.vue`, rota `/sso/callback`)
  * — troca o token opaco da query string por uma sessão de verdade
  * (`exchangeSsoLoginToken`, `identityApi.ts`) e decide o redirect final,
- * mesmo critério de `useLoginForm.ts`: `requires_subscription: true` vai
- * pra `choose-plan`, senão pro dashboard. Sem `?redirect=` aqui — esse
- * parâmetro não sobrevive à ida-e-volta com o provider OAuth (Google não
- * devolve query string arbitrária nossa), diferente do login manual.
+ * mesmo critério de `useLoginForm.ts`: `requires_company: true` vai pra
+ * `company-registration` (empresa antes de plano na jornada — SSO nunca
+ * passa pelo formulário de registro próprio, é justamente o caso que
+ * motivou `requires_company` existir em `/auth/me`/login também),
+ * `requires_subscription: true` vai pra `choose-plan`, senão pro
+ * dashboard. Sem `?redirect=` aqui — esse parâmetro não sobrevive à
+ * ida-e-volta com o provider OAuth (Google não devolve query string
+ * arbitrária nossa), diferente do login manual.
  *
  * Fecha de quebra um gap real já documentado (`SsoCallbackView.vue`,
  * versão anterior): o fluxo antigo não tinha como saber
@@ -44,10 +48,19 @@ export function useSsoExchange() {
           toPlanLimits(result.plan_limits),
           toImpersonatedBy(result.impersonated_by),
         ),
-        { requiresSubscription: result.requires_subscription },
+        {
+          requiresCompany: result.requires_company,
+          requiresSubscription: result.requires_subscription,
+        },
       )
 
-      await router.push(result.requires_subscription ? { name: 'choose-plan' } : { name: 'home' })
+      if (result.requires_company) {
+        await router.push({ name: 'company-registration' })
+      } else if (result.requires_subscription) {
+        await router.push({ name: 'choose-plan' })
+      } else {
+        await router.push({ name: 'home' })
+      }
     } catch (caughtError) {
       errorMessage.value = resolveMessage(parseApiError(caughtError).messageKey)
     } finally {

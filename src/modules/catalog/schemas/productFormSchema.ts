@@ -7,10 +7,13 @@ import { z } from 'zod'
  * `docs/infra/convencoes-frontend-infra.md`): isso valida ANTES de
  * submeter, não descreve o contrato da API.
  *
- * "Preço de venda ≥ preço de compra" é o exemplo canônico de regra
- * replicável no cliente citado na própria doc de convenções — via
- * `.refine()`, marcado no campo `fullSalePrice` (é o valor que o
- * vendedor mais provavelmente digitou errado).
+ * **`full_sale_price` removido em 2026-09-02** (mudança de contrato do
+ * backend, tarefa 62 de `docs/api/ordem-de-implementacao.md`) — nunca
+ * teve regra de negócio conectada, por isso a regra cruzada
+ * "venda ≥ compra" que existia aqui também saiu junto, sem
+ * substituição. `purchasePrice` renomeado pra `costPrice` (mesmo dado,
+ * nome mais preciso pro que o vendedor de fato preenche); `operationalCost`
+ * é novo, opcional.
  *
  * **Fábrica, não schema pronto** — regra de i18n não-negociável
  * (2026-08-26): mensagem de validação é texto de UI, não pode ficar
@@ -20,27 +23,25 @@ import { z } from 'zod'
  * composable, onde `t` já existe.
  */
 export function createProductFormSchema(t: (key: string) => string) {
-  return z
-    .object({
-      ean: z.string().min(1, t('catalog.products.form.errors.eanRequired')),
-      fullSalePrice: z.number().positive(t('catalog.products.form.errors.fullSalePricePositive')),
-      height: z.number().positive().nullable(),
-      length: z.number().positive().nullable(),
-      name: z.string().min(1, t('catalog.products.form.errors.nameRequired')),
-      ncm: z.string().min(1, t('catalog.products.form.errors.ncmRequired')),
-      purchasePrice: z.number().positive(t('catalog.products.form.errors.purchasePricePositive')),
-      sku: z.string().min(1, t('catalog.products.form.errors.skuRequired')),
-      targetMargin: z
-        .number()
-        .min(0, t('catalog.products.form.errors.targetMarginMin'))
-        .max(100, t('catalog.products.form.errors.targetMarginMax')),
-      weight: z.number().positive().nullable(),
-      width: z.number().positive().nullable(),
-    })
-    .refine((data) => data.fullSalePrice >= data.purchasePrice, {
-      message: t('catalog.products.form.errors.fullSalePriceBelowPurchase'),
-      path: ['fullSalePrice'],
-    })
+  return z.object({
+    costPrice: z.number().positive(t('catalog.products.form.errors.costPricePositive')),
+    ean: z.string().min(1, t('catalog.products.form.errors.eanRequired')),
+    height: z.number().positive().nullable(),
+    length: z.number().positive().nullable(),
+    name: z.string().min(1, t('catalog.products.form.errors.nameRequired')),
+    ncm: z.string().min(1, t('catalog.products.form.errors.ncmRequired')),
+    operationalCost: z
+      .number()
+      .min(0, t('catalog.products.form.errors.operationalCostMin'))
+      .nullable(),
+    sku: z.string().min(1, t('catalog.products.form.errors.skuRequired')),
+    targetMargin: z
+      .number()
+      .min(0, t('catalog.products.form.errors.targetMarginMin'))
+      .max(100, t('catalog.products.form.errors.targetMarginMax')),
+    weight: z.number().positive().nullable(),
+    width: z.number().positive().nullable(),
+  })
 }
 
 export type ProductFormValues = z.infer<ReturnType<typeof createProductFormSchema>>

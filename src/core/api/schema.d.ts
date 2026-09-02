@@ -36,6 +36,38 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/admin/companies": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["adminCompany.index"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/companies/{company}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["adminCompany.show"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch: operations["adminCompany.update"];
+        trace?: never;
+    };
     "/admin/marketplaces": {
         parameters: {
             query?: never;
@@ -354,6 +386,22 @@ export interface paths {
         options?: never;
         head?: never;
         patch?: never;
+        trace?: never;
+    };
+    "/company": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["company.show"];
+        put?: never;
+        post: operations["company.store"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch: operations["company.update"];
         trace?: never;
     };
     "/auth/email/verify/{id}/{hash}": {
@@ -1069,6 +1117,18 @@ export interface components {
             /** Format: date-time */
             created_at: string | null;
         };
+        /** AdminCompanyResource */
+        AdminCompanyResource: {
+            id: string;
+            user_id: string;
+            user: components["schemas"]["AdminUserResource"];
+            name: string;
+            document: string;
+            responsible_document: string | null;
+            sales_tax_percentage: string;
+            /** Format: date-time */
+            created_at: string | null;
+        };
         /** AdminMarketplaceResource */
         AdminMarketplaceResource: {
             id: string;
@@ -1180,7 +1240,6 @@ export interface components {
             email: string;
             /** Format: date-time */
             email_verified_at: string | null;
-            document: string | null;
             role: string;
             status: string;
             /** Format: date-time */
@@ -1200,6 +1259,27 @@ export interface components {
         ChangeSubscriptionPlanRequest: {
             /** Format: uuid */
             plan_id: string;
+        };
+        /** CompanyResource */
+        CompanyResource: {
+            id: string;
+            name: string;
+            document: string;
+            responsible_document: string | null;
+            /**
+             * @description Percentual como string (fundamentos-api.md §4) — já vem string
+             *     do cast decimal:2 do Model.
+             */
+            sales_tax_percentage: string;
+            /** Format: date-time */
+            created_at: string | null;
+        };
+        /** CreateCompanyRequest */
+        CreateCompanyRequest: {
+            name: string;
+            document: string;
+            responsible_document?: string | null;
+            sales_tax_percentage: number;
         };
         /** CreateMarketplaceRequest */
         CreateMarketplaceRequest: {
@@ -1264,9 +1344,9 @@ export interface components {
             sku: string;
             ean: string;
             ncm: string;
-            full_sale_price: number;
-            purchase_price: number;
+            cost_price: number;
             target_margin: number;
+            operational_cost?: number | null;
             weight?: number | null;
             height?: number | null;
             width?: number | null;
@@ -1333,6 +1413,7 @@ export interface components {
         LoginResultResource: {
             user: components["schemas"]["UserResource"];
             requires_subscription: boolean;
+            requires_company: boolean;
             favorites: components["schemas"]["UserFavoriteResource"][];
             plan_limits: {
                 max_products: number | null;
@@ -1455,8 +1536,8 @@ export interface components {
              * @description Money como string (fundamentos-api.md §4) — nunca (float)/(int)
              *     aqui, os três já vêm como string do cast decimal:2 do Model.
              */
-            full_sale_price: string;
-            purchase_price: string;
+            cost_price: string;
+            operational_cost: string | null;
             target_margin: string;
             /**
              * @description weight em kg, height/width/length em cm — nullable (opcionais
@@ -1531,12 +1612,6 @@ export interface components {
         SubscribeToPlanRequest: {
             /** Format: uuid */
             plan_id: string;
-            /**
-             * @description Só backfilla quando o usuário ainda não tem document (decisão #2,
-             *     SubscribeToPlanAction) — por isso opcional aqui: o Request não sabe
-             *     se o usuário autenticado já tem um cadastrado.
-             */
-            document?: string | null;
         };
         /** SubscriptionCheckoutResource */
         SubscriptionCheckoutResource: {
@@ -1637,6 +1712,21 @@ export interface components {
          * @enum {string}
          */
         TransactionStatus: "pending" | "approved" | "authorized" | "in_process" | "in_mediation" | "rejected" | "cancelled" | "refunded" | "charged_back";
+        /**
+         * UpdateCompanyRequest
+         * @description Compartilhado por CompanyController::update (próprio) e
+         *     AdminCompanyController::update (qualquer empresa) — mesmos campos, mesma
+         *     validação, os dois lados aceitam exatamente o mesmo corpo. Diferente de
+         *     UpdateUserByAdminRequest/UpdateUserProfileRequest (campos genuinamente
+         *     diferentes: role/status vs. name/email/password), não faz sentido
+         *     duplicar aqui.
+         */
+        UpdateCompanyRequest: {
+            name?: string;
+            document?: string;
+            responsible_document?: string | null;
+            sales_tax_percentage?: number;
+        };
         /** UpdateMarketplaceRequest */
         UpdateMarketplaceRequest: {
             name?: string;
@@ -1679,9 +1769,9 @@ export interface components {
             sku?: string;
             ean?: string;
             ncm?: string;
-            full_sale_price?: number;
-            purchase_price?: number;
+            cost_price?: number;
             target_margin?: number;
+            operational_cost?: number | null;
             weight?: number | null;
             height?: number | null;
             width?: number | null;
@@ -1933,6 +2023,118 @@ export interface operations {
                 };
             };
             401: components["responses"]["AuthenticationException"];
+        };
+    };
+    "adminCompany.index": {
+        parameters: {
+            query?: {
+                /**
+                 * @description Campos separados por vírgula. Prefixo "-" inverte pra desc. Permitidos: name, created_at.
+                 * @example -created_at
+                 */
+                sort?: string;
+                /**
+                 * @description Filtro exato por dono da empresa.
+                 * @example 00000000-0000-0000-0000-000000000000
+                 */
+                "filter[user_id]"?: string;
+                /**
+                 * @description Filtro exato por CPF/CNPJ (só dígitos).
+                 * @example 11144477735
+                 */
+                "filter[document]"?: string;
+                /**
+                 * @description Tamanho de página, teto em 100.
+                 * @example 15
+                 */
+                per_page?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        success: boolean;
+                        message: string;
+                        data: {
+                            items: components["schemas"]["AdminCompanyResource"][];
+                            meta: {
+                                current_page: number;
+                                per_page: number;
+                                total: number;
+                            };
+                        };
+                        errors: null;
+                    };
+                };
+            };
+            401: components["responses"]["AuthenticationException"];
+        };
+    };
+    "adminCompany.show": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                company: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        success: boolean;
+                        message: string;
+                        data: components["schemas"]["AdminCompanyResource"];
+                        errors: null;
+                    };
+                };
+            };
+            401: components["responses"]["AuthenticationException"];
+        };
+    };
+    "adminCompany.update": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                company: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["UpdateCompanyRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        success: boolean;
+                        message: string;
+                        data: components["schemas"]["AdminCompanyResource"];
+                        errors: null;
+                    };
+                };
+            };
+            401: components["responses"]["AuthenticationException"];
+            422: components["responses"]["ValidationException"];
         };
     };
     "adminMarketplace.index": {
@@ -3108,6 +3310,91 @@ export interface operations {
             401: components["responses"]["AuthenticationException"];
         };
     };
+    "company.show": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        success: boolean;
+                        message: string;
+                        data: components["schemas"]["CompanyResource"];
+                        errors: null;
+                    };
+                };
+            };
+            401: components["responses"]["AuthenticationException"];
+        };
+    };
+    "company.store": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateCompanyRequest"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        success: boolean;
+                        message: string;
+                        data: components["schemas"]["CompanyResource"];
+                        errors: null;
+                    };
+                };
+            };
+            401: components["responses"]["AuthenticationException"];
+            422: components["responses"]["ValidationException"];
+        };
+    };
+    "company.update": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["UpdateCompanyRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        success: boolean;
+                        message: string;
+                        data: components["schemas"]["CompanyResource"];
+                        errors: null;
+                    };
+                };
+            };
+            401: components["responses"]["AuthenticationException"];
+            422: components["responses"]["ValidationException"];
+        };
+    };
     "verification.verify": {
         parameters: {
             query?: never;
@@ -3578,7 +3865,7 @@ export interface operations {
         parameters: {
             query?: {
                 /**
-                 * @description Campos separados por vírgula. Prefixo "-" inverte pra desc. Permitidos: name, full_sale_price, created_at.
+                 * @description Campos separados por vírgula. Prefixo "-" inverte pra desc. Permitidos: name, cost_price, created_at.
                  * @example -created_at
                  */
                 sort?: string;

@@ -1,17 +1,17 @@
 import {
   isCheckoutSkipped,
-  isDocumentRequiredError,
+  isCompanyRequiredError,
 } from '@/modules/billing/composables/useSubscribeToPlan'
 
-describe('isDocumentRequiredError', () => {
-  it('matches the exact ApiMessageKey the backend throws when document is missing', () => {
-    expect(isDocumentRequiredError('errorMessageDocumentRequired')).toBe(true)
+describe('isCompanyRequiredError', () => {
+  it('matches the exact ApiMessageKey the backend throws when the company is missing', () => {
+    expect(isCompanyRequiredError('errorMessageCompanyRequired')).toBe(true)
   })
 
   it('returns false for any other message key', () => {
-    expect(isDocumentRequiredError('errorMessageSubscriptionAlreadyActive')).toBe(false)
-    expect(isDocumentRequiredError('errorMessageEmailNotVerified')).toBe(false)
-    expect(isDocumentRequiredError('errors.unknown')).toBe(false)
+    expect(isCompanyRequiredError('errorMessageSubscriptionAlreadyActive')).toBe(false)
+    expect(isCompanyRequiredError('errorMessageEmailNotVerified')).toBe(false)
+    expect(isCompanyRequiredError('errors.unknown')).toBe(false)
   })
 })
 

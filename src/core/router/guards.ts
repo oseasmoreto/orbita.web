@@ -1,4 +1,4 @@
-import type { Router } from 'vue-router'
+import type { RouteLocationNormalizedGeneric, RouteLocationRaw, Router } from 'vue-router'
 import { i18n } from '@/core/i18n'
 import { useAppShell } from '@/core/layouts/composables/useAppShell'
 import {
@@ -74,6 +74,10 @@ declare module 'vue-router' {
  * chamando `refreshCurrentUser()` nos dois lugares antes de navegar pro
  * dashboard — ver `useSubscribeToPlan.subscribe()` e
  * `BillingCheckoutResultView.handleCta()`.
+ *
+ * `requiresCompany` (tarefa 63, 2026-09-02) segue o MESMO raciocínio —
+ * `CompanyRegistrationView.vue` chama isso depois de cadastrar a empresa,
+ * antes de navegar pro próximo passo, pelo mesmo motivo.
  */
 export async function refreshCurrentUser(): Promise<void> {
   const authStore = useAuthStore()
@@ -88,6 +92,7 @@ export async function refreshCurrentUser(): Promise<void> {
         toImpersonatedBy(result.impersonated_by),
       ),
       {
+        requiresCompany: result.requires_company,
         requiresSubscription: result.requires_subscription,
       },
     )
@@ -128,12 +133,53 @@ async function bootstrapSession(): Promise<void> {
  * redirect logo após o cadastro/login (`useRegisterForm`/`useLoginForm`).
  * O mesmo valia pra e-mail não verificado.
  *
- * `authStore.requiresSubscription` já vem calculado pelo backend
- * (`ShowAuthenticatedUserAction`, achado real 2026-08-31 — mesmo cálculo
- * de `LoginUserAction`, já excluindo `admin_master`) toda vez que
- * `bootstrapSession()` roda, então não precisa de nenhuma chamada extra
- * nem reimplementação de regra aqui — só ler o campo.
+ * `authStore.requiresSubscription`/`authStore.requiresCompany` já vêm
+ * calculados pelo backend (`ShowAuthenticatedUserAction`, achado real
+ * 2026-08-31 — mesmo cálculo de `LoginUserAction`, já excluindo
+ * `admin_master`) toda vez que `bootstrapSession()` roda, então não
+ * precisa de nenhuma chamada extra nem reimplementação de regra aqui —
+ * só ler os campos. Ordem da jornada (`docs/negocio/jornada-usuario.mmd`):
+ * e-mail verificado → empresa cadastrada → assinatura ativa.
  */
+type AuthStore = ReturnType<typeof useAuthStore>
+
+/**
+ * Extraído de `setupRouterGuards()` (achado real do Biome, 2026-09-02:
+ * adicionar o check de `requiresCompany` levou a complexidade cognitiva
+ * do `beforeEach` de 1 função só pra 22, acima do teto de 20) — mesma
+ * régua de qualquer refactor puro (com o teste do fluxo de onboarding já
+ * existente como rede de segurança, comportamento idêntico, só
+ * reorganizado).
+ */
+function resolveOnboardingRedirect(
+  to: RouteLocationNormalizedGeneric,
+  authStore: AuthStore,
+): RouteLocationRaw | null {
+  const appliesToRoute =
+    to.meta.requiresAuth &&
+    !to.meta.skipOnboardingChecks &&
+    authStore.user &&
+    authStore.user.role !== 'admin_master'
+
+  if (!appliesToRoute) {
+    return null
+  }
+
+  if (!authStore.user?.emailVerifiedAt) {
+    return { name: 'verify-email' }
+  }
+
+  if (authStore.requiresCompany) {
+    return { name: 'company-registration' }
+  }
+
+  if (authStore.requiresSubscription) {
+    return { name: 'choose-plan' }
+  }
+
+  return null
+}
+
 export function setupRouterGuards(router: Router): void {
   router.beforeEach(async (to) => {
     await bootstrapSession()
@@ -148,19 +194,10 @@ export function setupRouterGuards(router: Router): void {
       return { name: 'home' }
     }
 
-    if (
-      to.meta.requiresAuth &&
-      !to.meta.skipOnboardingChecks &&
-      authStore.user &&
-      authStore.user.role !== 'admin_master'
-    ) {
-      if (!authStore.user.emailVerifiedAt) {
-        return { name: 'verify-email' }
-      }
+    const onboardingRedirect = resolveOnboardingRedirect(to, authStore)
 
-      if (authStore.requiresSubscription) {
-        return { name: 'choose-plan' }
-      }
+    if (onboardingRedirect) {
+      return onboardingRedirect
     }
 
     if (to.meta.roles && !(authStore.user && to.meta.roles.includes(authStore.user.role))) {

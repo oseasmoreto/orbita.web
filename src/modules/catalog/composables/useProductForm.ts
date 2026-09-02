@@ -6,13 +6,13 @@ import type { Product } from '../types/product.type'
 
 function emptyFormValues(): ProductFormValues {
   return {
+    costPrice: 0,
     ean: '',
-    fullSalePrice: 0,
     height: null,
     length: null,
     name: '',
     ncm: '',
-    purchasePrice: 0,
+    operationalCost: null,
     sku: '',
     targetMargin: 0,
     weight: null,
@@ -22,13 +22,13 @@ function emptyFormValues(): ProductFormValues {
 
 function toFormValues(product: Product): ProductFormValues {
   return {
+    costPrice: Number(product.costPrice),
     ean: product.ean,
-    fullSalePrice: Number(product.fullSalePrice),
     height: product.height === null ? null : Number(product.height),
     length: product.length === null ? null : Number(product.length),
     name: product.name,
     ncm: product.ncm,
-    purchasePrice: Number(product.purchasePrice),
+    operationalCost: product.operationalCost === null ? null : Number(product.operationalCost),
     sku: product.sku,
     targetMargin: Number(product.targetMargin),
     weight: product.weight === null ? null : Number(product.weight),
@@ -39,13 +39,13 @@ function toFormValues(product: Product): ProductFormValues {
 /** `ProductFormValues` (camelCase, uso interno) → payload real da API (snake_case, `CreateProductRequest`/`UpdateProductRequest`). */
 function toRequestPayload(values: ProductFormValues) {
   return {
+    cost_price: values.costPrice,
     ean: values.ean,
-    full_sale_price: values.fullSalePrice,
     height: values.height,
     length: values.length,
     name: values.name,
     ncm: values.ncm,
-    purchase_price: values.purchasePrice,
+    operational_cost: values.operationalCost,
     sku: values.sku,
     target_margin: values.targetMargin,
     weight: values.weight,

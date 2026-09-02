@@ -3,13 +3,13 @@ import { createProductFormSchema } from '@/modules/catalog/schemas/productFormSc
 const productFormSchema = createProductFormSchema((key) => key)
 
 const validPayload = {
+  costPrice: 30,
   ean: '4006381333931',
-  fullSalePrice: 59.9,
   height: null,
   length: null,
   name: 'Camiseta azul',
   ncm: '61091000',
-  purchasePrice: 30,
+  operationalCost: null,
   sku: 'SKU-001',
   targetMargin: 20,
   weight: null,
@@ -32,14 +32,21 @@ describe('productFormSchema', () => {
     expect(result.success).toBe(false)
   })
 
-  it('rejects a sale price of zero or less', () => {
-    const result = productFormSchema.safeParse({ ...validPayload, fullSalePrice: 0 })
+  it('rejects a cost price of zero or less', () => {
+    const result = productFormSchema.safeParse({ ...validPayload, costPrice: 0 })
     expect(result.success).toBe(false)
   })
 
-  it('rejects a purchase price of zero or less', () => {
-    const result = productFormSchema.safeParse({ ...validPayload, purchasePrice: -1 })
+  it('rejects a negative operational cost', () => {
+    const result = productFormSchema.safeParse({ ...validPayload, operationalCost: -1 })
     expect(result.success).toBe(false)
+  })
+
+  it('accepts a null or zero operational cost — it is optional', () => {
+    expect(productFormSchema.safeParse({ ...validPayload, operationalCost: null }).success).toBe(
+      true,
+    )
+    expect(productFormSchema.safeParse({ ...validPayload, operationalCost: 0 }).success).toBe(true)
   })
 
   it('rejects a target margin above 100', () => {
@@ -69,27 +76,6 @@ describe('productFormSchema', () => {
       length: 20,
       weight: 0.5,
       width: 15,
-    })
-    expect(result.success).toBe(true)
-  })
-
-  it('rejects sale price lower than purchase price — the canonical cross-field rule', () => {
-    const result = productFormSchema.safeParse({
-      ...validPayload,
-      fullSalePrice: 20,
-      purchasePrice: 30,
-    })
-    expect(result.success).toBe(false)
-    if (!result.success) {
-      expect(result.error.issues[0]?.path).toContain('fullSalePrice')
-    }
-  })
-
-  it('accepts sale price exactly equal to purchase price', () => {
-    const result = productFormSchema.safeParse({
-      ...validPayload,
-      fullSalePrice: 30,
-      purchasePrice: 30,
     })
     expect(result.success).toBe(true)
   })

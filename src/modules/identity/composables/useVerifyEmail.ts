@@ -57,12 +57,22 @@ export function useVerifyEmail() {
           toImpersonatedBy(result.impersonated_by),
         ),
         {
+          requiresCompany: result.requires_company,
           requiresSubscription: result.requires_subscription,
         },
       )
 
       if (result.user.email_verified_at) {
-        await router.push({ name: 'choose-plan' })
+        // Empresa vem antes de plano na jornada (tarefa 63,
+        // `docs/negocio/jornada-usuario.mmd`) — diferente do
+        // hardcoded `choose-plan` de antes desta mudança.
+        if (result.requires_company) {
+          await router.push({ name: 'company-registration' })
+        } else if (result.requires_subscription) {
+          await router.push({ name: 'choose-plan' })
+        } else {
+          await router.push({ name: 'home' })
+        }
         return
       }
 

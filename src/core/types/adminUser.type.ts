@@ -27,12 +27,16 @@ type AdminUserResource = components['schemas']['AdminUserResource']
  * `UpdateUserByAdminRequest` que só aceita `active`/`suspended` —
  * decisão de propósito, exclusão passa pelo fluxo dedicado de
  * anonimização, nunca por um PATCH genérico de role/status).
+ *
+ * **`document` removido em 2026-09-02** (tarefa 63, mudança de contrato
+ * do backend) — CPF/CNPJ saiu de `USER` pra virar `COMPANY`, entidade
+ * própria (`modules/identity/types/company.type.ts`). `AdminUserResource`
+ * não expõe mais esse campo.
  */
 export type AdminUserStatus = 'active' | 'suspended' | 'deleted'
 
 export interface AdminUser {
   createdAt: string | null
-  document: string | null
   email: string
   emailVerifiedAt: string | null
   id: string
@@ -44,7 +48,6 @@ export interface AdminUser {
 export function toAdminUser(resource: AdminUserResource): AdminUser {
   return {
     createdAt: resource.created_at,
-    document: resource.document,
     email: resource.email,
     emailVerifiedAt: resource.email_verified_at,
     id: resource.id,

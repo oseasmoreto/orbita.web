@@ -172,21 +172,6 @@ export default {
         secureCheckout: 'Checkout seguro',
       },
     },
-    documentPrompt: {
-      description: 'Precisamos desse dado pra emitir a cobrança da sua assinatura.',
-      errors: {
-        invalid: 'Informe um CPF ou CNPJ válido.',
-        required: 'CPF ou CNPJ é obrigatório.',
-      },
-      fields: {
-        document: 'CPF ou CNPJ',
-      },
-      placeholders: {
-        document: '000.000.000-00',
-      },
-      submit: 'Confirmar',
-      title: 'Confirme seu CPF ou CNPJ',
-    },
     mySubscription: {
       cancel: {
         cta: 'Cancelar assinatura',
@@ -251,8 +236,8 @@ export default {
   catalog: {
     products: {
       columns: {
+        costPrice: 'Preço de custo',
         createdAt: 'Cadastrado em',
-        fullSalePrice: 'Preço de venda',
         name: 'Nome',
         sku: 'SKU',
         targetMargin: 'Margem alvo',
@@ -265,30 +250,31 @@ export default {
       deleteSuccess: 'Produto excluído com sucesso.',
       empty: 'Nenhum produto cadastrado ainda.',
       form: {
+        costPriceTooltip:
+          'Custo de aquisição ou fabricação do produto, sem contar despesas operacionais (frete, embalagem, etiqueta, mão de obra).',
         createSuccess: 'Produto criado com sucesso.',
         createTitle: 'Novo produto',
         dimensionsTitle: 'Dimensões da embalagem',
         dimensionsTooltip: 'Usado pelo sistema para calcular a tabela de frete.',
         editTitle: 'Editar produto',
         errors: {
+          costPricePositive: 'Preço de custo deve ser maior que zero.',
           eanRequired: 'EAN é obrigatório.',
-          fullSalePriceBelowPurchase: 'Preço de venda deve ser maior ou igual ao preço de compra.',
-          fullSalePricePositive: 'Preço de venda deve ser maior que zero.',
           nameRequired: 'Nome é obrigatório.',
           ncmRequired: 'NCM é obrigatório.',
-          purchasePricePositive: 'Preço de compra deve ser maior que zero.',
+          operationalCostMin: 'Custo operacional não pode ser negativo.',
           skuRequired: 'SKU é obrigatório.',
           targetMarginMax: 'Margem não pode passar de 100%.',
           targetMarginMin: 'Margem não pode ser negativa.',
         },
         fields: {
+          costPrice: 'Preço de custo',
           ean: 'EAN',
-          fullSalePrice: 'Preço de venda',
           height: 'Altura (cm)',
           length: 'Comprimento (cm)',
           name: 'Nome',
           ncm: 'NCM',
-          purchasePrice: 'Preço de compra',
+          operationalCost: 'Custo operacional',
           sku: 'SKU',
           targetMargin: 'Margem alvo (%)',
           weight: 'Peso (kg)',
@@ -448,8 +434,17 @@ export default {
   errorMessageCannotDisconnectLastAccessMethod:
     'Esse é seu único jeito de acessar a conta — defina uma senha antes de desconectar.',
   errorMessageCannotModifyOwnAccount: 'Você não pode alterar a própria conta por aqui.',
+  /**
+   * `ApiMessageKey::ErrorCompanyAlreadyExists`/`ErrorCompanyRequired`
+   * (tarefa 63, `COMPANY` novo) — a 1ª cobre uma 2ª tentativa de `POST
+   * /company` (singleton, `user_id` unique); a 2ª é a defesa residual de
+   * `useSubscribeToPlan.ts` (`isCompanyRequiredError`) pro caso raro de
+   * chegar em `/choose-plan` sem empresa cadastrada, já que o guard de
+   * rota deveria ter barrado isso antes.
+   */
+  errorMessageCompanyAlreadyExists: 'Você já tem uma empresa cadastrada.',
+  errorMessageCompanyRequired: 'Cadastre sua empresa antes de assinar um plano.',
   errorMessageCsrfTokenMismatch: 'Sua sessão expirou. Recarregue a página e tente de novo.',
-  errorMessageDocumentRequired: 'Informe um CPF ou CNPJ válido pra continuar.',
   errorMessageEmailNotVerified: 'Confirme seu e-mail antes de assinar um plano.',
   errorMessageForbidden: 'Você não tem permissão para fazer isso.',
   errorMessageIncorrectPassword: 'Senha incorreta.',
@@ -504,6 +499,15 @@ export default {
    */
   errorMessageProductLimitReached:
     'Você atingiu o limite de produtos do seu plano. Faça upgrade para cadastrar mais.',
+  /**
+   * `ApiMessageKey::ErrorResponsibleDocumentRequired` (tarefa 63) —
+   * caminho residual da regra cruzada já validada no cliente
+   * (`companyFormSchema.ts`, `.superRefine()`): CNPJ sem CPF de
+   * responsável. Só aparece de verdade se o checksum do CPF for inválido
+   * (a contagem de dígitos já é barrada antes de chegar aqui).
+   */
+  errorMessageResponsibleDocumentRequired:
+    'Informe o CPF do responsável — obrigatório para empresas com CNPJ.',
   errorMessageSamePlan: 'Você já está nesse plano.',
   errorMessageServer: 'Ocorreu um erro no servidor. Tente novamente em instantes.',
   errorMessageSubscriptionAlreadyActive: 'Você já tem uma assinatura ativa.',
@@ -585,6 +589,9 @@ export default {
   },
   identity: {
     account: {
+      company: {
+        title: 'Empresa',
+      },
       dangerZone: {
         deleteCta: 'Excluir minha conta',
         description:
@@ -689,6 +696,37 @@ export default {
         },
         title: 'Usuários',
       },
+    },
+    companyRegistration: {
+      createSuccess: 'Empresa cadastrada com sucesso.',
+      description:
+        'Precisamos desses dados pra emitir a cobrança da sua assinatura — leva menos de um minuto.',
+      errors: {
+        documentInvalid: 'Informe um CPF ou CNPJ válido.',
+        documentRequired: 'CPF ou CNPJ é obrigatório.',
+        nameRequired: 'Nome é obrigatório.',
+        responsibleDocumentRequired: 'Informe o CPF do responsável — obrigatório para CNPJ.',
+        salesTaxPercentageMin: 'Imposto sobre venda não pode ser negativo.',
+      },
+      fields: {
+        document: 'CPF ou CNPJ',
+        name: 'Nome da empresa',
+        responsibleDocument: 'CPF do responsável',
+        salesTaxPercentage: 'Imposto sobre venda (%)',
+      },
+      heading: 'Cadastre sua empresa',
+      loadError: 'Não foi possível carregar os dados da empresa agora.',
+      placeholders: {
+        document: '000.000.000-00',
+        responsibleDocument: '000.000.000-00',
+      },
+      responsibleDocumentTooltip:
+        'Empresas com CNPJ precisam do CPF de uma pessoa responsável — se seu documento já é um CPF, esse campo não aparece.',
+      retry: 'Tentar de novo',
+      submitCreate: 'Continuar',
+      submitUpdate: 'Salvar alterações',
+      title: 'Cadastro de empresa',
+      updateSuccess: 'Empresa atualizada com sucesso.',
     },
     forgotPassword: {
       errors: {

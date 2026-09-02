@@ -8,10 +8,13 @@ flowchart TD
     ResetPassword --> Login
 
     Signup --> EmailVerified{E-mail verificado?}
-    EmailVerified -->|Não, via Google| ChoosePlan
-    EmailVerified -->|Sim| ChoosePlan
+    EmailVerified -->|Não, via Google| RegisterCompany
+    EmailVerified -->|Sim| RegisterCompany
     EmailVerified -->|Não, cadastro direto| SendVerification[Envia link<br/>de verificação]
     SendVerification --> EmailVerified
+
+    RegisterCompany[Cadastra empresa<br/>CPF/CNPJ, imposto sobre venda]
+    RegisterCompany --> ChoosePlan
 
     ChoosePlan[Escolhe um plano]
     Login --> Dashboard[Acessa dashboard]
@@ -46,7 +49,7 @@ flowchart TD
     classDef exit fill:#FAECE7,stroke:#993C1D,color:#4A1B0C
     classDef notif fill:#FBEAF0,stroke:#993556,color:#4B1528
 
-    class Start,Login,Signup,ChoosePlan,Payment,Dashboard,RegisterProduct,ConnectMkt,LinkProduct,CheckPricing,AdjustPrice,Upgrade,ForgotPassword,ResetPassword,SendVerification process
+    class Start,Login,Signup,RegisterCompany,ChoosePlan,Payment,Dashboard,RegisterProduct,ConnectMkt,LinkProduct,CheckPricing,AdjustPrice,Upgrade,ForgotPassword,ResetPassword,SendVerification process
     class HasAccount,PaymentOk,ProductLimit,MktLimit,MarginOk,EmailVerified decision
     class Success success
     class Abandon exit

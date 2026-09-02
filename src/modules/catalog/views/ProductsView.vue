@@ -193,7 +193,7 @@ watch(
 const columns = computed<DataTableColumn[]>(() => [
   { key: 'name', sortable: true, title: t('catalog.products.columns.name') },
   { key: 'sku', title: t('catalog.products.columns.sku') },
-  { key: 'fullSalePrice', sortable: true, title: t('catalog.products.columns.fullSalePrice') },
+  { key: 'costPrice', sortable: true, title: t('catalog.products.columns.costPrice') },
   { key: 'targetMargin', title: t('catalog.products.columns.targetMargin') },
   { key: 'createdAt', sortable: true, title: t('catalog.products.columns.createdAt') },
   { key: 'operations', title: t('common.actions.actions') },
@@ -263,8 +263,8 @@ function handleSaved(): void {
       row-key="id"
       @sort="(key, direction) => list.setSort(key, direction)"
     >
-      <template #cell-fullSalePrice="{ row }">
-        {{ formatMoney(row.fullSalePrice) }}
+      <template #cell-costPrice="{ row }">
+        {{ formatMoney(row.costPrice) }}
       </template>
       <template #cell-targetMargin="{ row }">
         {{ formatPercent(row.targetMargin) }}

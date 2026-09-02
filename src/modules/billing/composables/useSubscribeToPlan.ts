@@ -7,16 +7,23 @@ import { parseApiError } from '@/shared/services/parseApiError'
 import { subscribeToPlan } from '../services/billingApi'
 
 /**
- * `ApiMessageKey::ErrorDocumentRequired` real do backend
- * (`Domain/Shared/Enums/ApiMessageKey.php`) — `SubscribeToPlanAction`
- * lança isso quando o usuário ainda não tem CPF/CNPJ cadastrado e não
- * mandou um no payload. Exportada separada pra ser testável sem montar
- * o composable inteiro (é a única ramificação de decisão real aqui).
+ * `ApiMessageKey::ErrorCompanyRequired` real do backend
+ * (`Domain/Shared/Enums/ApiMessageKey.php`, tarefa 63) —
+ * `SubscribeToPlanAction` lança isso se, por algum motivo, o usuário
+ * chegar aqui sem empresa cadastrada. Não deveria acontecer no caminho
+ * normal (o guard de rota, `core/router/guards.ts`, já manda pra
+ * `company-registration` antes de deixar chegar em `/choose-plan` quando
+ * `requires_company` é `true`) — é defesa residual pra estado de store
+ * desatualizado (2 abas, sessão trocada por baixo), não um fluxo
+ * esperado. Exportada separada pra ser testável sem montar o composable
+ * inteiro, mesmo padrão que `isDocumentRequiredError` tinha antes desta
+ * mudança (removida — o documento saiu daqui, virou cadastro de empresa
+ * próprio).
  */
-const DOCUMENT_REQUIRED_MESSAGE_KEY = 'errorMessageDocumentRequired'
+const COMPANY_REQUIRED_MESSAGE_KEY = 'errorMessageCompanyRequired'
 
-export function isDocumentRequiredError(messageKey: string): boolean {
-  return messageKey === DOCUMENT_REQUIRED_MESSAGE_KEY
+export function isCompanyRequiredError(messageKey: string): boolean {
+  return messageKey === COMPANY_REQUIRED_MESSAGE_KEY
 }
 
 /**
@@ -32,28 +39,29 @@ export function isCheckoutSkipped(checkoutUrl: string | null): checkoutUrl is nu
 
 /**
  * Orquestra `POST /subscriptions` (cria assinatura + preferência de
- * checkout no Mercado Pago) e os 2 desvios reais de negócio no caminho:
- * usuário sem `document` cadastrado (abre `DocumentPromptModal.vue` e
- * reenvia a mesma assinatura com o documento assim que confirmado, sem
- * precisar clicar de novo no plano) e assinatura de plano trial
- * (`isCheckoutSkipped` — sem checkout nenhum, vai direto pra
- * `/billing/success`). Fora esses 2 casos, sucesso é sempre um REDIRECT
- * de página inteira pro Mercado Pago (Checkout Pro, hospedado) — nunca
- * renderizamos QR code/formulário de cartão nós mesmos.
+ * checkout no Mercado Pago) e o desvio real de negócio no caminho:
+ * assinatura de plano trial (`isCheckoutSkipped` — sem checkout nenhum,
+ * vai direto pra `/billing/success`). Fora esse caso, sucesso é sempre um
+ * REDIRECT de página inteira pro Mercado Pago (Checkout Pro, hospedado) —
+ * nunca renderizamos QR code/formulário de cartão nós mesmos.
+ *
+ * `errorMessageCompanyRequired` (defesa residual, ver
+ * `isCompanyRequiredError` acima) refaz `/auth/me` e manda pra
+ * `company-registration` — o guard de rota deveria ter barrado essa
+ * navegação bem antes, mas se a store estiver desatualizada por algum
+ * motivo, é o caminho de recuperação.
  */
 export function useSubscribeToPlan() {
   const isSubscribing = ref(false)
-  const isDocumentPromptOpen = ref(false)
-  const pendingPlanId = ref<string | null>(null)
   const toast = useToast()
   const { resolveMessage } = useApiMessage()
   const router = useRouter()
 
-  async function subscribe(planId: string, document?: string): Promise<void> {
+  async function subscribe(planId: string): Promise<void> {
     isSubscribing.value = true
 
     try {
-      const checkout = await subscribeToPlan(planId, document)
+      const checkout = await subscribeToPlan(planId)
 
       if (isCheckoutSkipped(checkout.checkoutUrl)) {
         // Achado real, 2026-09-01: sem isso, `authStore.requiresSubscription`
@@ -71,9 +79,9 @@ export function useSubscribeToPlan() {
     } catch (caughtError) {
       const apiError = parseApiError(caughtError)
 
-      if (isDocumentRequiredError(apiError.messageKey)) {
-        pendingPlanId.value = planId
-        isDocumentPromptOpen.value = true
+      if (isCompanyRequiredError(apiError.messageKey)) {
+        await refreshCurrentUser()
+        await router.push({ name: 'company-registration' })
         return
       }
 
@@ -83,14 +91,5 @@ export function useSubscribeToPlan() {
     }
   }
 
-  async function confirmDocument(document: string): Promise<void> {
-    if (!pendingPlanId.value) {
-      return
-    }
-
-    isDocumentPromptOpen.value = false
-    await subscribe(pendingPlanId.value, document)
-  }
-
-  return { confirmDocument, isDocumentPromptOpen, isSubscribing, pendingPlanId, subscribe }
+  return { isSubscribing, subscribe }
 }

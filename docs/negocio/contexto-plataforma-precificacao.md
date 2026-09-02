@@ -17,9 +17,10 @@ usuário se cadastra → assina um plano → paga → acessa o sistema → cadas
 
 ### 2.1 Autenticação e usuários
 
-- **`USER`** — dados da conta. `role` distingue `admin_master` de `user` e é o **único** controle de acesso no MVP (sem granularidade por grupo/tela — ver seção 6). `document` guarda CPF/CNPJ (necessário para billing e LGPD). `email_verified_at` fica nulo até a confirmação do e-mail (irrelevante para contas via Google, que já vêm verificadas pelo provider). `status` (`active`/`deleted`, default `active`) marca exclusão da própria conta pelo usuário (LGPD) — soft delete/anonimização (`name`/`email`/`password`/`document` apagados), nunca `DELETE` físico; histórico financeiro/auditoria ligado ao `id` continua íntegro. Não usa `SoftDeletes`/`deleted_at` nativo do Laravel de propósito — esconderia a linha de toda query por Global Scope, inclusive a futura tela de admin que precisa listar/ver qualquer usuário.
+- **`USER`** — dados da conta. `role` distingue `admin_master` de `user` e é o **único** controle de acesso no MVP (sem granularidade por grupo/tela — ver seção 6). `email_verified_at` fica nulo até a confirmação do e-mail (irrelevante para contas via Google, que já vêm verificadas pelo provider). `status` (`active`/`deleted`, default `active`) marca exclusão da própria conta pelo usuário (LGPD) — soft delete/anonimização (`name`/`email`/`password` apagados), nunca `DELETE` físico; histórico financeiro/auditoria ligado ao `id` continua íntegro. Não usa `SoftDeletes`/`deleted_at` nativo do Laravel de propósito — esconderia a linha de toda query por Global Scope, inclusive a futura tela de admin que precisa listar/ver qualquer usuário. **`document` saiu daqui em 2026-09-02** — mora só em `COMPANY` agora (ver abaixo).
 - **`PASSWORD_RESET`** — tabela padrão de recuperação de senha (mesmo padrão do Laravel: chave por `email`, sem FK). Pertence ao contexto `Identity`, junto com `USER` e `SSO_ACCOUNT`.
 - **`SSO_ACCOUNT`** — login social separado do usuário. Um `USER` pode ter várias contas SSO (`provider` + `provider_id`). Providers previstos: `google`, `microsoft`. Guarda `access_token`/`refresh_token`/`expires_at` do provider (nullable, criptografados em repouso) — necessário pra revalidar a sessão OAuth quando o token expira, não só pro login inicial.
+- **`COMPANY`** — cadastro de empresa, **novo em 2026-09-02** (pedido direto do usuário) — `user_id` unique (1 empresa por usuário), `name`, `document` (CPF ou CNPJ, mesma `Document` VO que já validava `USER.document` antes), `responsible_document` (CPF, nullable), `sales_tax_percentage` (imposto sobre venda, ainda sem uso em nenhuma regra de precificação, mesmo status de `PRODUCT.operational_cost`). `responsible_document` só é obrigatório quando `document` é CNPJ (empresa PJ precisa de um CPF de responsável) — se `document` já é CPF, a própria pessoa já é o responsável. **Gate obrigatório antes de assinar um plano**: `LoginResultResource.requires_company` (mesmo padrão de `requires_subscription`, `false` pra `admin_master`) manda o front pra `RegisterCompany` na jornada (seção 5), entre e-mail verificado e escolha de plano — `SubscribeToPlanAction` recusa `POST /subscriptions` sem empresa cadastrada. Singleton por usuário (`POST`/`GET`/`PATCH /company`, sem `{id}` na URL, mesmo padrão de `GET /auth/me`), sem `DELETE` — excluir a própria empresa quebraria o gate obrigatório; `DeleteUserAccountAction` (exclusão de CONTA) deleta a `COMPANY` junto, hard delete (não anonimização — CPF/CNPJ é exatamente o dado que o pedido de exclusão quer remover).
 
 ### 2.2 Planos e assinatura
 
@@ -29,7 +30,7 @@ usuário se cadastra → assina um plano → paga → acessa o sistema → cadas
 
 ### 2.3 Produtos
 
-- **`PRODUCT`** — cadastro do produto: `name`, `sku`, `ean`, `ncm`, `full_sale_price`, `purchase_price`, `target_margin` (percentual de lucro mínimo aceitável definido pelo próprio vendedor — é contra esse valor que o sistema compara o `suggested_price` para decidir se dispara notificação de ajuste). `weight` (kg) e `height`/`width`/`length` (cm) são opcionais (nullable) — mesma convenção de unidade usada por Correios/Shopee/Mercado Livre pra cálculo de frete; hoje só armazenados, ainda sem uso em nenhuma regra de precificação/frete.
+- **`PRODUCT`** — cadastro do produto: `name`, `sku`, `ean`, `ncm`, `cost_price`, `target_margin` (percentual de lucro mínimo aceitável definido pelo próprio vendedor — é contra esse valor que o sistema compara o `suggested_price` para decidir se dispara notificação de ajuste). `operational_cost` (nullable) soma o custo operacional do produto (combustível, embalagem, etiqueta, mão de obra) — opcional, informativo, ainda sem uso em nenhuma regra de precificação. `weight` (kg) e `height`/`width`/`length` (cm) são opcionais (nullable) — mesma convenção de unidade usada por Correios/Shopee/Mercado Livre pra cálculo de frete; hoje só armazenados, ainda sem uso em nenhuma regra de precificação/frete. **`full_sale_price` ("preço de venda") removido do cadastro em 2026-09-02** (pedido direto do usuário) — nunca teve regra de negócio conectada (`PricingCalculator`, existente e testado isoladamente, nunca ligado a rota nenhuma); `purchase_price` ("preço de compra") foi renomeado pra `cost_price` ("preço de custo") no mesmo dia, mesmo dado, nome mais preciso pro que o vendedor de fato preenche.
 - **`PRODUCT_LAUNCH`** — histórico de lançamentos/compras do produto: `purchase_price`, `quantity`, `date`.
 
 ### 2.4 Marketplaces e precificação
@@ -65,6 +66,7 @@ erDiagram
     USER ||--o{ AUDIT_LOG : generates
     USER ||--o{ TRANSACTION : makes
     SUBSCRIPTION ||--o{ TRANSACTION : generates
+    USER ||--o{ COMPANY : owns
 
     PLAN {
         uuid id PK
@@ -84,19 +86,39 @@ erDiagram
         string email
         timestamp email_verified_at
         string password_hash
-        string document
         string role
         string status
         timestamp created_at
         timestamp updated_at
     }
-    %% USER.document stores CPF or CNPJ (billing/LGPD)
+    %% USER.document removido em 2026-09-02 — mora só em COMPANY agora
     %% USER.role accepted values: admin_master, user — único controle de acesso no MVP (sem group_id/menu granular)
     %% USER.status accepted values: active, deleted (default active) — deleted = soft
-    %% delete/anonimização (name/email/password/document apagados, nunca DELETE físico,
+    %% delete/anonimização (name/email/password apagados, nunca DELETE físico,
     %% histórico financeiro/auditoria ligado ao id continua íntegro). Não usa SoftDeletes/
     %% deleted_at nativo do Laravel de propósito — esconderia a linha de toda query por
     %% Global Scope, inclusive a tela de admin que precisa listar/ver qualquer usuário.
+
+    COMPANY {
+        uuid id PK
+        uuid user_id FK
+        string name
+        string document
+        string responsible_document
+        decimal sales_tax_percentage
+        timestamp created_at
+        timestamp updated_at
+    }
+    %% Novo em 2026-09-02 (pedido direto do usuário) — unique (user_id):
+    %% 1 empresa por usuário. document é CPF ou CNPJ (mesma Document VO que
+    %% já validava USER.document antes). responsible_document (nullable,
+    %% sempre CPF) só é obrigatório quando document é CNPJ — empresa PJ
+    %% precisa de um CPF de responsável; se document já é CPF, a própria
+    %% pessoa já é o responsável. sales_tax_percentage (imposto sobre
+    %% venda) ainda sem uso em nenhuma regra de precificação, mesmo status
+    %% de PRODUCT.operational_cost. Gate obrigatório antes de assinar um
+    %% plano (LoginResultResource.requires_company) — ver seção 5.
+    %% Sem DELETE: excluir a própria empresa quebraria esse gate.
 
     SUBSCRIPTION {
         uuid id PK
@@ -125,8 +147,8 @@ erDiagram
         string sku
         string ean
         string ncm
-        decimal full_sale_price
-        decimal purchase_price
+        decimal cost_price
+        decimal operational_cost
         decimal target_margin
         decimal weight
         decimal height
@@ -135,8 +157,11 @@ erDiagram
         timestamp created_at
         timestamp updated_at
     }
-    %% weight (kg) e height/width/length (cm) são nullable — opcionais no
-    %% cadastro, ainda sem uso em nenhuma regra de precificação/frete
+    %% operational_cost (nullable) soma custo operacional (combustível,
+    %% embalagem, etiqueta, mão de obra) — opcional, informativo, ainda
+    %% sem uso em nenhuma regra de precificação. weight (kg) e
+    %% height/width/length (cm) são nullable — opcionais no cadastro,
+    %% ainda sem uso em nenhuma regra de precificação/frete
 
     PRODUCT_LAUNCH {
         uuid id PK
@@ -361,10 +386,13 @@ flowchart TD
     ResetPassword --> Login
 
     Signup --> EmailVerified{E-mail verificado?}
-    EmailVerified -->|Não, via Google| ChoosePlan
-    EmailVerified -->|Sim| ChoosePlan
+    EmailVerified -->|Não, via Google| RegisterCompany
+    EmailVerified -->|Sim| RegisterCompany
     EmailVerified -->|Não, cadastro direto| SendVerification[Envia link<br/>de verificação]
     SendVerification --> EmailVerified
+
+    RegisterCompany[Cadastra empresa<br/>CPF/CNPJ, imposto sobre venda]
+    RegisterCompany --> ChoosePlan
 
     ChoosePlan[Escolhe um plano]
     Login --> Dashboard[Acessa dashboard]
@@ -399,7 +427,7 @@ flowchart TD
     classDef exit fill:#FAECE7,stroke:#993C1D,color:#4A1B0C
     classDef notif fill:#FBEAF0,stroke:#993556,color:#4B1528
 
-    class Start,Login,Signup,ChoosePlan,Payment,Dashboard,RegisterProduct,ConnectMkt,LinkProduct,CheckPricing,AdjustPrice,Upgrade,ForgotPassword,ResetPassword,SendVerification process
+    class Start,Login,Signup,RegisterCompany,ChoosePlan,Payment,Dashboard,RegisterProduct,ConnectMkt,LinkProduct,CheckPricing,AdjustPrice,Upgrade,ForgotPassword,ResetPassword,SendVerification process
     class HasAccount,PaymentOk,ProductLimit,MktLimit,MarginOk,EmailVerified decision
     class Success success
     class Abandon exit

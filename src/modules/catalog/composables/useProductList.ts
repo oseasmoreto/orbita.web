@@ -13,8 +13,8 @@ import type { Product } from '../types/product.type'
  * segurança pra qualquer key desconhecida.
  */
 const SORT_PARAM: Record<string, string> = {
+  costPrice: 'cost_price',
   createdAt: 'created_at',
-  fullSalePrice: 'full_sale_price',
   name: 'name',
 }
 

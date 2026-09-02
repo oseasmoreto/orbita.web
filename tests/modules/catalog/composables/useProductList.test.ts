@@ -11,7 +11,7 @@ describe('buildProductSortParam', () => {
 
   it('maps a known column to the real API sort param, ascending', () => {
     expect(buildProductSortParam('name', 'asc')).toBe('name')
-    expect(buildProductSortParam('fullSalePrice', 'asc')).toBe('full_sale_price')
+    expect(buildProductSortParam('costPrice', 'asc')).toBe('cost_price')
     expect(buildProductSortParam('createdAt', 'asc')).toBe('created_at')
   })
 

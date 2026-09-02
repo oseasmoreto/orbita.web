@@ -16,13 +16,14 @@ function emptyValues(): RegisterFormValues {
 
 /**
  * `register.store` (`core/api/schema.d.ts`) devolve só `UserResource`
- * (201), sem `requires_subscription` — mas isso não importa aqui: a
- * jornada documentada (`docs/negocio/jornada-usuario.mmd`) vai de Signup
- * direto pra `ChoosePlan`/`Payment`, e TODO cadastro novo, por definição,
- * ainda não escolheu plano nenhum — não precisa checar campo nenhum do
- * backend pra saber disso, é sempre verdade. `RegisterUserAction`
- * (backend) já chama `Auth::login()` — sessão (cookie Sanctum) já existe
- * quando a resposta volta, mesmo padrão do login.
+ * (201), sem `requires_subscription`/`requires_company` — mas isso não
+ * importa aqui: a jornada documentada (`docs/negocio/jornada-usuario.mmd`)
+ * vai de Signup direto pra `RegisterCompany`/`ChoosePlan`/`Payment`, e
+ * TODO cadastro novo, por definição, ainda não tem empresa cadastrada nem
+ * escolheu plano nenhum — não precisa checar campo nenhum do backend pra
+ * saber disso, é sempre verdade. `RegisterUserAction` (backend) já chama
+ * `Auth::login()` — sessão (cookie Sanctum) já existe quando a resposta
+ * volta, mesmo padrão do login.
  *
  * Manda pra `verify-email`, não direto pra `choose-plan`: cadastro normal
  * sempre nasce com `email_verified_at: null` (diferente de SSO, que já
@@ -73,7 +74,7 @@ export function useRegisterForm() {
         password_confirmation: values.passwordConfirmation,
       })
 
-      authStore.setUser(toAuthUser(user), { requiresSubscription: true })
+      authStore.setUser(toAuthUser(user), { requiresCompany: true, requiresSubscription: true })
       toast.success(t('identity.register.success'))
       await router.push({ name: 'verify-email' })
     } catch (caughtError) {

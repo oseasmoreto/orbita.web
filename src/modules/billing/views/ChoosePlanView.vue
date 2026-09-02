@@ -41,7 +41,6 @@ import BlockTab from '@/shared/components/ui/BlockTab.vue'
 import Button from '@/shared/components/ui/Button.vue'
 import Icon from '@/shared/components/ui/Icon.vue'
 import Spinner from '@/shared/components/ui/Spinner.vue'
-import DocumentPromptModal from '../components/blocks/DocumentPromptModal.vue'
 import PlanCard from '../components/blocks/PlanCard.vue'
 import { useChoosePlan } from '../composables/useChoosePlan'
 import {
@@ -56,7 +55,7 @@ import type { BlockTabOption } from '@/shared/components/ui/types/blockTab.type'
 const { t } = useI18n()
 const { billingCycle, hasError, isLoading, load, plans, setBillingCycle, visiblePlans } =
   useChoosePlan()
-const { confirmDocument, isDocumentPromptOpen, isSubscribing, subscribe } = useSubscribeToPlan()
+const { isSubscribing, subscribe } = useSubscribeToPlan()
 const { isLoggingOut, logout } = useLogout()
 
 onMounted(load)
@@ -152,12 +151,6 @@ function savingsFor(plan: Plan): number | null {
         @select="subscribe"
       />
     </div>
-
-    <DocumentPromptModal
-      v-model="isDocumentPromptOpen"
-      :is-submitting="isSubscribing"
-      @confirm="confirmDocument"
-    />
   </div>
 </template>
 
