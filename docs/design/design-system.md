@@ -4577,6 +4577,244 @@ do backend — pego durante a própria verificação em browser real (o
 roteiro incluiu abrir o sino do admin depois de criar um chamado), não
 depois de reportar como pronto.
 
+### PricingDashboardMockupView (`shared/views/PricingDashboardMockupView.vue`)
+
+**Primeiro rascunho visual da dashboard de precificação (Fase 4),
+2026-09-02, pedido direto do usuário** com referência de outro produto
+(barra horizontal empilhada por produto, decomposta em custo + taxas +
+lucro) — "vamos desenhar a tela de precificação... monta um mockup numa
+rota a parte, sem comunicação com api, só pra vermos como fica, com aba
+por marketplace pra usarmos nosso componente de aba". Rota isolada
+(`/pricing-dashboard-mockup`), fora da navegação principal — mesmo
+espírito de `ShowcaseView.vue` (`/showcase`): superfície de exploração,
+não uma feature real ainda. **Fecha (parcialmente) o gap "sem componente
+de card/tabela/badge ainda... primeiro lugar que vai exigir isso"**
+registrado desde a Fase 0 em "Known Gaps" — os dados continuam 100%
+mockados, mas a composição visual já é real.
+
+- **Sem chamada de API nenhuma** — os números vêm de um "recipe" fixo
+  por produto (`costPrice`/`operationalCost`/`salePrice`, nível de
+  produto, igual nas 3 abas) cruzado com um recipe por marketplace
+  (`commissionPercentage`/`fixedFee`/`campaignDiscountPercentage`/
+  `adsPercentage`, variam por aba) + `COMPANY.salesTaxPercentage` fixo —
+  a soma dos 8 segmentos sempre bate 100% com o preço de venda, do jeito
+  que o cálculo real (`PricingCalculator`, já existente, nunca conectado
+  a rota nenhuma) vai precisar fechar quando for implementado de
+  verdade. Os 8 segmentos mapeiam 1:1 pros campos reais já existentes no
+  modelo de dados (`PRODUCT.costPrice`/`operationalCost`,
+  `PRICING_RULE.percentage`/`fixed_fee`,
+  `USER_MARKETPLACE.campaignDiscountPercentage`/`adsPercentage`,
+  `COMPANY.salesTaxPercentage`) — nenhum campo novo, só a composição
+  visual é nova.
+- **Aba por marketplace = `TabBar.vue` reaproveitado tal como é**
+  (`TabsContent` do próprio `reka-ui`, mesmo padrão de
+  `AdminMarketplacesView.vue`) — pedido explícito do usuário, "pra
+  usarmos nosso componente de aba".
+- **Barra segmentada é um componente novo, bespoke** (`.pricing-dashboard-mockup__bar`,
+  8 `<span>` com `flex-basis` proporcional ao valor de cada segmento) —
+  sem token de "rampa sequencial" pronto no design system (só paleta
+  categórica plana, `{colors.accent-*}`), então a progressão clara→escura
+  (custo→taxas) é construída localmente via `color-mix()` interpolando
+  entre `{colors.accent-orange}` e `{colors.accent-red}`/`{colors.ink}`
+  — mesma TÉCNICA já usada em `StatusDot` `variant="pill"`/`DateRangePicker`
+  (nunca compartilhada como componente, só o princípio reaproveitado).
+  `profit` fecha em `{colors.accent-green}` sólido, mesma cor já usada
+  pra "lucro"/valor positivo no resto do app. Cada segmento é focável
+  (`tabindex="0"`) e envolvido por um `Tooltip.vue` mostrando o valor
+  exato em R$ — replica o hover da referência sem inventar um mecanismo
+  novo de tooltip.
+- **Legenda compartilha as mesmas 8 classes de cor da barra**
+  (`.pricing-dashboard-mockup__legend-swatch--<segmento>` via `@extend`
+  das classes `__segment--<segmento>`) — nunca redeclara a cor duas
+  vezes, a paleta muda num lugar só.
+- Verificado em browser real: trocar de aba recalcula os totais/barras
+  corretamente (números diferentes por marketplace, já que comissão/
+  taxa fixa/campanha/ads variam por canal); hover num segmento mostra o
+  tooltip certo (`"Valor pago: R$ 22,00"`, conferido); sem erro nenhum
+  no console.
+
+**Bug real, reportado pelo usuário com 2 screenshots no mesmo dia —
+"espaço em branco perdido" crescendo a cada troca de aba.** Causa:
+`TabsContent` (reka-ui) mantém as 3 abas SEMPRE no DOM — `unmountOnHide`
+(default `true`) só limpa o CONTEÚDO (slot) da aba inativa, o `<div>`
+wrapper continua montado pra sempre, controlado por atributo `hidden`
+nativo. `.pricing-dashboard-mockup__panel` tinha `display: flex`
+aplicado direto na classe que vai no PRÓPRIO `TabsContent` (`class` no
+componente cai por fallthrough no elemento raiz que ele renderiza) —
+com a especificidade extra do `[data-v-xxxxxxxx]` do scoped style, essa
+regra EMPATAVA em especificidade com `[hidden] { display: none }` do
+navegador (classe vs. atributo, mesmo peso) e vencia por ser a última
+declarada, no `<style>` do componente — cada aba já visitada ficava
+"escondida" só de nome (`hidden="true"` no atributo), mas
+`display: flex` continuava valendo, e o `padding-top: {spacing.16}` do
+próprio bloco (vazio, sem filhos) sobrava como 16px de espaço em branco
+visível — um por aba já visitada, empilhando a cada troca. Confirmado
+via `getComputedStyle`/`getBoundingClientRect` real: antes do fix, aba
+inativa tinha `display: flex`, `height: 16`; depois, `display: none`,
+`height: 0`. **Corrigido** com `&[hidden] { display: none; }` aninhado
+dentro do próprio `.pricing-dashboard-mockup__panel` — especificidade
+classe+atributo bate a classe sozinha, sem precisar de `!important`.
+Nenhum outro consumidor de `TabsContent` do projeto
+(`AdminMarketplacesView.vue` e outros) tem esse bug porque nenhum deles
+aplica `display` direto na classe que vai no elemento `TabsContent` em
+si — só no conteúdo de dentro. **Lição geral pra qualquer `class` posta
+direto num `TabsContent`/`Presence`-based component do reka-ui**: se a
+classe declarar `display` (ou qualquer propriedade que precise ceder
+espaço quando escondido), sempre acompanhar de `&[hidden] { display:
+none; }` no mesmo bloco — o scoped CSS do Vue tem especificidade
+suficiente pra vencer o `[hidden]` nativo do browser por acidente.
+Reverificado em browser real: `top` do painel ativo permanece fixo
+(`250px`) trocando Mercado Livre → Shopee → Amazon → Mercado Livre de
+novo, sem nenhum espaço acumulando.
+
+**Densidade aumentada, pedido direto do usuário** ("diminua um pouco o
+espaço entre as linhas, pense q podem ser planilhas com mais de 50
+produtos") — `gap` entre produtos `{spacing.20}`→`{spacing.12}`, margem
+entre nome/preço e a barra `{spacing.8}`→`{spacing.4}`, altura da barra
+`{size.24}`→`{size.16}`. Mesma régua de "densidade importa mais que
+respiro" já usada em `DataTable`/listagens admin, só que aplicada aqui
+de propósito porque o usuário citou o volume real esperado (50+ linhas)
+como motivo.
+
+**Botão de "Editar produto" + "Editar vínculo produto↔marketplace" por
+LINHA, "Editar vínculo do marketplace" por ABA — 2 rodadas de correção
+no mesmo dia, pedido direto do usuário.** 1ª versão: os 2 botões por
+LINHA (`PencilSimpleLine`→editar produto, `Storefront`→editar
+`PRODUCT_MARKETPLACE`). 1º pedido de correção ("coloque o botão do lado
+esquerdo do nome do produto, e coloque tbm o botao para editar o
+vinculo do mktplace nas tabs q no caso é o vinculo entre user x
+mktplace") foi malinterpretado como "mover" o botão de vínculo da linha
+pra aba — **removi o botão por linha por engano**. Usuário corrigiu de
+novo: "mas dai vc nao me entendeu, faça o seguinte: mantenha o botão de
+editar vinculo do mktplace com o produto, adicione um botão em cada aba
+pra editar o vinculo do mktplace da aba com o usuario" — os DOIS botões
+deveriam existir ao mesmo tempo, em níveis diferentes, editando vínculos
+DIFERENTES:
+
+- **Por LINHA de produto (mantido/restaurado)**: `PencilSimpleLine`
+  (esquerda do nome, `router.push({ name: 'products-edit', params: {
+  id } })`, mesmo par de `ProductsView.vue`) + `Storefront` (direita do
+  preço, `router.push({ name: 'product-marketplaces', params: { id }
+  })`) — edita `PRODUCT_MARKETPLACE` (vínculo produto↔categoria-por-
+  canal daquele produto específico).
+- **Por ABA de marketplace (novo, adicional — não substitui o de
+  linha)**: `Storefront` + texto "Editar vínculo do marketplace"
+  (`variant="outline"`, dentro da faixa de KPIs, canto direito) —
+  `goToMarketplaceConnection()` navega pra `marketplaces` (a tela
+  "Canais de venda"), edita `USER_MARKETPLACE` (a conexão usuário↔canal
+  — `store_name`/`ads_percentage`/`campaign_discount_percentage`/
+  comissão, os campos que alimentam os segmentos "Comissão campanha"/
+  "Ads" de CADA barra da aba inteira, não um produto isolado). Sem rota
+  própria pra abrir `ConnectMarketplaceModal.vue` direto numa conexão
+  específica, por isso vai pra listagem geral.
+- **Alinhamento vertical ícone↔texto corrigido, mesmo pedido ("deixe
+  alinhado bonitinho", com captura mostrando o ícone visivelmente
+  desalinhado do nome do produto)** — achado real: `<p>` ganha
+  `margin-bottom: $font-size-md` via `paragraph-spacing`
+  (`_reset.scss`), o mixin de espaçamento de PARÁGRAFO DE PROSA
+  (`docs/design/tokens/paragraph/`), que não deveria valer pra texto de
+  UI (regra já documentada na seção Typography deste doc: "Texto de UI
+  — label, botão — não herda esse espaçamento, fica em 0 por padrão").
+  Como `.pricing-dashboard-mockup__product-name`/`__product-price` são
+  `<p>` de rótulo de UI (não prosa), a margem invisível inflava a caixa
+  desse elemento bem mais que o ícone ao lado (`Button` ghost, 28px) —
+  `align-items: center` da linha centralizava as CAIXAS (maiores por
+  causa da margem), não o texto visível dentro delas, jogando o texto
+  pra fora do centro óptico. Corrigido com `margin-bottom: 0` explícito
+  nos dois seletores. Confirmado via `getBoundingClientRect()`: centro
+  vertical do ícone e centro vertical da caixa de texto resolvendo pro
+  MESMO pixel (antes, desalinhados).
+- Verificado em browser real (login com usuário/empresa/assinatura
+  seedados via tinker, servidor Vite em `:5174`): pencil à esquerda do
+  nome e `Storefront` à direita do preço nas 6 linhas das 3 abas,
+  perfeitamente alinhados com o texto (não só com a linha); exatamente
+  1 botão "Editar vínculo do marketplace" por aba, clicar navega pra
+  `/marketplaces`; clicar no `Storefront` de uma linha navega pra
+  `/products/:id/marketplaces` (vínculo do PRODUTO, distinto do botão
+  da aba); troca de aba continua sem reabrir o bug de espaço em branco
+  acumulado (`top` do painel ativo fixo em `250px` trocando Mercado
+  Livre→Shopee→Amazon de novo).
+
+**50 produtos, pedido direto do usuário** ("coloque 50 produtos pra eu
+ver como fica") — os 6 `PRODUCT_RECIPES` escritos à mão viraram 50,
+gerados por `generateProductRecipe(name, index)` a partir de
+`PRODUCT_NAME_POOL` (50 nomes reais de e-commerce) + 17 degraus de preço
+(`SALE_PRICE_STEPS`, R$29,90–R$349,90) + proporção de custo determinística
+(15%–27,5% do preço de venda) — nunca `Math.random()`, mesmo espírito de
+"mockup 100% descartável não justifica 50 objetos digitados à mão".
+Conferido por script (fora do componente, só validação aritmética) que a
+MENOR margem entre os 50 produtos × 3 marketplaces é 5,85% — nunca
+negativa, garantindo que nenhum segmento de barra vira `flex-basis`
+negativo (CSS trata como `0`, quebraria a soma visual dos segmentos).
+Verificado em browser real: as 50 linhas renderizam, o KPI "Produtos"
+mostra 50, alinhamento ícone↔texto continua correto em todas, e rolar
+até a última linha ("Cabo HDMI 2m") não revela nenhum problema de layout
+em escala.
+
+**Visualização em tabela + busca + copiar preço, pedido direto do
+usuário** ("faça uma visualização de tabela, com um botão para o
+usuario ficar alternando as views, adicione uma barra de busca pra
+filtrar o produto por nome, e do lado do preço sugerido coloque um
+botão de copy nas duas views"):
+
+- **Alternância de view** (`viewMode: 'bar' | 'table'`, ref simples) —
+  2 `Button` ícone-only (`ChartBar`/`Table`) agrupados num wrapper com
+  fundo `{colors.ink-4}` (`.pricing-dashboard-mockup__view-toggle`,
+  visual de "segmented control"), `variant="secondary"` na opção ativa,
+  `variant="ghost"` na inativa — mesmo par de variantes já usado no
+  resto do design system pra indicar seleção sem inventar uma variante
+  nova de `Button`.
+- **Busca por nome** (`Search.vue`, já existente) — um `ref` só
+  (`searchQuery`), compartilhado pelas 3 abas (não reaplicado por
+  marketplace) e pelas duas views. Filtra `productsByMarketplace` via
+  `.toLowerCase().includes()` simples (sem acento-insensível — nenhum
+  pedido nesse sentido, YAGNI). **KPIs recalculam sobre o conjunto
+  FILTRADO**, não o catálogo inteiro — decisão deliberada (mesmo
+  comportamento esperado de um filtro de dashboard de verdade: buscar
+  "tênis" já atualiza faturamento/lucro/margem/contagem só dos 2
+  produtos encontrados, não os 50). `totalsFor` ganhou uma guarda
+  `products.length === 0 ? 0 : ...` na média de margem — sem isso, uma
+  busca sem resultado nenhum dividiria por zero (`NaN%` visível na UI).
+- **Toolbar fora de `.pricing-dashboard-mockup__panel`, de propósito**
+  — como busca/view são estado compartilhado entre as 3 abas, o
+  controle fica uma vez só, direto no slot default de `TabBar` (que
+  renderiza depois da lista de abas, antes dos `TabsContent`) — nunca
+  duplicado 3x dentro de cada painel (o que criaria 3 `<input>` bound
+  ao mesmo `ref`, redundante e confuso).
+- **Tabela reaproveita `DataTable.vue`** (mesmo bloco genérico de toda
+  listagem admin do projeto) — os 8 segmentos viram COLUNA em vez de
+  segmento de barra (`toTableRow()` achata `product.segments[]` pra
+  propriedades diretas do tipo `ProductTableRow`, isolando o único
+  cast do arquivo — `Record<SegmentKey, number>` — na mesma função,
+  mesmo padrão já documentado em `DataTable.vue`/`getCellValue`).
+  Slot dinâmico `#[`cell-${key}`]` (um `<template v-for>` por segmento)
+  cobre as 8 colunas de valor sem repetir 8 blocos de template quase
+  idênticos. `PencilSimpleLine` colado ao nome na coluna "Produto"
+  espelha o mesmo botão da visão em barra; coluna "Preço sugerido"
+  reúne preço+margem+copy+`Storefront`, mesmo trio já usado na visão em
+  barra.
+- **Botão de copiar** (`copySuggestedPrice`, `CopySimple` ghost) —
+  `navigator.clipboard.writeText(formatMoney(price))` + toast de
+  sucesso/erro via `useToast()`; presente nas DUAS views (bar: entre o
+  preço e o `Storefront` da linha; tabela: dentro da célula "Preço
+  sugerido", mesma posição relativa). Sem fallback de
+  `document.execCommand('copy')` (API descontinuada) — o `catch` só
+  cobre o caso raro de permissão de clipboard negada pelo browser.
+- Verificado em browser real, com permissão de clipboard concedida ao
+  contexto do Playwright: alternar pra tabela renderiza as 50 linhas
+  com as 9 colunas corretas (8 segmentos + preço sugerido); clicar
+  "Copiar" nas duas views escreve o valor formatado certo
+  (`navigator.clipboard.readText()` confirmando `"R$ 29,90"`) e mostra
+  o toast "Preço copiado para a área de transferência."; buscar "tênis"
+  reduz as 50 linhas pra 2 (`Tênis esportivo leve`/`Tênis de corrida`)
+  nas DUAS views, o KPI "Produtos" acompanha (50→2), e o filtro
+  PERSISTE ao trocar de view (mesmo `ref` compartilhado); busca sem
+  nenhum resultado mostra o estado vazio, sem `NaN%` no KPI de margem;
+  tabela com 9 colunas rola horizontalmente dentro do próprio wrapper
+  (`overflow-x: auto` do `DataTable.vue`) sem nunca estourar a largura
+  da PÁGINA (`document.documentElement.scrollWidth -
+  document.documentElement.clientWidth` confirmado em `0`).
+
 ## Do's and Don'ts
 
 ### Do
@@ -4679,12 +4917,13 @@ Media queries sempre `min-width` (mobile-first) — sem exceção.
   um dashboard — nenhuma tela usa `display-lg`/`display-sm` ainda, então o
   encaixe real só se confirma quando uma tela precisar de um KPI grande de
   verdade.
-- **Sem componente de card/tabela/badge ainda**: o dashboard de
-  precificação (Fase 4 de `docs/planejamento/plano-implementacao.md`) é o
-  primeiro lugar que vai exigir isso — os tokens de `rounded`/`spacing`
-  reservados (16, 24...) esperam por eles. Categorização micro/macro e
-  ordem de construção de todo o catálogo (não só card/tabela/badge) em
-  `docs/design/catalogo-componentes.md`.
+- **Gap "sem card/tabela/badge" — RESOLVIDO há tempos, bullet ficou
+  esquecido aqui**: `Badge`/`DataTable`/`StatCard`/o padrão de "seção com
+  borda" (`{radius.16}`) já existem e são usados extensivamente desde as
+  Fases 1-9. A dashboard de precificação real (Fase 4) continua sem
+  implementar — `PricingCalculator` nunca foi conectado a rota nenhuma —
+  mas já tem um primeiro rascunho VISUAL mockado (`PricingDashboardMockupView.vue`,
+  seção própria acima, 2026-09-02), sem dado real ainda.
 - **Os quase 2600 ícones gerados não foram revisados um a um
   visualmente** — a estrutura é uniforme e validada programaticamente
   (todo `<path>`/`<circle>` extraído, `fill` trocado por `currentColor`

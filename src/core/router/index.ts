@@ -23,6 +23,16 @@ const routes: RouteRecordRaw[] = [
         name: 'showcase',
         path: 'showcase',
       },
+      {
+        // Mockup visual da futura dashboard de precificação (Fase 4),
+        // pedido direto do usuário em 2026-09-02 — rota isolada, fora da
+        // navegação principal, sem chamada de API. Ver
+        // `PricingDashboardMockupView.vue`.
+        component: () => import('@/shared/views/PricingDashboardMockupView.vue'),
+        meta: { title: 'pricingDashboardMockup.title' },
+        name: 'pricing-dashboard-mockup',
+        path: 'pricing-dashboard-mockup',
+      },
       ...catalogRoutes,
       ...identityAppRoutes,
       ...billingAppRoutes,

@@ -1247,6 +1247,44 @@ export default {
       unlinkSuccess: 'Marketplace desvinculado com sucesso.',
     },
   },
+  pricingDashboardMockup: {
+    copyPriceButton: 'Copiar preço sugerido',
+    editConnectionButton: 'Editar vínculo do marketplace',
+    kpis: {
+      averageMargin: 'Margem média',
+      productCount: 'Produtos',
+      totalProfit: 'Lucro total',
+      totalRevenue: 'Faturamento total',
+    },
+    notice:
+      'Mockup visual, sem dado real — a dashboard de precificação de verdade ainda não foi implementada (Fase 4).',
+    priceCopied: 'Preço copiado para a área de transferência.',
+    priceCopyFailed: 'Não foi possível copiar o preço.',
+    searchPlaceholder: 'Buscar produto por nome...',
+    segments: {
+      ads: 'Ads',
+      campaignDiscount: 'Comissão campanha',
+      commission: 'Comissão',
+      costPrice: 'Valor pago',
+      fixedFee: 'Fixo',
+      operational: 'Operacional',
+      profit: 'Lucro',
+      tax: 'Imposto',
+    },
+    table: {
+      columns: {
+        product: 'Produto',
+        suggestedPrice: 'Preço sugerido',
+      },
+      empty: 'Nenhum produto encontrado.',
+    },
+    title: 'Precificação',
+    viewModes: {
+      bar: 'Ver em barras',
+      table: 'Ver em tabela',
+    },
+    viewToggleLabel: 'Alternar visualização',
+  },
   showcase: {
     title: 'Vitrine de componentes',
   },
