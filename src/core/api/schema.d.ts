@@ -1505,6 +1505,9 @@ export interface components {
             /** Format: uuid */
             marketplace_id: string;
             store_name: string;
+            ads_percentage?: number | null;
+            campaign_discount_percentage?: number | null;
+            affiliate_percentage?: number | null;
         };
         /** DisputeTicketRequest */
         DisputeTicketRequest: {
@@ -1932,6 +1935,9 @@ export interface components {
         UpdateUserMarketplaceRequest: {
             store_name?: string;
             active?: boolean;
+            ads_percentage?: number | null;
+            campaign_discount_percentage?: number | null;
+            affiliate_percentage?: number | null;
         };
         /** UpdateUserProfileRequest */
         UpdateUserProfileRequest: {
@@ -1953,6 +1959,13 @@ export interface components {
             marketplace_id: string;
             store_name: string;
             active: boolean;
+            /**
+             * @description Percentual como string (fundamentos-api.md §4) — já vem string
+             *     do cast decimal:2 do Model.
+             */
+            ads_percentage: string | null;
+            campaign_discount_percentage: string | null;
+            affiliate_percentage: string | null;
             /** Format: date-time */
             created_at: string | null;
         };

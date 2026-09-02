@@ -1,16 +1,18 @@
 <script setup lang="ts">
 /**
- * Coleta `store_name` pra conectar (create) OU editar (update) uma
- * conexão — mesmo padrão de `DocumentPromptModal.vue` (Billing): reset
- * do form disparado por um `watch(open, ...)`, não pelo `defineProps`
- * direto (o modal é reaproveitado pro grid INTEIRO de cards,
- * `MarketplacesView.vue` só troca as props antes de abrir).
+ * Coleta `store_name` + os 3 percentuais informativos por canal (tarefa
+ * 65) pra conectar (create) OU editar (update) uma conexão — mesmo
+ * padrão de `DocumentPromptModal.vue` (Billing): reset do form
+ * disparado por um `watch(open, ...)`, não pelo `defineProps` direto (o
+ * modal é reaproveitado pro grid INTEIRO de cards, `MarketplacesView.vue`
+ * só troca as props antes de abrir).
  */
 import { watch } from 'vue'
 import FormGroup from '@/shared/components/blocks/FormGroup.vue'
 import Button from '@/shared/components/ui/Button.vue'
 import Input from '@/shared/components/ui/Input.vue'
 import Modal from '@/shared/components/ui/Modal.vue'
+import { useNumberFieldModel } from '@/shared/composables/useNumberFieldModel'
 import { useUserMarketplaceForm } from '../../composables/useUserMarketplaceForm'
 import type { UserMarketplace } from '../../types/userMarketplace.type'
 
@@ -26,6 +28,14 @@ const emit = defineEmits<{ saved: [connection: UserMarketplace] }>()
 const open = defineModel<boolean>({ default: false })
 
 const { errors, isSubmitting, reset, submit, values } = useUserMarketplaceForm()
+
+const adsPercentageInput = useNumberFieldModel(values, 'adsPercentage', { nullable: true })
+const campaignDiscountPercentageInput = useNumberFieldModel(values, 'campaignDiscountPercentage', {
+  nullable: true,
+})
+const affiliatePercentageInput = useNumberFieldModel(values, 'affiliatePercentage', {
+  nullable: true,
+})
 
 /**
  * Achado real, 2026-08-31: sem `immediate: true`, a PRIMEIRA vez que
@@ -78,16 +88,56 @@ async function handleSubmit(): Promise<void> {
         : $t('pricing.marketplaces.connectModal.editTitle', { name: marketplaceName })
     "
   >
-    <FormGroup
-      :error="errors.storeName"
-      :label="$t('pricing.marketplaces.connectModal.fields.storeName')"
-    >
-      <Input
-        v-model="values.storeName"
-        :invalid="Boolean(errors.storeName)"
-        @keyup.enter="handleSubmit"
-      />
-    </FormGroup>
+    <div class="connect-marketplace-modal__fields">
+      <FormGroup
+        :error="errors.storeName"
+        :label="$t('pricing.marketplaces.connectModal.fields.storeName')"
+      >
+        <Input
+          v-model="values.storeName"
+          :invalid="Boolean(errors.storeName)"
+          @keyup.enter="handleSubmit"
+        />
+      </FormGroup>
+
+      <FormGroup
+        :error="errors.adsPercentage"
+        :label="$t('pricing.marketplaces.connectModal.fields.adsPercentage')"
+        :label-tooltip="$t('pricing.marketplaces.connectModal.tooltips.adsPercentage')"
+      >
+        <Input
+          v-model="adsPercentageInput"
+          :invalid="Boolean(errors.adsPercentage)"
+          type="number"
+        />
+      </FormGroup>
+
+      <FormGroup
+        :error="errors.campaignDiscountPercentage"
+        :label="$t('pricing.marketplaces.connectModal.fields.campaignDiscountPercentage')"
+        :label-tooltip="
+          $t('pricing.marketplaces.connectModal.tooltips.campaignDiscountPercentage')
+        "
+      >
+        <Input
+          v-model="campaignDiscountPercentageInput"
+          :invalid="Boolean(errors.campaignDiscountPercentage)"
+          type="number"
+        />
+      </FormGroup>
+
+      <FormGroup
+        :error="errors.affiliatePercentage"
+        :label="$t('pricing.marketplaces.connectModal.fields.affiliatePercentage')"
+        :label-tooltip="$t('pricing.marketplaces.connectModal.tooltips.affiliatePercentage')"
+      >
+        <Input
+          v-model="affiliatePercentageInput"
+          :invalid="Boolean(errors.affiliatePercentage)"
+          type="number"
+        />
+      </FormGroup>
+    </div>
 
     <template #footer>
       <Button variant="outline" @click="open = false">
@@ -103,3 +153,13 @@ async function handleSubmit(): Promise<void> {
     </template>
   </Modal>
 </template>
+
+<style scoped lang="scss">
+@use '@/core/styles/variables' as *;
+
+.connect-marketplace-modal__fields {
+  display: flex;
+  flex-direction: column;
+  gap: $spacing-16;
+}
+</style>

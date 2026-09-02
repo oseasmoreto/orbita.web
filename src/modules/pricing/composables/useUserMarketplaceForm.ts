@@ -8,20 +8,42 @@ import { createUserMarketplace, updateUserMarketplace } from '../services/pricin
 import type { UserMarketplace } from '../types/userMarketplace.type'
 
 function emptyFormValues(): UserMarketplaceFormValues {
-  return { marketplaceId: '', storeName: '' }
+  return {
+    adsPercentage: null,
+    affiliatePercentage: null,
+    campaignDiscountPercentage: null,
+    marketplaceId: '',
+    storeName: '',
+  }
 }
 
 function toFormValues(connection: UserMarketplace): UserMarketplaceFormValues {
-  return { marketplaceId: connection.marketplaceId, storeName: connection.storeName }
+  return {
+    adsPercentage: connection.adsPercentage === null ? null : Number(connection.adsPercentage),
+    affiliatePercentage:
+      connection.affiliatePercentage === null ? null : Number(connection.affiliatePercentage),
+    campaignDiscountPercentage:
+      connection.campaignDiscountPercentage === null
+        ? null
+        : Number(connection.campaignDiscountPercentage),
+    marketplaceId: connection.marketplaceId,
+    storeName: connection.storeName,
+  }
 }
 
 function toRequestPayload(values: UserMarketplaceFormValues) {
-  return { marketplace_id: values.marketplaceId, store_name: values.storeName }
+  return {
+    ads_percentage: values.adsPercentage,
+    affiliate_percentage: values.affiliatePercentage,
+    campaign_discount_percentage: values.campaignDiscountPercentage,
+    marketplace_id: values.marketplaceId,
+    store_name: values.storeName,
+  }
 }
 
 /**
- * Formulário único pra conectar (create) E editar o nome da loja (update)
- * de uma conexão — em cima de `useResourceForm`, mesmo padrão dos demais
+ * Formulário único pra conectar (create) E editar (update) uma conexão —
+ * em cima de `useResourceForm`, mesmo padrão dos demais
  * `use<Recurso>Form.ts`. `marketplaceId` é PARTE dos valores do form (não
  * fixo via parâmetro do composable, diferente de `useProductLaunchForm`)
  * porque uma única instância deste composable é reaproveitada pro grid
@@ -29,6 +51,15 @@ function toRequestPayload(values: UserMarketplaceFormValues) {
  * marketplace diferente, então o alvo do CREATE muda a cada abertura do
  * modal (`ConnectMarketplaceModal.vue` seta `values.marketplaceId` antes
  * de abrir), nunca fixo pra vida toda do composable.
+ *
+ * `adsPercentage`/`affiliatePercentage`/`campaignDiscountPercentage`
+ * (tarefa 65) — editáveis nos dois modos, `update()` manda os 3 junto do
+ * `store_name` (diferente da versão anterior, que só mandava
+ * `store_name` no PATCH). `marketplace_id` continua fora do PATCH de
+ * propósito — `UpdateUserMarketplaceRequest` real do backend nem aceita
+ * esse campo (não dá pra trocar o marketplace de uma conexão já
+ * existente), só entra no payload de `toRequestPayload` porque o CREATE
+ * precisa dele.
  */
 export function useUserMarketplaceForm() {
   const { t } = useI18n()
@@ -48,6 +79,11 @@ export function useUserMarketplaceForm() {
     toFormValues,
     toRequestPayload,
     update: (existing, payload) =>
-      updateUserMarketplace(existing.id, { store_name: payload.store_name }),
+      updateUserMarketplace(existing.id, {
+        ads_percentage: payload.ads_percentage,
+        affiliate_percentage: payload.affiliate_percentage,
+        campaign_discount_percentage: payload.campaign_discount_percentage,
+        store_name: payload.store_name,
+      }),
   })
 }

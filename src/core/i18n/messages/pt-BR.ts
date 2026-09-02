@@ -1180,13 +1180,24 @@ export default {
         connectTitle: 'Conectar {name}',
         editTitle: 'Editar conexão — {name}',
         errors: {
+          percentageMax: 'Percentual não pode passar de 100%.',
+          percentageMin: 'Percentual não pode ser negativo.',
           storeNameRequired: 'Nome da loja é obrigatório.',
         },
         fields: {
+          adsPercentage: '% investido em ads',
+          affiliatePercentage: '% pago a afiliados',
+          campaignDiscountPercentage: '% de desconto em campanhas',
           storeName: 'Nome da loja',
         },
         submitConnect: 'Conectar',
         submitSave: 'Salvar alterações',
+        tooltips: {
+          adsPercentage: 'Percentual investido em ads/publicidade paga neste canal.',
+          affiliatePercentage: 'Percentual pago a afiliados nas vendas feitas neste canal.',
+          campaignDiscountPercentage:
+            'Percentual de desconto que você aplica em campanhas promocionais neste canal.',
+        },
         updateSuccess: 'Conexão atualizada com sucesso.',
       },
       disconnectConfirm: {

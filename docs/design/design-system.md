@@ -4007,6 +4007,42 @@ sempre um link do próprio storage do backend, nunca mais externo. Zero
 mudança nesta view: ela só lê `card.marketplace.logoUrl` pra exibir,
 nunca soube ou precisou saber de onde a imagem veio.
 
+### ConnectMarketplaceModal (`modules/pricing/components/blocks/ConnectMarketplaceModal.vue`)
+
+**3 percentuais informativos por canal, 2026-09-02 (tarefa 65 de
+`docs/api/ordem-de-implementacao.md` no repo `backend`)** —
+`adsPercentage`/`campaignDiscountPercentage`/`affiliatePercentage`
+(todos nullable, editáveis no CREATE e no UPDATE) adicionados ao mesmo
+modal de conectar/editar conexão, cada um com `FormGroup`'s
+`labelTooltip` (seção FormGroup, extraído originalmente pro pedido de
+`ProductForm.vue`) explicando o que representa — mesmo pedido direto do
+usuário ("adicionar tooltip nos 3 campos novos... explicando o que cada
+um significa").
+
+- **Achado real de layout**: até então o modal só tinha 1 `FormGroup`
+  (`storeName`) direto no slot default — `.ui-modal-body` não tem
+  `gap`/`flex-column` próprio (só um `<div>` normal), então 4
+  `FormGroup` empilhados ficariam colados sem respiro nenhum entre si.
+  Corrigido envolvendo os 4 num wrapper local
+  (`.connect-marketplace-modal__fields`, `display:flex;
+  flex-direction:column; gap:{spacing.16}`) — mesma técnica já usada em
+  `AdminCategoryMarketplaceForm.vue`/`ProductForm.vue` pra esse mesmo
+  problema.
+- `useNumberFieldModel(values, <campo>, { nullable: true })` pros 3 —
+  mesmo padrão já usado em `PRODUCT.weight`/`height`/`width`/`length`
+  (campo numérico opcional, string vazia vira `null`, nunca `0`).
+- **`update()` (`useUserMarketplaceForm.ts`) passou a mandar os 3 campos
+  no PATCH** (antes só mandava `store_name`) — `marketplace_id` continua
+  de fora do payload de update de propósito (`UpdateUserMarketplaceRequest`
+  real do backend nem aceita esse campo, não dá pra trocar o marketplace
+  de uma conexão já existente).
+- Verificado em browser real contra o backend local: conectar um
+  marketplace preenchendo os 3 campos grava os valores corretos
+  (conferido no banco, `8.50`/`12.00`/`3.00`); reabrir a mesma conexão
+  em modo edição mostra os valores prefilidos; editar e salvar
+  (`20` no campo de ads) atualiza corretamente; hover no ícone de
+  tooltip mostra o texto explicativo certo pros 3 campos.
+
 ### ProductMarketplacesView (`modules/pricing/views/ProductMarketplacesView.vue`)
 
 Rota própria (`/products/:id/marketplaces`), não uma aba — decisão de

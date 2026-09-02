@@ -139,10 +139,17 @@ erDiagram
         uuid marketplace_id FK
         string store_name
         boolean active
+        decimal ads_percentage
+        decimal campaign_discount_percentage
+        decimal affiliate_percentage
         timestamp created_at
         timestamp updated_at
     }
     %% unique (user_id, marketplace_id): 1 conta por marketplace por usuário
+    %% ads_percentage/campaign_discount_percentage/affiliate_percentage
+    %% (nullable, novos em 2026-09-02): percentual informativo por canal,
+    %% editável ao conectar e depois, ainda sem uso em nenhuma regra de
+    %% precificação
 
     PRICING_RULE {
         uuid id PK

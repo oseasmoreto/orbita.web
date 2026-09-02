@@ -8,9 +8,22 @@ import { z } from 'zod'
  * de `TValues`), mas nunca é digitado pelo usuário — sempre setado pelo
  * próprio código ao abrir o modal de conectar (`ConnectMarketplaceModal.vue`),
  * por isso sem mensagem de erro própria.
+ *
+ * `adsPercentage`/`campaignDiscountPercentage`/`affiliatePercentage`
+ * (tarefa 65) — todos opcionais/nullable, 0-100.
  */
 export function createUserMarketplaceFormSchema(t: (key: string) => string) {
+  const percentageField = () =>
+    z
+      .number()
+      .min(0, t('pricing.marketplaces.connectModal.errors.percentageMin'))
+      .max(100, t('pricing.marketplaces.connectModal.errors.percentageMax'))
+      .nullable()
+
   return z.object({
+    adsPercentage: percentageField(),
+    affiliatePercentage: percentageField(),
+    campaignDiscountPercentage: percentageField(),
     marketplaceId: z.string(),
     storeName: z.string().min(1, t('pricing.marketplaces.connectModal.errors.storeNameRequired')),
   })

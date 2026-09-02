@@ -2,20 +2,56 @@ import { createUserMarketplaceFormSchema } from '@/modules/pricing/schemas/userM
 
 const userMarketplaceFormSchema = createUserMarketplaceFormSchema((key) => key)
 
+const validPayload = {
+  adsPercentage: null,
+  affiliatePercentage: null,
+  campaignDiscountPercentage: null,
+  marketplaceId: 'marketplace-1',
+  storeName: 'Minha Loja',
+}
+
 describe('userMarketplaceFormSchema', () => {
-  it('accepts a valid payload', () => {
-    const result = userMarketplaceFormSchema.safeParse({
-      marketplaceId: 'marketplace-1',
-      storeName: 'Minha Loja',
-    })
-    expect(result.success).toBe(true)
+  it('accepts a valid payload with all percentage fields null', () => {
+    expect(userMarketplaceFormSchema.safeParse(validPayload).success).toBe(true)
   })
 
   it('rejects a missing store name', () => {
-    const result = userMarketplaceFormSchema.safeParse({
-      marketplaceId: 'marketplace-1',
-      storeName: '',
-    })
-    expect(result.success).toBe(false)
+    expect(userMarketplaceFormSchema.safeParse({ ...validPayload, storeName: '' }).success).toBe(
+      false,
+    )
+  })
+
+  it('accepts a real value for each percentage field', () => {
+    expect(
+      userMarketplaceFormSchema.safeParse({
+        ...validPayload,
+        adsPercentage: 12.5,
+        affiliatePercentage: 3,
+        campaignDiscountPercentage: 10,
+      }).success,
+    ).toBe(true)
+  })
+
+  it('rejects a negative percentage', () => {
+    expect(
+      userMarketplaceFormSchema.safeParse({ ...validPayload, adsPercentage: -1 }).success,
+    ).toBe(false)
+  })
+
+  it('rejects a percentage above 100', () => {
+    expect(
+      userMarketplaceFormSchema.safeParse({ ...validPayload, affiliatePercentage: 101 }).success,
+    ).toBe(false)
+  })
+
+  it('accepts a percentage of exactly 0 and exactly 100', () => {
+    expect(
+      userMarketplaceFormSchema.safeParse({ ...validPayload, campaignDiscountPercentage: 0 })
+        .success,
+    ).toBe(true)
+    expect(
+      userMarketplaceFormSchema.safeParse({ ...validPayload, campaignDiscountPercentage: 100 })
+        .success,
+    ).toBe(true)
   })
 })
