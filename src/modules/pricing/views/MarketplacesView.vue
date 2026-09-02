@@ -136,6 +136,10 @@ async function handleDisconnect(): Promise<void> {
 
     <div class="marketplaces-view__grid">
       <div v-for="card in connections.cards.value" :key="card.marketplace.id" class="marketplaces-view__card">
+        <div v-if="card.marketplace.comingSoon" class="marketplaces-view__card-ribbon">
+          {{ $t('pricing.marketplaces.comingSoonBadge') }}
+        </div>
+
         <div class="marketplaces-view__card-header">
           <MarketplaceLogo :logo-url="card.marketplace.logoUrl" :name="card.marketplace.name" :size="48" />
 
@@ -170,7 +174,7 @@ async function handleDisconnect(): Promise<void> {
           <div class="marketplaces-view__card-actions">
             <Button
               v-if="!card.connection"
-              :disabled="marketplaceLimit.isLimitReached.value"
+              :disabled="marketplaceLimit.isLimitReached.value || card.marketplace.comingSoon"
               :icon-before="ArrowsDownUp"
               variant="outline"
               @click="openConnect(card)"
@@ -258,13 +262,36 @@ async function handleDisconnect(): Promise<void> {
 }
 
 .marketplaces-view__card {
+  position: relative;
   display: flex;
   flex-direction: column;
   gap: $spacing-8;
   padding: $spacing-16;
+  overflow: hidden;
   background-color: $color-bg-1;
   border: 1px solid $color-ink-10;
   border-radius: $radius-16;
+}
+
+// "Tarja" no topo do card, não uma tag solta perto do título (pedido
+// direto do usuário — a versão anterior, um `Badge` cinza ao lado do
+// nome, "parecia só uma tag do canal", igual às tags de categoria logo
+// abaixo). Sangra até as bordas do card via margem negativa (mesma
+// técnica de `logo_url`/preview de outros forms) — o `overflow: hidden`
+// do card corta os 2 cantos de cima da tarja de volta pro `{radius.16}`
+// do próprio card, sem precisar de `border-radius` duplo calculado à
+// mão. Fundo tingido (`color-mix`, mesma técnica de `StatusDot`
+// `variant="pill"`) em vez de cor sólida — mantém a mesma linguagem de
+// "acento pastel, nunca decorativo" do resto do design system, não uma
+// cor saturada gritando por cima do card.
+.marketplaces-view__card-ribbon {
+  padding: $spacing-4 $spacing-16;
+  margin: calc(-1 * #{$spacing-16}) calc(-1 * #{$spacing-16}) 0;
+  font-size: $font-size-xs;
+  font-weight: $font-weight-semibold;
+  color: $color-accent-yellow;
+  text-align: center;
+  background-color: color-mix(in srgb, $color-accent-yellow 20%, transparent);
 }
 
 .marketplaces-view__card-header {

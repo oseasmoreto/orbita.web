@@ -13,8 +13,16 @@ type AdminMarketplaceResource = components['schemas']['AdminMarketplaceResource'
  * `Resource`, só em `Request` — `CreateMarketplaceRequest.tags` já é
  * `string[]` corretamente) — cast seguro aqui porque o backend confirma
  * que é sempre array de string.
+ *
+ * `comingSoon` (tarefa 66, 2026-09-02) — ortogonal a `active`: um
+ * marketplace "em breve" continua aparecendo em `GET /marketplaces`
+ * (a listagem que alimenta o grid de conectar), só não pode ser
+ * conectado ainda (`POST /user-marketplaces` recusa com
+ * `errorMessageMarketplaceComingSoon`) — `MarketplacesView.vue` já
+ * desabilita o botão antes de tentar.
  */
 export interface MarketplaceFields {
+  comingSoon: boolean
   description: string | null
   logoUrl: string | null
   tags: string[] | null
@@ -22,12 +30,14 @@ export interface MarketplaceFields {
 }
 
 function toMarketplaceFields(resource: {
+  coming_soon: boolean
   description: string | null
   logo_url: string | null
   tags: unknown[] | null
   website_url: string | null
 }): MarketplaceFields {
   return {
+    comingSoon: resource.coming_soon,
     description: resource.description,
     logoUrl: resource.logo_url,
     tags: resource.tags as string[] | null,

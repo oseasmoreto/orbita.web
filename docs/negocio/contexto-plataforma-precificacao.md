@@ -35,7 +35,7 @@ usuário se cadastra → assina um plano → paga → acessa o sistema → cadas
 
 ### 2.4 Marketplaces e precificação
 
-- **`MARKETPLACE`** — cadastro do canal de venda (Shopee, TikTok, Amazon, ML etc.), mantido pelo admin.
+- **`MARKETPLACE`** — cadastro do canal de venda (Shopee, TikTok, Amazon, ML etc.), mantido pelo admin. `coming_soon` (boolean, default `false`, **novo em 2026-09-02**) — ortogonal a `active`: um marketplace "em breve" continua aparecendo em `GET /marketplaces`, só não pode ser conectado ainda (`POST /user-marketplaces` recusa com `errorMessageMarketplaceComingSoon`).
 - **`PRICING_RULE`** — regras de cobrança do marketplace, por faixa de valor: `range_min`, `range_max`, `percentage`, `fixed_fee`, `order`. Permite quantas faixas forem necessárias por marketplace (ex.: até R$40 → 20% + R$4; acima de R$40 → 40% + R$10).
 - **`USER_MARKETPLACE`** — vínculo do usuário com um marketplace (a "conta/loja" dele naquele canal). É essa entidade que limita quais marketplaces um produto pode ser vinculado. `ads_percentage`/`campaign_discount_percentage`/`affiliate_percentage` (todos nullable, **novos em 2026-09-02**) — percentual informativo por canal (investido em ads, desconto de campanha, comissão de afiliado), editável tanto ao conectar quanto depois, ainda sem uso em nenhuma regra de precificação (mesmo status de `PRODUCT.operational_cost`/`COMPANY.sales_tax_percentage`).
 - **`PRODUCT_MARKETPLACE`** — vínculo do produto com um `USER_MARKETPLACE` (não com o marketplace direto — isso garante que só é possível vincular produto a um marketplace que o próprio usuário já conectou). **Decisão 2026-08-26**: nesta rodada é um vínculo puro (`product_id` + `user_marketplace_id`), sem `suggested_price`/`is_approximated` — o cálculo de preço sugerido (`PricingCalculator`, já existente e testado isoladamente, nunca conectado a rota nenhuma) fica pra uma tela/tabela futura, ainda não desenhada. Só é possível criar o vínculo se o `USER_MARKETPLACE` referenciado estiver `active`. `category_id` (nullable, **novo em 2026-09-02**) — nem todo marketplace cobra por categoria, e vínculos antigos não têm categoria nenhuma; só aceita uma categoria que já tenha comissão configurada especificamente pra aquele marketplace (`CATEGORY_MARKETPLACE`). Sem `PATCH` pra trocar só a categoria — trocar é sempre `DELETE`+`POST` de novo, mesmo padrão de trocar de marketplace.
@@ -182,9 +182,23 @@ erDiagram
         uuid id PK
         string name
         boolean active
+        boolean coming_soon
+        string logo_url
+        string description
+        json tags
+        string website_url
         timestamp created_at
         timestamp updated_at
     }
+    %% logo_url/description/tags/website_url nullable — cadastro visual pra
+    %% tela de conectar marketplace. tags é array simples (json), sem
+    %% entidade própria tipo MARKETPLACE_TAG. logo_url NUNCA aceita link
+    %% externo — o admin manda a imagem em base64, o backend
+    %% decodifica/valida/hospeda no disco 'public' do Laravel e persiste a
+    %% URL PRÓPRIA aqui.
+    %% coming_soon (default false, novo em 2026-09-02): ortogonal a
+    %% active — continua aparecendo em GET /marketplaces, só não pode ser
+    %% conectado ainda.
 
     USER_MARKETPLACE {
         uuid id PK
@@ -357,6 +371,7 @@ erDiagram
 - **Produto só vincula a marketplace conectado**: `PRODUCT_MARKETPLACE` referencia `USER_MARKETPLACE` (não `MARKETPLACE` direto), garantindo que o vínculo só existe dentro de um canal que o próprio usuário já conectou. O `USER_MARKETPLACE` referenciado precisa estar `active` no momento do vínculo — desativar a conexão depois (`active = false`) bloqueia NOVOS vínculos, mas não desfaz os já existentes (decisão 2026-08-26).
 - **Uma conta por marketplace por usuário**: `USER_MARKETPLACE` tem unique `(user_id, marketplace_id)` — não há suporte a múltiplas lojas do mesmo usuário no mesmo canal no MVP.
 - **Configuração de marketplace é restrita ao admin**: apenas `admin_master` cadastra marketplaces e suas `PRICING_RULE`.
+- **Marketplace "em breve" bloqueia conexão (novo em 2026-09-02)**: `MARKETPLACE.coming_soon` é ortogonal a `active` — continua aparecendo na listagem de conectar, só não pode receber uma `USER_MARKETPLACE` nova enquanto `coming_soon: true`.
 - **Acesso é controlado só por `role`**: `admin_master` gerencia marketplaces/planos, `user` opera o próprio catálogo — sem granularidade por tela/grupo no MVP (ver seção 6). O limite por plano (`max_products`/`max_marketplaces`) é numérico, validado na Action, não visibilidade de tela.
 - **Aplicação do preço é manual (MVP)**: `suggested_price` é informativo — o vendedor copia o valor e atualiza manualmente no marketplace. Integração automática via API do marketplace (exigindo credenciais em `USER_MARKETPLACE`) fica fora do escopo do MVP.
 - **1 login = 1 assinatura**: não há suporte a múltiplos usuários dentro de uma mesma assinatura (conta compartilhada/time) no MVP.

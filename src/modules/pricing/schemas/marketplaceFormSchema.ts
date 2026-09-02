@@ -22,6 +22,7 @@ import { z } from 'zod'
 export function createMarketplaceFormSchema(t: (key: string) => string) {
   return z.object({
     active: z.boolean(),
+    comingSoon: z.boolean(),
     description: z.string().nullable(),
     logoBase64: z.string().nullable(),
     name: z.string().min(1, t('pricing.admin.marketplaces.form.errors.nameRequired')),

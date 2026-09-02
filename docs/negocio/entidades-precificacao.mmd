@@ -129,9 +129,23 @@ erDiagram
         uuid id PK
         string name
         boolean active
+        boolean coming_soon
+        string logo_url
+        string description
+        json tags
+        string website_url
         timestamp created_at
         timestamp updated_at
     }
+    %% logo_url/description/tags/website_url nullable — cadastro visual pra
+    %% tela de conectar marketplace. tags é array simples (json), sem
+    %% entidade própria tipo MARKETPLACE_TAG. logo_url NUNCA aceita link
+    %% externo — o admin manda a imagem em base64, o backend
+    %% decodifica/valida/hospeda no disco 'public' do Laravel e persiste a
+    %% URL PRÓPRIA aqui.
+    %% coming_soon (default false, novo em 2026-09-02): ortogonal a
+    %% active — continua aparecendo em GET /marketplaces, só não pode ser
+    %% conectado ainda.
 
     USER_MARKETPLACE {
         uuid id PK

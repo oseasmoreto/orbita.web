@@ -479,6 +479,7 @@ export default {
    * `docs/infra/convencoes-frontend-infra.md`).
    */
   errorMessageMarketplaceAlreadyConnected: 'Você já conectou esse marketplace.',
+  errorMessageMarketplaceComingSoon: 'Esse marketplace ainda não está disponível pra conectar.',
   errorMessageMarketplaceHasConnections:
     'Esse marketplace tem conexões de usuários — desative em vez de excluir.',
   errorMessageMarketplaceLimitReached:
@@ -1068,6 +1069,7 @@ export default {
           fields: {
             active: 'Marketplace ativo',
             chooseLogo: 'Escolher arquivo',
+            comingSoon: 'Em breve (bloqueia conexão de novos usuários)',
             description: 'Descrição',
             logo: 'Logo',
             name: 'Nome',
@@ -1174,6 +1176,7 @@ export default {
     },
     marketplaces: {
       activateSuccess: 'Conexão reativada com sucesso.',
+      comingSoonBadge: 'Em breve',
       connectButton: 'Conectar',
       connectModal: {
         connectSuccess: 'Marketplace conectado com sucesso.',

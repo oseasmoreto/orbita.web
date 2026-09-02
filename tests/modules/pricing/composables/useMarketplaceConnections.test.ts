@@ -3,6 +3,7 @@ import type { Marketplace } from '@/modules/pricing/types/marketplace.type'
 import type { UserMarketplace } from '@/modules/pricing/types/userMarketplace.type'
 
 const shopee: Marketplace = {
+  comingSoon: false,
   description: null,
   id: 'mkt-1',
   logoUrl: null,
@@ -11,6 +12,7 @@ const shopee: Marketplace = {
   websiteUrl: null,
 }
 const amazon: Marketplace = {
+  comingSoon: false,
   description: null,
   id: 'mkt-2',
   logoUrl: null,

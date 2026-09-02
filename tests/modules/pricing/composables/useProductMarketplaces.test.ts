@@ -8,6 +8,7 @@ import type { ProductMarketplace } from '@/modules/pricing/types/productMarketpl
 import type { UserMarketplace } from '@/modules/pricing/types/userMarketplace.type'
 
 const shopee: Marketplace = {
+  comingSoon: false,
   description: null,
   id: 'mkt-1',
   logoUrl: 'https://example.com/shopee-logo.png',
@@ -16,6 +17,7 @@ const shopee: Marketplace = {
   websiteUrl: null,
 }
 const amazon: Marketplace = {
+  comingSoon: false,
   description: null,
   id: 'mkt-2',
   logoUrl: null,

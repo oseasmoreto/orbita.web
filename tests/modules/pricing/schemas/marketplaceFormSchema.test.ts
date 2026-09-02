@@ -4,6 +4,7 @@ const marketplaceFormSchema = createMarketplaceFormSchema((key) => key)
 
 const validPayload = {
   active: true,
+  comingSoon: false,
   description: null,
   logoBase64: null,
   name: 'Shopee',
@@ -22,6 +23,12 @@ describe('marketplaceFormSchema', () => {
 
   it('accepts active: false', () => {
     expect(marketplaceFormSchema.safeParse({ ...validPayload, active: false }).success).toBe(true)
+  })
+
+  it('accepts comingSoon: true', () => {
+    expect(marketplaceFormSchema.safeParse({ ...validPayload, comingSoon: true }).success).toBe(
+      true,
+    )
   })
 
   it('accepts a real description and tags', () => {

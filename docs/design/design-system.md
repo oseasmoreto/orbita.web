@@ -3914,6 +3914,14 @@ antes de entrar em `values.logoBase64`.
   aponta pro storage do próprio backend (`/storage/marketplaces/logos/<uuid>.<ext>`),
   card em `MarketplacesView.vue` exibe a imagem real servida.
 
+**Toggle "Em breve", 2026-09-02 (tarefa 66 de
+`docs/api/ordem-de-implementacao.md` no repo `backend`)** — 2º `Toggle`,
+logo abaixo de "Marketplace ativo" (`values.comingSoon`, default
+`false`). Ortogonal a `active` de propósito, mesmo raciocínio do backend
+— um marketplace "em breve" continua listado em `GET /marketplaces`
+(`MarketplacesView.vue`), só não pode ser conectado ainda
+(`errorMessageMarketplaceComingSoon`).
+
 ### MarketplaceLogo (`modules/pricing/components/MarketplaceLogo.vue`)
 
 **Extraído em 2026-08-31**, pedido direto do usuário ("adicione os logos
@@ -4006,6 +4014,42 @@ própria abaixo), mas o campo de LEITURA continua `logo_url` — agora
 sempre um link do próprio storage do backend, nunca mais externo. Zero
 mudança nesta view: ela só lê `card.marketplace.logoUrl` pra exibir,
 nunca soube ou precisou saber de onde a imagem veio.
+
+**Tarja "Em breve" + botão de conectar desabilitado, 2026-09-02 (tarefa
+66)** — pedido direto do usuário: "quando `coming_soon: true`, mostrar a
+flag/badge 'em breve' no card... e desabilitar o botão de conectar antes
+mesmo do usuário tentar (o backend já bloqueia, mas fica melhor pro
+usuário ver isso de cara)". Botão "Conectar" ganha
+`card.marketplace.comingSoon` na mesma expressão `:disabled` que já
+cobria o limite de plano (`marketplaceLimit.isLimitReached.value`) —
+front barra ANTES de tentar, defesa client-side pura, o backend continua
+sendo a fonte de verdade real (`errorMessageMarketplaceComingSoon`, 422,
+se alguém contornar).
+
+**Revisão pixel-perfect no mesmo dia, pedido direto do usuário com
+screenshot** ("coloque uma tarja mais bonita... assim parece só uma tag
+do canal") — a 1ª versão usava `Badge` `variant="gray"` ao lado do nome
+(`.marketplaces-view__card-title-row`, wrapper flex novo só pra isso),
+mesmo tom cinza das tags de categoria logo abaixo — o usuário apontou
+que ficava indistinguível delas, lendo como "mais uma tag" em vez de um
+aviso de estado do card. Substituído por uma TARJA de verdade
+(`.marketplaces-view__card-ribbon`, `<div>` novo, condicional, sempre o
+PRIMEIRO filho do card) — faixa horizontal sangrando até as 3 bordas
+(margem negativa igual ao padding do card, mesma técnica já usada em
+preview de upload de logo), cortada de volta pro `{radius.16}` do
+próprio card via `overflow: hidden` no `.marketplaces-view__card`
+(`position: relative` adicionado junto). Fundo tingido com
+`color-mix(in srgb, {colors.accent-yellow} 20%, transparent)` + texto na
+cor sólida do mesmo acento — mesma técnica de `StatusDot`
+`variant="pill"` (nunca reimplementada à mão, só o princípio
+reaproveitado, já que aqui é uma faixa cheia, não uma cápsula) — mantém
+a mesma linguagem de "acento pastel, nunca decorativo" do resto do
+design system, evita uma cor saturada sólida competindo com o resto do
+card. `.marketplaces-view__card-title-row` removido (voltou a ser
+`<p>` solto). Verificado em browser real contra o backend local: card
+"Amazon" marcado `coming_soon` mostra a tarja amarela clara no topo,
+cantos arredondados batendo com o card, claramente diferente das tags
+cinzas de categoria mais abaixo; botão "Conectar" continua desabilitado.
 
 ### ConnectMarketplaceModal (`modules/pricing/components/blocks/ConnectMarketplaceModal.vue`)
 

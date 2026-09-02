@@ -1218,6 +1218,7 @@ export interface components {
             id: string;
             name: string;
             active: boolean;
+            coming_soon: boolean;
             logo_url: string | null;
             description: string | null;
             tags: unknown[] | null;
@@ -1389,6 +1390,7 @@ export interface components {
         CreateMarketplaceRequest: {
             name: string;
             active?: boolean;
+            coming_soon?: boolean;
             /**
              * @description Nunca URL externa (decisão 2026-08-31) — o admin manda a
              *     imagem em base64, nós hospedamos.
@@ -1542,6 +1544,7 @@ export interface components {
         MarketplaceResource: {
             id: string;
             name: string;
+            coming_soon: boolean;
             logo_url: string | null;
             description: string | null;
             tags: unknown[] | null;
@@ -1858,6 +1861,7 @@ export interface components {
         UpdateMarketplaceRequest: {
             name?: string;
             active?: boolean;
+            coming_soon?: boolean;
             logo_base64?: string | null;
             description?: string | null;
             tags?: string[] | null;

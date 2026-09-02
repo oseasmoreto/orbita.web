@@ -8,7 +8,15 @@ import { createAdminMarketplace, updateAdminMarketplace } from '../services/pric
 import type { AdminMarketplace } from '../types/marketplace.type'
 
 function emptyFormValues(): MarketplaceFormValues {
-  return { active: true, description: null, logoBase64: null, name: '', tags: [], websiteUrl: null }
+  return {
+    active: true,
+    comingSoon: false,
+    description: null,
+    logoBase64: null,
+    name: '',
+    tags: [],
+    websiteUrl: null,
+  }
 }
 
 /**
@@ -21,6 +29,7 @@ function emptyFormValues(): MarketplaceFormValues {
 function toFormValues(marketplace: AdminMarketplace): MarketplaceFormValues {
   return {
     active: marketplace.active,
+    comingSoon: marketplace.comingSoon,
     description: marketplace.description,
     logoBase64: null,
     name: marketplace.name,
@@ -39,6 +48,7 @@ function toFormValues(marketplace: AdminMarketplace): MarketplaceFormValues {
 function toRequestPayload(values: MarketplaceFormValues) {
   return {
     active: values.active,
+    coming_soon: values.comingSoon,
     description: values.description,
     name: values.name,
     tags: values.tags,
@@ -55,7 +65,8 @@ function toRequestPayload(values: MarketplaceFormValues) {
  * `description`/`tags`/`websiteUrl` adicionados em 2026-08-31;
  * `logoBase64` (upload real) substituiu `logoUrl` (link externo) no
  * mesmo dia, mudança de contrato pedida pelo usuário — ver
- * `marketplaceFormSchema.ts`.
+ * `marketplaceFormSchema.ts`. `comingSoon` (tarefa 66, 2026-09-02),
+ * default `false`.
  */
 export function useAdminMarketplaceForm() {
   const { t } = useI18n()

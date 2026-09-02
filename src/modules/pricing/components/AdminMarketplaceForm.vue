@@ -157,6 +157,10 @@ async function handleSubmit(): Promise<void> {
       </FormGroup>
 
       <Toggle v-model="values.active" :label="$t('pricing.admin.marketplaces.form.fields.active')" />
+      <Toggle
+        v-model="values.comingSoon"
+        :label="$t('pricing.admin.marketplaces.form.fields.comingSoon')"
+      />
     </div>
 
     <CrudFormActions
