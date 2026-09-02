@@ -39,6 +39,7 @@ import TabBar from '@/shared/components/ui/TabBar.vue'
 import AdminMarketplaceForm from '../components/AdminMarketplaceForm.vue'
 import MarketplaceLogo from '../components/MarketplaceLogo.vue'
 import IconText from '@/shared/components/ui/IconText.vue'
+import AdminCategoryMarketplaceList from '../components/blocks/AdminCategoryMarketplaceList.vue'
 import AdminPricingRuleList from '../components/blocks/AdminPricingRuleList.vue'
 import { deleteAdminMarketplace } from '../services/pricingApi'
 import { useAdminMarketplaceList } from '../composables/useAdminMarketplaceList'
@@ -78,6 +79,7 @@ const activeMarketplaceTab = ref('details')
 const marketplaceDrawerTabs = computed<TabBarOption[]>(() => [
   { key: 'details', label: t('pricing.admin.marketplaces.form.tabs.details') },
   { key: 'pricingRules', label: t('pricing.admin.marketplaces.form.tabs.pricingRules') },
+  { key: 'categories', label: t('pricing.admin.marketplaces.form.tabs.categories') },
 ])
 
 function openEdit(marketplace: AdminMarketplace): void {
@@ -200,6 +202,9 @@ function handleSaved(): void {
           </TabsContent>
           <TabsContent value="pricingRules">
             <AdminPricingRuleList :marketplace-id="drawer.editingRecord.value.id" />
+          </TabsContent>
+          <TabsContent value="categories">
+            <AdminCategoryMarketplaceList :marketplace-id="drawer.editingRecord.value.id" />
           </TabsContent>
         </TabBar>
       </template>

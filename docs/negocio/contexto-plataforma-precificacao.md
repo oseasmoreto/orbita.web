@@ -38,7 +38,9 @@ usuário se cadastra → assina um plano → paga → acessa o sistema → cadas
 - **`MARKETPLACE`** — cadastro do canal de venda (Shopee, TikTok, Amazon, ML etc.), mantido pelo admin.
 - **`PRICING_RULE`** — regras de cobrança do marketplace, por faixa de valor: `range_min`, `range_max`, `percentage`, `fixed_fee`, `order`. Permite quantas faixas forem necessárias por marketplace (ex.: até R$40 → 20% + R$4; acima de R$40 → 40% + R$10).
 - **`USER_MARKETPLACE`** — vínculo do usuário com um marketplace (a "conta/loja" dele naquele canal). É essa entidade que limita quais marketplaces um produto pode ser vinculado.
-- **`PRODUCT_MARKETPLACE`** — vínculo do produto com um `USER_MARKETPLACE` (não com o marketplace direto — isso garante que só é possível vincular produto a um marketplace que o próprio usuário já conectou). **Decisão 2026-08-26**: nesta rodada é um vínculo puro (`product_id` + `user_marketplace_id`), sem `suggested_price`/`is_approximated` — o cálculo de preço sugerido (`PricingCalculator`, já existente e testado isoladamente, nunca conectado a rota nenhuma) fica pra uma tela/tabela futura, ainda não desenhada. Só é possível criar o vínculo se o `USER_MARKETPLACE` referenciado estiver `active`.
+- **`PRODUCT_MARKETPLACE`** — vínculo do produto com um `USER_MARKETPLACE` (não com o marketplace direto — isso garante que só é possível vincular produto a um marketplace que o próprio usuário já conectou). **Decisão 2026-08-26**: nesta rodada é um vínculo puro (`product_id` + `user_marketplace_id`), sem `suggested_price`/`is_approximated` — o cálculo de preço sugerido (`PricingCalculator`, já existente e testado isoladamente, nunca conectado a rota nenhuma) fica pra uma tela/tabela futura, ainda não desenhada. Só é possível criar o vínculo se o `USER_MARKETPLACE` referenciado estiver `active`. `category_id` (nullable, **novo em 2026-09-02**) — nem todo marketplace cobra por categoria, e vínculos antigos não têm categoria nenhuma; só aceita uma categoria que já tenha comissão configurada especificamente pra aquele marketplace (`CATEGORY_MARKETPLACE`). Sem `PATCH` pra trocar só a categoria — trocar é sempre `DELETE`+`POST` de novo, mesmo padrão de trocar de marketplace.
+- **`PRODUCT_CATEGORY`** — categoria de produto, **nova em 2026-09-02** (pedido direto do usuário) — cadastro simples, sem hierarquia/subcategoria (`parent_id` foi desenhado e depois removido na mesma rodada, a pedido do usuário): `title`, `active`. Cadastro é exclusivo do admin, mesmo raciocínio de `MARKETPLACE`.
+- **`CATEGORY_MARKETPLACE`** — comissão (%) de uma `PRODUCT_CATEGORY` num `MARKETPLACE` específico, unique `(category_id, marketplace_id)` — mesmo padrão de `USER_MARKETPLACE`. Nem todo marketplace tem categoria vinculada (é opcional, não uma lista obrigatória); a leitura é transparente pra qualquer usuário autenticado (mesmo padrão de `PRICING_RULE`), é o que alimenta o seletor de categoria na hora de vincular produto ao marketplace — só mostra categorias já vinculadas àquele marketplace específico, nunca todas as ativas.
 
 ### 2.5 Notificações, auditoria e configuração
 
@@ -67,6 +69,9 @@ erDiagram
     USER ||--o{ TRANSACTION : makes
     SUBSCRIPTION ||--o{ TRANSACTION : generates
     USER ||--o{ COMPANY : owns
+    MARKETPLACE ||--o{ CATEGORY_MARKETPLACE : has
+    PRODUCT_CATEGORY ||--o{ CATEGORY_MARKETPLACE : is_priced_in
+    PRODUCT_CATEGORY ||--o{ PRODUCT_MARKETPLACE : categorizes
 
     PLAN {
         uuid id PK
@@ -208,12 +213,43 @@ erDiagram
         uuid id PK
         uuid product_id FK
         uuid user_marketplace_id FK
+        uuid category_id FK
         timestamp created_at
         timestamp updated_at
     }
     %% vínculo puro (decisão 2026-08-26) — suggested_price/is_approximated
     %% removidos nesta rodada, ficam pra uma tela/tabela futura quando o
     %% PricingCalculator (já existente) entrar em uso de verdade
+    %% category_id (nullable, novo em 2026-09-02): nem todo marketplace
+    %% cobra por categoria, e vínculos antigos não têm categoria nenhuma.
+    %% Só aceita categoria com CATEGORY_MARKETPLACE configurado pro
+    %% marketplace do vínculo. Sem PATCH pra trocar só a categoria.
+
+    PRODUCT_CATEGORY {
+        uuid id PK
+        string title
+        boolean active
+        timestamp created_at
+        timestamp updated_at
+    }
+    %% Novo em 2026-09-02 (pedido direto do usuário) — categoria simples,
+    %% sem hierarquia/subcategoria (parent_id desenhado e removido na
+    %% mesma rodada de revisão). Cadastro exclusivo do admin.
+
+    CATEGORY_MARKETPLACE {
+        uuid id PK
+        uuid category_id FK
+        uuid marketplace_id FK
+        decimal commission_percentage
+        timestamp created_at
+        timestamp updated_at
+    }
+    %% unique (category_id, marketplace_id) — comissão de uma
+    %% PRODUCT_CATEGORY num MARKETPLACE específico. Nem todo marketplace
+    %% tem categoria vinculada (opcional, não lista obrigatória). Leitura
+    %% transparente pra qualquer usuário autenticado (mesmo padrão de
+    %% PRICING_RULE), alimenta o seletor de categoria ao vincular produto
+    %% ao marketplace.
 
     NOTIFICATION {
         uuid id PK
@@ -317,6 +353,7 @@ erDiagram
 - **Acesso é controlado só por `role`**: `admin_master` gerencia marketplaces/planos, `user` opera o próprio catálogo — sem granularidade por tela/grupo no MVP (ver seção 6). O limite por plano (`max_products`/`max_marketplaces`) é numérico, validado na Action, não visibilidade de tela.
 - **Aplicação do preço é manual (MVP)**: `suggested_price` é informativo — o vendedor copia o valor e atualiza manualmente no marketplace. Integração automática via API do marketplace (exigindo credenciais em `USER_MARKETPLACE`) fica fora do escopo do MVP.
 - **1 login = 1 assinatura**: não há suporte a múltiplos usuários dentro de uma mesma assinatura (conta compartilhada/time) no MVP.
+- **Categoria só vincula a produto se tiver comissão configurada pro marketplace do vínculo (novo em 2026-09-02)**: vincular produto a marketplace só aceita um `category_id` se existir `CATEGORY_MARKETPLACE` pra `(categoria, marketplace do USER_MARKETPLACE)` — nunca aceita categoria qualquer, mesmo que exista e esteja ativa. Categoria é sempre opcional no vínculo (nem todo marketplace cobra por categoria).
 
 ---
 
@@ -331,6 +368,7 @@ Não são representáveis de forma limpa no ERD em Mermaid, então ficam documen
 | `PRODUCT_MARKETPLACE` | unique `(product_id, user_marketplace_id)` |
 | `SSO_ACCOUNT` | unique `(provider, provider_id)` |
 | `USER_NOTIFICATION` | unique `(user_id, notification_id)` |
+| `CATEGORY_MARKETPLACE` | unique `(category_id, marketplace_id)` |
 
 ---
 

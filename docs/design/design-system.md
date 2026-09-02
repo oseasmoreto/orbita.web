@@ -4029,6 +4029,82 @@ qualquer produto seu) e a coluna "Marketplace" ganhou `MarketplaceLogo`
 campo novo resolvido em `useProductMarketplaces.ts` cruzando
 `UserMarketplace`→`Marketplace`, mesmo caminho que já resolvia o nome.
 
+**Categoria de produto opcional no vínculo, 2026-09-02 (tarefa 64 de
+`docs/api/ordem-de-implementacao.md` no repo `backend`)** — 2º `Select`
+no `Modal` de "Vincular marketplace", só aparece
+(`categoryOptionsForSelectedConnection.length > 0`) quando o marketplace
+da conexão escolhida tem alguma `CATEGORY_MARKETPLACE` configurada
+(`categoryOptionsFor(userMarketplaceId)`, `useProductMarketplaces.ts`) —
+nem todo marketplace cobra por categoria, campo nunca obrigatório.
+Reseta (`watch(selectedConnectionId)`) toda vez que a conexão muda — a
+categoria marcada pode não existir no marketplace da NOVA conexão
+escolhida. Coluna nova "Categoria" na tabela (`—` quando o vínculo não
+tem uma), resolvida cruzando `link.categoryId` com as categorias do
+marketplace daquela conexão (`buildProductMarketplaceRows`, 4º parâmetro
+novo — um `Map<marketplaceId, CategoryMarketplace[]>` buscado uma vez
+por marketplace conectado no `refresh()`, evita uma chamada por linha da
+tabela). Verificado em browser real contra o backend local: escolher uma
+conexão cujo marketplace tem categoria configurada revela o 2º `Select`;
+escolher uma categoria e vincular grava `category_id` corretamente
+(conferido direto no banco); a coluna "Categoria" mostra o título certo.
+
+### AdminProductCategoriesView / AdminProductCategoryForm (`modules/pricing/views/AdminProductCategoriesView.vue`, `modules/pricing/components/AdminProductCategoryForm.vue`)
+
+CRUD de `PRODUCT_CATEGORY` — exclusivo do admin (tarefa 64,
+`docs/api/ordem-de-implementacao.md` no repo `backend`, pedido direto do
+usuário: "categoria de produto + comissão por categoria por
+marketplace"). Mesma forma exata de `AdminMarketplacesView.vue`/
+`AdminMarketplaceForm.vue` — `useResourceList`/`useCrudDrawer`/
+`useConfirmAction` pro CRUD principal, `Drawer.vue` com o form (`title`/
+`active`, `Toggle.vue` — mesmo par de campos que `AdminSettingsView`),
+sem aba dentro do Drawer de edição (categoria não tem conteúdo aninhado
+próprio — comissão por marketplace mora na aba "Categorias" de
+`AdminMarketplacesView.vue`, seção própria abaixo, não aqui). Categoria é
+simples, sem hierarquia/subcategoria — um desenho inicial com `parent_id`
+foi revertido na mesma rodada de planejamento, a pedido do usuário.
+
+- **Filtro de `marketplace_id`** (`ListToolbar` `#filters`, junto do já
+  usual `active`) — pedido explícito do usuário durante o planejamento
+  da tarefa 64 ("filter[marketplace_id] adicionado por pedido seu"),
+  mostra só categorias já com comissão configurada pra um marketplace
+  específico. `useMarketplaceOptions.ts` (novo, `modules/pricing/composables/`)
+  alimenta o `Select` — mesmo padrão de `useAdminPlanOptions.ts`
+  (`modules/billing/`), local ao módulo até um segundo consumidor real
+  justificar subir pra `core/`.
+- Verificado em browser real contra o backend local: criar categoria
+  "Eletrônicos" → aparece na listagem com `StatusDot` verde (ativa) →
+  toast "Categoria criada com sucesso."
+
+### AdminCategoryMarketplaceList / AdminCategoryMarketplaceForm (`modules/pricing/components/blocks/AdminCategoryMarketplaceList.vue`, `modules/pricing/components/AdminCategoryMarketplaceForm.vue`)
+
+"Categorias" — 3ª aba do Drawer de edição de `AdminMarketplacesView.vue`
+(ao lado de "Dados do marketplace"/"Regras de comissão"), sempre
+aninhada a UM marketplace, nunca listagem própria — mesmo padrão exato
+de `AdminPricingRuleList.vue`/`AdminPricingRuleForm.vue`: `useResourceList`/
+`useCrudDrawer`/`useConfirmAction`, `Modal.vue` (já dentro do Drawer de
+edição do marketplace).
+
+- **Diferente de `PricingRule` (campos preenchidos do zero),
+  `CategoryMarketplace` vincula uma categoria EXISTENTE** — o `Select`
+  de categoria só aparece no CREATE (`categoryOptions`, calculado pelo
+  consumidor: todas as categorias ATIVAS ainda não vinculadas a este
+  marketplace, mesmo critério de `buildAvailableConnectionOptions` em
+  `useProductMarketplaces.ts` — evita a Action recusar com
+  `errorMessageCategoryAlreadyLinkedToMarketplace`). No EDIT, a
+  categoria é fixa (`UpdateCategoryMarketplaceRequest` real do backend
+  nem aceita `category_id` — trocar de categoria é sempre excluir e
+  vincular outra) — mostra o título como `Input` desabilitado, mesmo
+  padrão do campo `hash` em `AdminSettingForm.vue`.
+- Botão "Vincular categoria" fica `disabled` quando não sobra nenhuma
+  categoria ativa pra vincular (todas já vinculadas, ou nenhuma
+  cadastrada) — mesmo critério de `addDisabled` em `ListToolbar.vue` —
+  com uma dica de texto explicando o motivo.
+- Verificado em browser real contra o backend local: aba "Categorias"
+  dentro do Drawer de edição do marketplace, vincular "Eletrônicos" com
+  15% de comissão → linha aparece na tabela ("Eletrônicos" / "15%") →
+  toast "Categoria vinculada com sucesso." → conferido no banco
+  (`CATEGORY_MARKETPLACE.commission_percentage: 15.00`).
+
 ### NotificationItem/NotificationPanel/NotificationsView (`modules/platform/`)
 
 **Fase 5, 2026-09-01** — o painel do sino do `AppHeader` (`NotificationPanel.vue`)

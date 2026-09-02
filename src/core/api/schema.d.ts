@@ -36,6 +36,38 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/admin/marketplaces/{marketplace}/categories": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["adminCategoryMarketplace.store"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/marketplaces/{marketplace}/categories/{category}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete: operations["adminCategoryMarketplace.destroy"];
+        options?: never;
+        head?: never;
+        patch: operations["adminCategoryMarketplace.update"];
+        trace?: never;
+    };
     "/admin/companies": {
         parameters: {
             query?: never;
@@ -210,6 +242,38 @@ export interface paths {
         options?: never;
         head?: never;
         patch: operations["adminPricingRule.update"];
+        trace?: never;
+    };
+    "/admin/product-categories": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["adminProductCategory.index"];
+        put?: never;
+        post: operations["adminProductCategory.store"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/product-categories/{category}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["adminProductCategory.show"];
+        put?: never;
+        post?: never;
+        delete: operations["adminProductCategory.destroy"];
+        options?: never;
+        head?: never;
+        patch: operations["adminProductCategory.update"];
         trace?: never;
     };
     "/admin/subscriptions": {
@@ -388,6 +452,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/marketplaces/{marketplace}/categories": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["categoryMarketplace.index"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/company": {
         parameters: {
             query?: never;
@@ -414,12 +494,16 @@ export interface paths {
         /**
          * Chamado pelo próprio navegação real do browser (clique no link do
          *     e-mail) — nunca devolve JSON aqui, sempre redireciona pro front, mesmo
-         *     padrão de SsoController::callback. Sucesso manda pro ChoosePlan da
-         *     jornada (jornada-usuario.mmd: EmailVerified → ChoosePlan); hash
-         *     inválido ou id inexistente (link adulterado) manda pro login com sinal
-         *     de erro. Assinatura expirada/inválida (middleware "signed") ainda
-         *     escapa pra esse try/catch — acontece antes do Controller rodar,
-         *     continua devolvendo o 403 JSON genérico por enquanto
+         *     padrão de SsoController::callback. Sucesso manda pro RegisterCompany ou
+         *     ChoosePlan da jornada (jornada-usuario.mmd: EmailVerified →
+         *     RegisterCompany → ChoosePlan), dependendo se o usuário já tem COMPANY
+         *     cadastrada (achado real, reportado pelo front, 2026-09-02: antes
+         *     mandava sempre pro choose-plan, gerando um hop extra até o guard de
+         *     rota do front recuperar); hash inválido ou id inexistente (link
+         *     adulterado) manda pro login com sinal de erro. Assinatura expirada/
+         *     inválida (middleware "signed") ainda escapa pra esse try/catch —
+         *     acontece antes do Controller rodar, continua devolvendo o 403 JSON
+         *     genérico por enquanto
          */
         get: operations["verification.verify"];
         put?: never;
@@ -1255,6 +1339,20 @@ export interface components {
             title?: string;
             message?: string;
         };
+        /** CategoryMarketplaceResource */
+        CategoryMarketplaceResource: {
+            id: string;
+            category_id: string;
+            category: components["schemas"]["ProductCategoryResource"];
+            marketplace_id: string;
+            /**
+             * @description Percentual como string (fundamentos-api.md §4) — já vem string
+             *     do cast decimal:2 do Model.
+             */
+            commission_percentage: string;
+            /** Format: date-time */
+            created_at: string | null;
+        };
         /** ChangeSubscriptionPlanRequest */
         ChangeSubscriptionPlanRequest: {
             /** Format: uuid */
@@ -1273,6 +1371,12 @@ export interface components {
             sales_tax_percentage: string;
             /** Format: date-time */
             created_at: string | null;
+        };
+        /** CreateCategoryMarketplaceRequest */
+        CreateCategoryMarketplaceRequest: {
+            /** Format: uuid */
+            category_id: string;
+            commission_percentage: number;
         };
         /** CreateCompanyRequest */
         CreateCompanyRequest: {
@@ -1326,6 +1430,11 @@ export interface components {
             fixed_fee: number;
             order: number;
         };
+        /** CreateProductCategoryRequest */
+        CreateProductCategoryRequest: {
+            title: string;
+            active?: boolean;
+        };
         /** CreateProductLaunchRequest */
         CreateProductLaunchRequest: {
             purchase_price: number;
@@ -1337,6 +1446,8 @@ export interface components {
         CreateProductMarketplaceRequest: {
             /** Format: uuid */
             user_marketplace_id: string;
+            /** Format: uuid */
+            category_id?: string | null;
         };
         /** CreateProductRequest */
         CreateProductRequest: {
@@ -1505,6 +1616,14 @@ export interface components {
             /** Format: date-time */
             created_at: string | null;
         };
+        /** ProductCategoryResource */
+        ProductCategoryResource: {
+            id: string;
+            title: string;
+            active: boolean;
+            /** Format: date-time */
+            created_at: string | null;
+        };
         /** ProductLaunchResource */
         ProductLaunchResource: {
             id: string;
@@ -1522,6 +1641,7 @@ export interface components {
             id: string;
             product_id: string;
             user_marketplace_id: string;
+            category_id: string | null;
             /** Format: date-time */
             created_at: string | null;
         };
@@ -1712,6 +1832,10 @@ export interface components {
          * @enum {string}
          */
         TransactionStatus: "pending" | "approved" | "authorized" | "in_process" | "in_mediation" | "rejected" | "cancelled" | "refunded" | "charged_back";
+        /** UpdateCategoryMarketplaceRequest */
+        UpdateCategoryMarketplaceRequest: {
+            commission_percentage: number;
+        };
         /**
          * UpdateCompanyRequest
          * @description Compartilhado por CompanyController::update (próprio) e
@@ -1755,6 +1879,11 @@ export interface components {
             percentage?: number;
             fixed_fee?: number;
             order?: number;
+        };
+        /** UpdateProductCategoryRequest */
+        UpdateProductCategoryRequest: {
+            title?: string;
+            active?: boolean;
         };
         /** UpdateProductLaunchRequest */
         UpdateProductLaunchRequest: {
@@ -2023,6 +2152,99 @@ export interface operations {
                 };
             };
             401: components["responses"]["AuthenticationException"];
+        };
+    };
+    "adminCategoryMarketplace.store": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                marketplace: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateCategoryMarketplaceRequest"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        success: boolean;
+                        message: string;
+                        data: components["schemas"]["CategoryMarketplaceResource"];
+                        errors: null;
+                    };
+                };
+            };
+            401: components["responses"]["AuthenticationException"];
+            422: components["responses"]["ValidationException"];
+        };
+    };
+    "adminCategoryMarketplace.destroy": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                marketplace: string;
+                category: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        success: boolean;
+                        message: string;
+                        data: null;
+                        errors: null;
+                    };
+                };
+            };
+            401: components["responses"]["AuthenticationException"];
+        };
+    };
+    "adminCategoryMarketplace.update": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                marketplace: string;
+                category: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateCategoryMarketplaceRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        success: boolean;
+                        message: string;
+                        data: components["schemas"]["CategoryMarketplaceResource"];
+                        errors: null;
+                    };
+                };
+            };
+            401: components["responses"]["AuthenticationException"];
+            422: components["responses"]["ValidationException"];
         };
     };
     "adminCompany.index": {
@@ -2725,6 +2947,175 @@ export interface operations {
             422: components["responses"]["ValidationException"];
         };
     };
+    "adminProductCategory.index": {
+        parameters: {
+            query?: {
+                /**
+                 * @description Campos separados por vírgula. Prefixo "-" inverte pra desc. Permitidos: title, created_at.
+                 * @example title
+                 */
+                sort?: string;
+                /**
+                 * @description Filtro exato por ativo/inativo.
+                 * @example true
+                 */
+                "filter[active]"?: string;
+                /**
+                 * @description Só categorias com comissão configurada pra esse marketplace.
+                 * @example 00000000-0000-0000-0000-000000000000
+                 */
+                "filter[marketplace_id]"?: string;
+                /**
+                 * @description Tamanho de página, teto em 100.
+                 * @example 15
+                 */
+                per_page?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        success: boolean;
+                        message: string;
+                        data: {
+                            items: components["schemas"]["ProductCategoryResource"][];
+                            meta: {
+                                current_page: number;
+                                per_page: number;
+                                total: number;
+                            };
+                        };
+                        errors: null;
+                    };
+                };
+            };
+            401: components["responses"]["AuthenticationException"];
+        };
+    };
+    "adminProductCategory.store": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateProductCategoryRequest"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        success: boolean;
+                        message: string;
+                        data: components["schemas"]["ProductCategoryResource"];
+                        errors: null;
+                    };
+                };
+            };
+            401: components["responses"]["AuthenticationException"];
+            422: components["responses"]["ValidationException"];
+        };
+    };
+    "adminProductCategory.show": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                category: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        success: boolean;
+                        message: string;
+                        data: components["schemas"]["ProductCategoryResource"];
+                        errors: null;
+                    };
+                };
+            };
+            401: components["responses"]["AuthenticationException"];
+        };
+    };
+    "adminProductCategory.destroy": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                category: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        success: boolean;
+                        message: string;
+                        data: null;
+                        errors: null;
+                    };
+                };
+            };
+            401: components["responses"]["AuthenticationException"];
+        };
+    };
+    "adminProductCategory.update": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                category: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["UpdateProductCategoryRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        success: boolean;
+                        message: string;
+                        data: components["schemas"]["ProductCategoryResource"];
+                        errors: null;
+                    };
+                };
+            };
+            401: components["responses"]["AuthenticationException"];
+            422: components["responses"]["ValidationException"];
+        };
+    };
     "adminSubscription.index": {
         parameters: {
             query?: {
@@ -3303,6 +3694,51 @@ export interface operations {
                         success: boolean;
                         message: string;
                         data: components["schemas"]["UserResource"];
+                        errors: null;
+                    };
+                };
+            };
+            401: components["responses"]["AuthenticationException"];
+        };
+    };
+    "categoryMarketplace.index": {
+        parameters: {
+            query?: {
+                /**
+                 * @description Campos separados por vírgula. Prefixo "-" inverte pra desc. Permitidos: commission_percentage, created_at.
+                 * @example -commission_percentage
+                 */
+                sort?: string;
+                /**
+                 * @description Tamanho de página, teto em 100.
+                 * @example 15
+                 */
+                per_page?: number;
+            };
+            header?: never;
+            path: {
+                marketplace: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        success: boolean;
+                        message: string;
+                        data: {
+                            items: components["schemas"]["CategoryMarketplaceResource"][];
+                            meta: {
+                                current_page: number;
+                                per_page: number;
+                                total: number;
+                            };
+                        };
                         errors: null;
                     };
                 };

@@ -1006,6 +1006,41 @@ export default {
   },
   pricing: {
     admin: {
+      categoryMarketplaces: {
+        columns: {
+          category: 'Categoria',
+          commissionPercentage: 'Comissão',
+        },
+        createButton: 'Vincular categoria',
+        deleteConfirm: {
+          description: 'Essa ação não pode ser desfeita.',
+          title: 'Desvincular categoria?',
+        },
+        deleteSuccess: 'Categoria desvinculada com sucesso.',
+        empty: 'Nenhuma categoria vinculada a este marketplace ainda.',
+        form: {
+          createSuccess: 'Categoria vinculada com sucesso.',
+          createTitle: 'Vincular categoria',
+          editTitle: 'Editar comissão da categoria',
+          errors: {
+            categoryRequired: 'Selecione uma categoria.',
+            commissionPercentageMax: 'Comissão não pode passar de 100%.',
+            commissionPercentageMin: 'Comissão não pode ser negativa.',
+          },
+          fields: {
+            category: 'Categoria',
+            commissionPercentage: 'Comissão (%)',
+          },
+          placeholders: {
+            category: 'Selecione uma categoria',
+          },
+          submitCreate: 'Vincular',
+          submitEdit: 'Salvar alterações',
+          updateSuccess: 'Comissão atualizada com sucesso.',
+        },
+        noAvailableCategoriesHint:
+          'Nenhuma categoria ativa disponível — cadastre uma categoria antes de vincular, ou todas já estão vinculadas a este marketplace.',
+      },
       marketplaces: {
         columns: {
           active: 'Status',
@@ -1045,6 +1080,7 @@ export default {
           submitCreate: 'Criar marketplace',
           submitEdit: 'Salvar alterações',
           tabs: {
+            categories: 'Categorias',
             details: 'Dados do marketplace',
             pricingRules: 'Regras de comissão',
           },
@@ -1097,6 +1133,44 @@ export default {
           updateSuccess: 'Regra de comissão atualizada com sucesso.',
         },
       },
+      productCategories: {
+        columns: {
+          active: 'Status',
+          createdAt: 'Cadastrado em',
+          title: 'Nome',
+        },
+        createButton: 'Nova categoria',
+        deleteConfirm: {
+          description: 'Essa ação não pode ser desfeita.',
+          title: 'Excluir categoria?',
+        },
+        deleteSuccess: 'Categoria excluída com sucesso.',
+        empty: 'Nenhuma categoria cadastrada ainda.',
+        filters: {
+          active: 'Status',
+          marketplace: 'Marketplace',
+        },
+        form: {
+          createSuccess: 'Categoria criada com sucesso.',
+          createTitle: 'Nova categoria',
+          editTitle: 'Editar categoria',
+          errors: {
+            titleRequired: 'Nome é obrigatório.',
+          },
+          fields: {
+            active: 'Categoria ativa',
+            title: 'Nome',
+          },
+          submitCreate: 'Criar categoria',
+          submitEdit: 'Salvar alterações',
+          updateSuccess: 'Categoria atualizada com sucesso.',
+        },
+        status: {
+          active: 'Ativa',
+          inactive: 'Inativa',
+        },
+        title: 'Categorias de produto',
+      },
     },
     marketplaces: {
       activateSuccess: 'Conexão reativada com sucesso.',
@@ -1129,6 +1203,7 @@ export default {
     productMarketplaces: {
       backToProducts: 'Voltar para Produtos',
       columns: {
+        category: 'Categoria',
         createdAt: 'Vinculado em',
         marketplace: 'Marketplace',
         storeName: 'Loja',
@@ -1136,7 +1211,9 @@ export default {
       empty: 'Nenhum marketplace vinculado ainda.',
       linkButton: 'Vincular marketplace',
       linkModal: {
+        categoryPlaceholder: 'Selecione uma categoria (opcional)',
         fields: {
+          category: 'Categoria',
           connection: 'Conexão',
         },
         placeholder: 'Selecione uma conexão',
@@ -1168,6 +1245,7 @@ export default {
       adminNotifications: 'Notificações',
       adminPlans: 'Planos',
       adminPlatformGroup: 'Plataforma',
+      adminProductCategories: 'Categorias de produto',
       adminSettings: 'Configurações',
       adminSubscriptions: 'Assinaturas',
       adminTickets: 'Chamados',

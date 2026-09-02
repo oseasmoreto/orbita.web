@@ -2,6 +2,7 @@ import {
   buildAvailableConnectionOptions,
   buildProductMarketplaceRows,
 } from '@/modules/pricing/composables/useProductMarketplaces'
+import type { CategoryMarketplace } from '@/modules/pricing/types/categoryMarketplace.type'
 import type { Marketplace } from '@/modules/pricing/types/marketplace.type'
 import type { ProductMarketplace } from '@/modules/pricing/types/productMarketplace.type'
 import type { UserMarketplace } from '@/modules/pricing/types/userMarketplace.type'
@@ -48,10 +49,28 @@ const inactiveConnection: UserMarketplace = {
 }
 
 const link: ProductMarketplace = {
+  categoryId: null,
   createdAt: '2026-02-01T00:00:00Z',
   id: 'link-1',
   productId: 'prod-1',
   userMarketplaceId: 'conn-1',
+}
+
+const linkWithCategory: ProductMarketplace = {
+  categoryId: 'cat-1',
+  createdAt: '2026-02-01T00:00:00Z',
+  id: 'link-2',
+  productId: 'prod-1',
+  userMarketplaceId: 'conn-1',
+}
+
+const shopeeElectronicsLink: CategoryMarketplace = {
+  category: { active: true, createdAt: null, id: 'cat-1', title: 'Eletrônicos' },
+  categoryId: 'cat-1',
+  commissionPercentage: '12.00',
+  createdAt: '2026-01-15T00:00:00Z',
+  id: 'catmkt-1',
+  marketplaceId: 'mkt-1',
 }
 
 describe('buildProductMarketplaceRows', () => {
@@ -60,10 +79,12 @@ describe('buildProductMarketplaceRows', () => {
       [link],
       [shopeeConnection, amazonConnection],
       [shopee, amazon],
+      new Map(),
     )
 
     expect(rows).toEqual([
       {
+        categoryTitle: null,
         createdAt: '2026-02-01T00:00:00Z',
         id: 'link-1',
         marketplaceLogoUrl: 'https://example.com/shopee-logo.png',
@@ -75,11 +96,34 @@ describe('buildProductMarketplaceRows', () => {
   })
 
   it('falls back gracefully when the connection is missing (edge case: stale data)', () => {
-    const rows = buildProductMarketplaceRows([link], [], [])
+    const rows = buildProductMarketplaceRows([link], [], [], new Map())
 
     expect(rows[0]?.marketplaceName).toBe('—')
     expect(rows[0]?.marketplaceLogoUrl).toBeNull()
     expect(rows[0]?.storeName).toBe('—')
+    expect(rows[0]?.categoryTitle).toBeNull()
+  })
+
+  it('resolves the category title from the marketplace it was linked in', () => {
+    const rows = buildProductMarketplaceRows(
+      [linkWithCategory],
+      [shopeeConnection],
+      [shopee],
+      new Map([['mkt-1', [shopeeElectronicsLink]]]),
+    )
+
+    expect(rows[0]?.categoryTitle).toBe('Eletrônicos')
+  })
+
+  it('is null when the link has no category (marketplace does not charge by category)', () => {
+    const rows = buildProductMarketplaceRows(
+      [link],
+      [shopeeConnection],
+      [shopee],
+      new Map([['mkt-1', [shopeeElectronicsLink]]]),
+    )
+
+    expect(rows[0]?.categoryTitle).toBeNull()
   })
 })
 

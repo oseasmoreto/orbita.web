@@ -27,6 +27,18 @@ export const pricingRoutes: RouteRecordRaw[] = [
     path: 'admin/marketplaces',
   },
   {
+    // Tarefa 64 (`docs/api/ordem-de-implementacao.md`, repo `backend`) —
+    // `PRODUCT_CATEGORY`, admin-only (cadastro de categoria é do admin,
+    // mesmo raciocínio de `MARKETPLACE`). Comissão por categoria por
+    // marketplace (`CATEGORY_MARKETPLACE`) é uma aba dentro do Drawer de
+    // edição de `AdminMarketplacesView.vue`, não rota própria — mesmo
+    // padrão de "Regras de comissão".
+    component: () => import('./views/AdminProductCategoriesView.vue'),
+    meta: { roles: ['admin_master'], title: 'pricing.admin.productCategories.title' },
+    name: 'admin-product-categories',
+    path: 'admin/product-categories',
+  },
+  {
     component: () => import('./views/MarketplacesView.vue'),
     meta: { title: 'pricing.marketplaces.title' },
     name: 'marketplaces',

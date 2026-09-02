@@ -16,6 +16,9 @@ erDiagram
     USER ||--o{ TRANSACTION : makes
     SUBSCRIPTION ||--o{ TRANSACTION : generates
     USER ||--o{ COMPANY : owns
+    MARKETPLACE ||--o{ CATEGORY_MARKETPLACE : has
+    PRODUCT_CATEGORY ||--o{ CATEGORY_MARKETPLACE : is_priced_in
+    PRODUCT_CATEGORY ||--o{ PRODUCT_MARKETPLACE : categorizes
 
     PLAN {
         uuid id PK
@@ -157,12 +160,43 @@ erDiagram
         uuid id PK
         uuid product_id FK
         uuid user_marketplace_id FK
+        uuid category_id FK
         timestamp created_at
         timestamp updated_at
     }
     %% vínculo puro (decisão 2026-08-26) — suggested_price/is_approximated
     %% removidos nesta rodada, ficam pra uma tela/tabela futura quando o
     %% PricingCalculator (já existente) entrar em uso de verdade
+    %% category_id (nullable, novo em 2026-09-02): nem todo marketplace
+    %% cobra por categoria, e vínculos antigos não têm categoria nenhuma.
+    %% Só aceita categoria com CATEGORY_MARKETPLACE configurado pro
+    %% marketplace do vínculo. Sem PATCH pra trocar só a categoria.
+
+    PRODUCT_CATEGORY {
+        uuid id PK
+        string title
+        boolean active
+        timestamp created_at
+        timestamp updated_at
+    }
+    %% Novo em 2026-09-02 (pedido direto do usuário) — categoria simples,
+    %% sem hierarquia/subcategoria (parent_id desenhado e removido na
+    %% mesma rodada de revisão). Cadastro exclusivo do admin.
+
+    CATEGORY_MARKETPLACE {
+        uuid id PK
+        uuid category_id FK
+        uuid marketplace_id FK
+        decimal commission_percentage
+        timestamp created_at
+        timestamp updated_at
+    }
+    %% unique (category_id, marketplace_id) — comissão de uma
+    %% PRODUCT_CATEGORY num MARKETPLACE específico. Nem todo marketplace
+    %% tem categoria vinculada (opcional, não lista obrigatória). Leitura
+    %% transparente pra qualquer usuário autenticado (mesmo padrão de
+    %% PRICING_RULE), alimenta o seletor de categoria ao vincular produto
+    %% ao marketplace.
 
     NOTIFICATION {
         uuid id PK

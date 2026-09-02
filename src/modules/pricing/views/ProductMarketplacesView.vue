@@ -19,7 +19,7 @@
  * `suggested_price`/`is_approximated` não sobra campo mutável,
  * `pricing.php`).
  */
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRoute, useRouter } from 'vue-router'
 import dayjs from 'dayjs'
@@ -39,6 +39,7 @@ import { useProductMarketplaces } from '../composables/useProductMarketplaces'
 import { getProductName } from '../services/pricingApi'
 import type { ProductMarketplaceRow } from '../composables/useProductMarketplaces'
 import type { DataTableColumn } from '@/shared/components/ui/types/dataTable.type'
+import type { SelectOption } from '@/shared/components/ui/types/select.type'
 
 const route = useRoute()
 const router = useRouter()
@@ -72,6 +73,7 @@ const listErrorMessage = computed(() =>
 const columns = computed<DataTableColumn[]>(() => [
   { key: 'marketplaceName', title: t('pricing.productMarketplaces.columns.marketplace') },
   { key: 'storeName', title: t('pricing.productMarketplaces.columns.storeName') },
+  { key: 'categoryTitle', title: t('pricing.productMarketplaces.columns.category') },
   { key: 'createdAt', title: t('pricing.productMarketplaces.columns.createdAt') },
   { key: 'operations', title: t('common.actions.actions') },
 ])
@@ -82,12 +84,27 @@ function formatCreatedAt(value: string | null): string {
 
 const isLinkModalOpen = ref(false)
 const selectedConnectionId = ref('')
+const selectedCategoryId = ref('')
 const isLinking = ref(false)
 
 function openLinkModal(): void {
   selectedConnectionId.value = ''
+  selectedCategoryId.value = ''
   isLinkModalOpen.value = true
 }
+
+// Categoria reseta sempre que a conexão muda — o `Select` de categoria
+// que estava marcado pode não existir mais no marketplace da NOVA
+// conexão escolhida (tarefa 64: categoria é sempre por marketplace).
+watch(selectedConnectionId, () => {
+  selectedCategoryId.value = ''
+})
+
+const categoryOptionsForSelectedConnection = computed<SelectOption[]>(() =>
+  selectedConnectionId.value
+    ? productMarketplaces.categoryOptionsFor(selectedConnectionId.value)
+    : [],
+)
 
 async function handleLink(): Promise<void> {
   if (!selectedConnectionId.value) {
@@ -97,7 +114,7 @@ async function handleLink(): Promise<void> {
   isLinking.value = true
 
   try {
-    await productMarketplaces.link(selectedConnectionId.value)
+    await productMarketplaces.link(selectedConnectionId.value, selectedCategoryId.value)
     toast.success(t('pricing.productMarketplaces.linkSuccess'))
     isLinkModalOpen.value = false
   } catch (caughtError) {
@@ -167,6 +184,9 @@ function goBackToProducts(): void {
           <MarketplaceLogo :logo-url="row.marketplaceLogoUrl" :name="row.marketplaceName" :size="24" />
         </IconText>
       </template>
+      <template #cell-categoryTitle="{ row }">
+        {{ row.categoryTitle ?? '—' }}
+      </template>
       <template #cell-createdAt="{ row }">
         {{ formatCreatedAt(row.createdAt) }}
       </template>
@@ -186,6 +206,21 @@ function goBackToProducts(): void {
         :label="$t('pricing.productMarketplaces.linkModal.fields.connection')"
         :options="productMarketplaces.availableOptions.value"
         :placeholder="$t('pricing.productMarketplaces.linkModal.placeholder')"
+      />
+
+      <!--
+        Categoria é sempre OPCIONAL (tarefa 64) — só aparece quando o
+        marketplace da conexão escolhida tem alguma categoria com
+        comissão configurada (`categoryOptionsFor`, `useProductMarketplaces.ts`).
+        Nem todo marketplace cobra por categoria.
+      -->
+      <Select
+        v-if="categoryOptionsForSelectedConnection.length > 0"
+        v-model="selectedCategoryId"
+        class="product-marketplaces-view__category-select"
+        :label="$t('pricing.productMarketplaces.linkModal.fields.category')"
+        :options="categoryOptionsForSelectedConnection"
+        :placeholder="$t('pricing.productMarketplaces.linkModal.categoryPlaceholder')"
       />
 
       <template #footer>
@@ -252,5 +287,9 @@ function goBackToProducts(): void {
   color: $color-accent-red;
   background-color: color-mix(in srgb, $color-accent-red 12%, transparent);
   border-radius: $radius-8;
+}
+
+.product-marketplaces-view__category-select {
+  margin-top: $spacing-16;
 }
 </style>

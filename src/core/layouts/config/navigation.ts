@@ -3,6 +3,7 @@ import {
   Bell,
   ChartPieSlice,
   Clipboard,
+  FolderSimple,
   Gear,
   Lifebuoy,
   Package,
@@ -223,6 +224,12 @@ export const adminPlatformGroup: NavGroup = {
       id: 'admin-marketplaces',
       label: t('sidebar.nav.adminMarketplaces'),
       to: { name: 'admin-marketplaces' },
+    },
+    {
+      icon: FolderSimple,
+      id: 'admin-product-categories',
+      label: t('sidebar.nav.adminProductCategories'),
+      to: { name: 'admin-product-categories' },
     },
     {
       icon: Bell,

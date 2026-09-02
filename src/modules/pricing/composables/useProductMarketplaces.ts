@@ -3,15 +3,18 @@ import type { SelectOption } from '@/shared/components/ui/types/select.type'
 import {
   createProductMarketplace,
   deleteProductMarketplace,
+  listMarketplaceCategories,
   listMarketplaces,
   listProductMarketplaces,
   listUserMarketplaces,
 } from '../services/pricingApi'
+import type { CategoryMarketplace } from '../types/categoryMarketplace.type'
 import type { Marketplace } from '../types/marketplace.type'
 import type { ProductMarketplace } from '../types/productMarketplace.type'
 import type { UserMarketplace } from '../types/userMarketplace.type'
 
 export interface ProductMarketplaceRow {
+  categoryTitle: string | null
   createdAt: string | null
   id: string
   marketplaceLogoUrl: string | null
@@ -21,25 +24,33 @@ export interface ProductMarketplaceRow {
 }
 
 /**
- * `ProductMarketplaceResource` só tem `user_marketplace_id` (vínculo
- * puro, decisão 2026-08-26) — pra mostrar o NOME/LOGO do marketplace +
- * nome da loja numa linha de tabela, cruza com as 2 listas já carregadas
- * (`UserMarketplace`, que por sua vez referencia `Marketplace`). Um
- * vínculo cujos dados relacionados não vieram na mesma busca (paginação/
- * dado obsoleto) cai no fallback "—"/`null`, nunca quebra a tabela.
+ * `ProductMarketplaceResource` só tem `user_marketplace_id`/`category_id`
+ * cru — pra mostrar o NOME/LOGO do marketplace + nome da loja + título da
+ * categoria numa linha de tabela, cruza com as listas já carregadas
+ * (`UserMarketplace`→`Marketplace`, `categoriesByMarketplace`, tarefa
+ * 64). Um vínculo cujos dados relacionados não vieram na mesma busca
+ * (paginação/dado obsoleto) cai no fallback "—"/`null`, nunca quebra a
+ * tabela.
  */
 export function buildProductMarketplaceRows(
   links: ProductMarketplace[],
   connections: UserMarketplace[],
   marketplaces: Marketplace[],
+  categoriesByMarketplace: Map<string, CategoryMarketplace[]>,
 ): ProductMarketplaceRow[] {
   return links.map((link) => {
     const connection = connections.find((candidate) => candidate.id === link.userMarketplaceId)
     const marketplace = connection
       ? marketplaces.find((candidate) => candidate.id === connection.marketplaceId)
       : undefined
+    const categoryLink = connection
+      ? (categoriesByMarketplace.get(connection.marketplaceId) ?? []).find(
+          (candidate) => candidate.categoryId === link.categoryId,
+        )
+      : undefined
 
     return {
+      categoryTitle: categoryLink?.category.title ?? null,
       createdAt: link.createdAt,
       id: link.id,
       marketplaceLogoUrl: marketplace?.logoUrl ?? null,
@@ -82,13 +93,18 @@ export function buildAvailableConnectionOptions(
 
 /**
  * Dado da tela "Marketplaces do produto" (`ProductMarketplacesView.vue`)
- * — busca as 3 listas em paralelo. `perPage: 100`, mesmo critério de
- * `useMarketplaceConnections.ts` (volume baixo, sem `PaginationNav`).
+ * — busca as 3 listas em paralelo, depois as categorias configuradas
+ * pra cada marketplace conectado (tarefa 64 — `GET
+ * /marketplaces/{id}/categories`, endpoint COMPARTILHADO, mesmo
+ * raciocínio de `useAdminPricingRuleList.ts`). `perPage: 100`, mesmo
+ * critério de `useMarketplaceConnections.ts` (volume baixo, sem
+ * `PaginationNav`).
  */
 export function useProductMarketplaces(productId: string) {
   const links = ref<ProductMarketplace[]>([])
   const connections = ref<UserMarketplace[]>([])
   const marketplaces = ref<Marketplace[]>([])
+  const categoriesByMarketplace = ref<Map<string, CategoryMarketplace[]>>(new Map())
   const isLoading = ref(false)
   const error = ref<unknown>(null)
 
@@ -104,6 +120,19 @@ export function useProductMarketplaces(productId: string) {
       links.value = linksResult.items
       connections.value = connectionsResult.items
       marketplaces.value = marketplacesResult.items
+
+      const marketplaceIds = [
+        ...new Set(connectionsResult.items.map((connection) => connection.marketplaceId)),
+      ]
+      const categoryResults = await Promise.all(
+        marketplaceIds.map((marketplaceId) =>
+          listMarketplaceCategories(marketplaceId, { perPage: 100 }),
+        ),
+      )
+      categoriesByMarketplace.value = new Map(
+        marketplaceIds.map((marketplaceId, index) => [marketplaceId, categoryResults[index].items]),
+      )
+
       error.value = null
     } catch (caughtError) {
       error.value = caughtError
@@ -113,14 +142,44 @@ export function useProductMarketplaces(productId: string) {
   }
 
   const rows = computed(() =>
-    buildProductMarketplaceRows(links.value, connections.value, marketplaces.value),
+    buildProductMarketplaceRows(
+      links.value,
+      connections.value,
+      marketplaces.value,
+      categoriesByMarketplace.value,
+    ),
   )
   const availableOptions = computed(() =>
     buildAvailableConnectionOptions(connections.value, marketplaces.value, links.value),
   )
 
-  async function link(userMarketplaceId: string): Promise<void> {
-    await createProductMarketplace(productId, { user_marketplace_id: userMarketplaceId })
+  /**
+   * Opções pro `Select` de categoria — categorias já com comissão
+   * configurada pro marketplace da conexão escolhida (`nem todo
+   * marketplace tem categoria vinculada`, cross-session tarefa 64). Vazio
+   * quando o marketplace não tem nenhuma — `ProductMarketplacesView.vue`
+   * esconde o campo inteiro nesse caso, categoria é sempre opcional.
+   */
+  function categoryOptionsFor(userMarketplaceId: string): SelectOption[] {
+    const connection = connections.value.find((candidate) => candidate.id === userMarketplaceId)
+
+    if (!connection) {
+      return []
+    }
+
+    return (categoriesByMarketplace.value.get(connection.marketplaceId) ?? []).map(
+      (categoryLink) => ({
+        label: categoryLink.category.title,
+        value: categoryLink.categoryId,
+      }),
+    )
+  }
+
+  async function link(userMarketplaceId: string, categoryId?: string): Promise<void> {
+    await createProductMarketplace(productId, {
+      category_id: categoryId === '' ? undefined : categoryId,
+      user_marketplace_id: userMarketplaceId,
+    })
     await refresh()
   }
 
@@ -129,5 +188,14 @@ export function useProductMarketplaces(productId: string) {
     await refresh()
   }
 
-  return { availableOptions, error, isLoading, link, refresh, rows, unlink }
+  return {
+    availableOptions,
+    categoryOptionsFor,
+    error,
+    isLoading,
+    link,
+    refresh,
+    rows,
+    unlink,
+  }
 }

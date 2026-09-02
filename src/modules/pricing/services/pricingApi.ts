@@ -1,6 +1,7 @@
 import { apiClient } from '@/core/api/client'
 import type { components } from '@/core/api/schema'
 import type { ApiResponse, Paginated } from '@/shared/types/api.type'
+import { type CategoryMarketplace, toCategoryMarketplace } from '../types/categoryMarketplace.type'
 import {
   type AdminMarketplace,
   type Marketplace,
@@ -8,6 +9,7 @@ import {
   toMarketplace,
 } from '../types/marketplace.type'
 import { type PricingRule, toPricingRule } from '../types/pricingRule.type'
+import { type ProductCategory, toProductCategory } from '../types/productCategory.type'
 import { type ProductMarketplace, toProductMarketplace } from '../types/productMarketplace.type'
 import { toUserMarketplace, type UserMarketplace } from '../types/userMarketplace.type'
 
@@ -23,6 +25,12 @@ type CreateUserMarketplaceRequest = components['schemas']['CreateUserMarketplace
 type UpdateUserMarketplaceRequest = components['schemas']['UpdateUserMarketplaceRequest']
 type ProductMarketplaceResource = components['schemas']['ProductMarketplaceResource']
 type CreateProductMarketplaceRequest = components['schemas']['CreateProductMarketplaceRequest']
+type ProductCategoryResource = components['schemas']['ProductCategoryResource']
+type CreateProductCategoryRequest = components['schemas']['CreateProductCategoryRequest']
+type UpdateProductCategoryRequest = components['schemas']['UpdateProductCategoryRequest']
+type CategoryMarketplaceResource = components['schemas']['CategoryMarketplaceResource']
+type CreateCategoryMarketplaceRequest = components['schemas']['CreateCategoryMarketplaceRequest']
+type UpdateCategoryMarketplaceRequest = components['schemas']['UpdateCategoryMarketplaceRequest']
 
 interface Envelope<T> {
   items: T[]
@@ -274,4 +282,136 @@ export async function deleteProductMarketplace(
 export async function getProductName(productId: string): Promise<string> {
   const { data } = await apiClient.get<ApiResponse<{ name: string }>>(`/products/${productId}`)
   return data.data.name
+}
+
+// ---------------------------------------------------------------------------
+// PRODUCT_CATEGORY — CRUD admin-only (`/admin/product-categories`), tarefa
+// 64. Categoria simples, sem hierarquia/subcategoria (decisão do backend).
+// ---------------------------------------------------------------------------
+
+export interface ListAdminProductCategoriesParams {
+  active?: boolean
+  marketplaceId?: string
+  page?: number
+  perPage?: number
+  sort?: string
+}
+
+export async function listAdminProductCategories(
+  params: ListAdminProductCategoriesParams = {},
+): Promise<Paginated<ProductCategory>> {
+  const { data } = await apiClient.get<ApiResponse<Envelope<ProductCategoryResource>>>(
+    '/admin/product-categories',
+    {
+      params: {
+        'filter[active]': params.active,
+        'filter[marketplace_id]': params.marketplaceId,
+        page: params.page,
+        per_page: params.perPage,
+        sort: params.sort,
+      },
+    },
+  )
+
+  return { items: data.data.items.map(toProductCategory), meta: data.data.meta }
+}
+
+export async function createAdminProductCategory(
+  payload: CreateProductCategoryRequest,
+): Promise<ProductCategory> {
+  const { data } = await apiClient.post<ApiResponse<ProductCategoryResource>>(
+    '/admin/product-categories',
+    payload,
+  )
+  return toProductCategory(data.data)
+}
+
+export async function updateAdminProductCategory(
+  id: string,
+  payload: UpdateProductCategoryRequest,
+): Promise<ProductCategory> {
+  const { data } = await apiClient.patch<ApiResponse<ProductCategoryResource>>(
+    `/admin/product-categories/${id}`,
+    payload,
+  )
+  return toProductCategory(data.data)
+}
+
+/**
+ * Recusa com `errorMessageCategoryInUse` (422) se a categoria estiver
+ * referenciada em algum `PRODUCT_MARKETPLACE.category_id` — o front não
+ * tenta prever isso antes, só mostra o erro que vier (mesmo critério de
+ * `deleteAdminMarketplace`/`errorMessageMarketplaceHasConnections`).
+ */
+export async function deleteAdminProductCategory(id: string): Promise<void> {
+  await apiClient.delete(`/admin/product-categories/${id}`)
+}
+
+// ---------------------------------------------------------------------------
+// CATEGORY_MARKETPLACE — comissão de uma `PRODUCT_CATEGORY` num
+// `MARKETPLACE` específico, unique `(category_id, marketplace_id)`.
+// Sempre aninhada a UM marketplace (mesmo padrão de `PRICING_RULE`),
+// endereçada por `category_id` na URL, sem id próprio do vínculo em rota
+// nenhuma. Leitura via endpoint COMPARTILHADO (`GET
+// /marketplaces/{id}/categories`, `auth:sanctum` só — funciona pro admin
+// igual pra qualquer usuário, mesmo raciocínio de `listPricingRules`);
+// escrita só pelo admin.
+// ---------------------------------------------------------------------------
+
+export interface ListMarketplaceCategoriesParams {
+  page?: number
+  perPage?: number
+  sort?: string
+}
+
+export async function listMarketplaceCategories(
+  marketplaceId: string,
+  params: ListMarketplaceCategoriesParams = {},
+): Promise<Paginated<CategoryMarketplace>> {
+  const { data } = await apiClient.get<ApiResponse<Envelope<CategoryMarketplaceResource>>>(
+    `/marketplaces/${marketplaceId}/categories`,
+    { params: { page: params.page, per_page: params.perPage, sort: params.sort } },
+  )
+
+  return { items: data.data.items.map(toCategoryMarketplace), meta: data.data.meta }
+}
+
+/**
+ * Recusa com `errorMessageCategoryAlreadyLinkedToMarketplace` (422) numa
+ * 2ª tentativa pra mesma `(category_id, marketplace_id)` — mesmo padrão
+ * de `errorMessageMarketplaceAlreadyConnected`.
+ */
+export async function createAdminCategoryMarketplace(
+  marketplaceId: string,
+  payload: CreateCategoryMarketplaceRequest,
+): Promise<CategoryMarketplace> {
+  const { data } = await apiClient.post<ApiResponse<CategoryMarketplaceResource>>(
+    `/admin/marketplaces/${marketplaceId}/categories`,
+    payload,
+  )
+  return toCategoryMarketplace(data.data)
+}
+
+/**
+ * Só `commission_percentage` é editável — `UpdateCategoryMarketplaceRequest`
+ * real do backend nem aceita `category_id` (trocar de categoria é sempre
+ * excluir e vincular outra, mesmo padrão de `PRODUCT_MARKETPLACE`).
+ */
+export async function updateAdminCategoryMarketplace(
+  marketplaceId: string,
+  categoryId: string,
+  payload: UpdateCategoryMarketplaceRequest,
+): Promise<CategoryMarketplace> {
+  const { data } = await apiClient.patch<ApiResponse<CategoryMarketplaceResource>>(
+    `/admin/marketplaces/${marketplaceId}/categories/${categoryId}`,
+    payload,
+  )
+  return toCategoryMarketplace(data.data)
+}
+
+export async function deleteAdminCategoryMarketplace(
+  marketplaceId: string,
+  categoryId: string,
+): Promise<void> {
+  await apiClient.delete(`/admin/marketplaces/${marketplaceId}/categories/${categoryId}`)
 }
