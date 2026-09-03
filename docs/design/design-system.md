@@ -5261,6 +5261,92 @@ de codar do lado deles — dinheiro de verdade)**:
   praticado; `R$ 120,54` > `R$ 96,43` sugerido da 2ª linha); tooltip do
   ícone `Info` mostra o texto completo da ressalva ao passar o mouse.
 
+### HelpView (`shared/views/HelpView.vue`)
+
+**Central de Ajuda, pedido direto do usuário, 2026-09-03**: "quero
+aproveitar que voce consegue tirar screenshot e montar um faq step by
+step" — guia passo a passo com screenshots reais (não mockup) da
+jornada completa (empresa → conectar marketplace → cadastrar produto →
+vincular produto ao marketplace → conferir precificação → praticar
+preço), usando a Shopee como exemplo por ser o único marketplace com o
+motor de precificação já validado (`ProductMarketplacePricingView`,
+seção acima).
+
+- **Conteúdo é 100% estático** — `public/help/onboarding/shopee.json`
+  (14 passos, cada um com `id`/`group`/`title`/`description`/`image`) +
+  os screenshots na mesma pasta, gerados via Playwright contra a
+  aplicação real (usuário/empresa/produto seedados, não dado
+  inventado). `HelpGuide`/`HelpGuideStep` (`shared/types/help.type.ts`),
+  `fetchHelpGuide()` (`shared/services/`) e `useHelpGuide()`
+  (`shared/composables/`) — vive em `shared/`, não em
+  `modules/<contexto>/`, porque não mapeia pra nenhum Bounded Context do
+  backend (mesmo precedente de `ShowcaseView.vue`/
+  `PricingDashboardMockupView.vue`).
+- **`fetchHelpGuide()` usa `fetch()` nativo, não `core/api/client.ts`**
+  — decisão registrada explicitamente no comentário do arquivo: o guia é
+  um JSON estático servido pelo próprio frontend (build da Vite), não um
+  endpoint da API do backend (sem sessão/CSRF/`VITE_API_BASE_URL`). A
+  régua de "nunca `fetch()` fora de `services/`" continua valendo (por
+  isso a chamada mora num `service` próprio) — só a exceção do cliente
+  axios não se aplica a esse caso específico.
+- **`clampStepIndex`/`groupHelpSteps` são funções puras, testadas**
+  (`tests/shared/composables/useHelpGuide.test.ts`) — mesmo critério já
+  usado em `PaginationNav`/`resolveBreadcrumbItems`: lógica de estado
+  (bounds do índice atual, agrupamento preservando ordem de primeira
+  aparição) extraída pra fora do composable especificamente pra ser
+  testável sem montar componente nenhum.
+- **Só existe UM guia hoje, `GUIDE_PATH` fixo no componente** — sem
+  seletor de guia nem rota parametrizada (`/help`, sem `:guideId`).
+  Generalizar pra múltiplos guias (outro marketplace) é a extensão
+  natural se um segundo guia aparecer; antecipar isso agora seria
+  abstração sem caso de uso real (mesmo critério do resto do projeto).
+- **Alcançada por um ícone novo no `AppHeader`** (`Question`, entre os
+  ícones de ação — tema/notificações), não por item de sidebar — mesma
+  categoria de "ação global, independente de onde você está no app" já
+  usada pra tema/notificações, diferente de conteúdo de domínio
+  (Produtos, Canais de venda) que vive na sidebar.
+- **Layout: título+navegação de passo numa linha só, ANTES da imagem —
+  2 rodadas de correção pedidas direto pelo usuário no mesmo dia.** A
+  1ª versão botava a imagem (screenshot em tamanho natural, bem alto)
+  ANTES do título/descrição/botões — resultado: "Anterior"/"Próximo"
+  só ficavam visíveis depois de rolar a página, o usuário não via os
+  botões de cara. Corrigido reordenando o template (progresso → título+
+  botões → descrição → imagem) e juntando o `<h2>` do passo com os 2
+  `Button` de navegação numa `flex` row só (`justify-content:
+  space-between`), economizando uma linha inteira de altura. **A
+  imagem, depois de uma tentativa de limitar a altura em `vh`
+  (`object-fit: contain`) pra garantir que tudo coubesse em ~100vh,
+  voltou pro tamanho original a pedido explícito do usuário** — a
+  reordenação já resolvia o problema real (botões visíveis sem rolar),
+  então limitar a altura da imagem era uma segunda mudança sem
+  necessidade, só deixando os screenshots pequenos demais pra ler o
+  conteúdo.
+- **Passo da "empresa" reapontado pra `/account`, não pra
+  `/company-registration`, achado real reportado pelo usuário**: a 1ª
+  versão usava 2 screenshots da tela de ONBOARDING (`CompanyRegistrationView`,
+  vazia e preenchida) — mas essa tela só é alcançada automaticamente
+  durante o cadastro (`requiresCompany` guard), sem link nenhum no app
+  pra voltar nela depois. Um guia de ajuda que aponta pra uma tela que o
+  usuário não consegue "ir até" de novo (fora de repetir o fluxo de
+  cadastro) não serve pra consulta contínua. Substituído por 1 screenshot
+  só de `/account` (seção "Empresa", o mesmo `CompanyForm.vue`
+  reaproveitado nas duas telas) — sempre alcançável a partir do avatar
+  do usuário na sidebar, e reduz 2 passos artificiais (vazio/preenchido)
+  pra 1 passo real ("revise a qualquer momento"). Textos/numeração dos
+  outros 13 passos e nomes de arquivo renumerados junto (`01`–`14`).
+- **Passo "Vínculo criado" completado com o que faltava, reportado pelo
+  usuário**: a descrição original só explicava que o vínculo alimenta o
+  motor de precificação, sem mencionar a coluna "Preço praticado" —
+  visível no próprio screenshot (com "—" + ícone de lápis), que também
+  permite registrar o preço praticado DIRETO dali, o mesmo dado que
+  aparece na tela de precificação (seção `ProductMarketplacePricingView`
+  acima) só que organizado por PRODUTO em vez de por MARKETPLACE. Texto
+  atualizado pra explicar essa dualidade.
+- Verificado em browser real: os 14 passos carregam e navegam
+  corretamente (clique na lista lateral e nos botões Anterior/Próximo,
+  incluindo os dois ficarem `disabled` nas pontas), progresso "Passo X
+  de 14" acompanha, ícone "Ajuda" do `AppHeader` navega pra `/help`.
+
 ## Do's and Don'ts
 
 ### Do

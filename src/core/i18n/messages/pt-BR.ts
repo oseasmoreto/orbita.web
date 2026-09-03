@@ -595,10 +595,29 @@ export default {
   },
   header: {
     goBack: 'Voltar',
+    help: 'Ajuda',
     notifications: 'Notificações',
     toggleSidebar: 'Ocultar/exibir menu',
     toggleTheme: 'Alternar tema',
     unreadNotifications: 'Há notificações não lidas',
+  },
+  help: {
+    groups: {
+      empresa: 'Empresa',
+      marketplace: 'Marketplace',
+      precificacao: 'Precificação',
+      produto: 'Produto',
+      vinculo: 'Vínculo',
+    },
+    loadError: 'Não foi possível carregar o guia de ajuda agora.',
+    loading: 'Carregando guia de ajuda...',
+    next: 'Próximo',
+    previous: 'Anterior',
+    retry: 'Tentar de novo',
+    stepImageAlt: 'Captura de tela ilustrando o passo "{title}"',
+    stepProgress: 'Passo {current} de {total}',
+    stepsNavLabel: 'Passos do guia',
+    title: 'Central de Ajuda',
   },
   identity: {
     account: {

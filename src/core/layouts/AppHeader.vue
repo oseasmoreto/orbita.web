@@ -45,6 +45,7 @@ import { i18n } from '@/core/i18n'
 import {
   ArrowLeft,
   Bell,
+  Question,
   SidebarSimple,
   Star,
   Sun,
@@ -164,6 +165,14 @@ function goBack(): void {
     <Breadcrumb class="app-header__breadcrumb" :items="breadcrumbItems" />
 
     <div class="app-header__actions">
+      <button
+        :aria-label="$t('header.help')"
+        class="app-header__icon-button"
+        type="button"
+        @click="router.push({ name: 'help' })"
+      >
+        <Icon :icon="Question" :size="20" />
+      </button>
       <button
         :aria-label="$t('header.toggleTheme')"
         class="app-header__icon-button"

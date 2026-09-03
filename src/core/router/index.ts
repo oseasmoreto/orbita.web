@@ -33,6 +33,17 @@ const routes: RouteRecordRaw[] = [
         name: 'pricing-dashboard-mockup',
         path: 'pricing-dashboard-mockup',
       },
+      {
+        // Central de Ajuda (guia passo a passo com screenshots reais),
+        // pedido direto do usuário em 2026-09-03 — alcançada pelo ícone
+        // "Ajuda" do `AppHeader.vue`, sem item de sidebar próprio (mesmo
+        // padrão de `product-marketplaces`/`marketplace-pricing`). Ver
+        // `HelpView.vue`.
+        component: () => import('@/shared/views/HelpView.vue'),
+        meta: { title: 'help.title' },
+        name: 'help',
+        path: 'help',
+      },
       ...catalogRoutes,
       ...identityAppRoutes,
       ...billingAppRoutes,
