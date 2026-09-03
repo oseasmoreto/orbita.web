@@ -1686,6 +1686,7 @@ export interface components {
                     fixed_fee: string;
                     tax: string;
                     ads: string;
+                    affiliate: string;
                     profit: string;
                 };
                 practiced_breakdown: {
@@ -1695,8 +1696,19 @@ export interface components {
                     fixed_fee: string;
                     tax: string;
                     ads: string;
+                    affiliate: string;
                     profit: string;
                 } | null;
+                /**
+                 * @description "VALOR DO ANÚNCIO PARA DESCONTO" da planilha (pedido direto
+                 *     do usuário, 2026-09-03) — preço a listar pra, depois do
+                 *     desconto de campanha (USER_MARKETPLACE.campaign_discount_percentage),
+                 *     ainda render o preço sugerido/praticado correspondente.
+                 *     suggested_campaign_price sempre existe, practiced_campaign_price
+                 *     só quando há practiced_price (mesma regra de sempre).
+                 */
+                suggested_campaign_price: string;
+                practiced_campaign_price: string | null;
             };
             /** Format: date-time */
             created_at: string | null;

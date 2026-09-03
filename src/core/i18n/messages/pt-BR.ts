@@ -431,6 +431,16 @@ export default {
    * cada uma" pra cadastrar, cadastradas todas de uma vez agora.
    */
   errorMessageAccountNotActive: 'Sua conta está desativada.',
+  /**
+   * `ApiMessageKey::ErrorCampaignPriceUnreachable` (2026-09-03, mesma
+   * rodada do campo `suggested_campaign_price`/`practiced_campaign_price`
+   * — `ProductMarketplacePricingView.vue`) — `campaign_discount_percentage`
+   * (`USER_MARKETPLACE`) em 100% ou mais torna `precoAtivo ÷ (1 − desconto%)`
+   * indefinido/negativo, sem preço de anúncio possível. Só alcançável
+   * hoje via `ConnectMarketplaceModal.vue` (campo editável na conexão).
+   */
+  errorMessageCampaignPriceUnreachable:
+    'Um desconto de campanha de 100% ou mais torna o preço de anúncio impossível de calcular. Reduza o desconto de campanha dessa conexão.',
   errorMessageCannotDisconnectLastAccessMethod:
     'Esse é seu único jeito de acessar a conta — defina uma senha antes de desconectar.',
   errorMessageCannotModifyOwnAccount: 'Você não pode alterar a própria conta por aqui.',
@@ -1219,6 +1229,9 @@ export default {
     },
     productMarketplacePricing: {
       backToConnections: 'Voltar para Marketplaces',
+      campaignPriceLabel: 'Preço a anunciar',
+      campaignPriceTooltip:
+        'Preço que compensa o desconto de campanha configurado nesta conexão.\n\nNão é o preço já com desconto aplicado — é o valor MAIOR que você precisa colocar no anúncio pra, depois do desconto, ainda receber o preço sugerido/praticado de verdade.',
       copyPriceButton: 'Copiar preço sugerido',
       editConnectionButton: 'Editar vínculo do marketplace',
       editModal: {
@@ -1250,6 +1263,7 @@ export default {
       searchPlaceholder: 'Buscar produto por nome...',
       segments: {
         ads: 'Ads',
+        affiliate: 'Afiliado',
         commission: 'Comissão',
         costPrice: 'Custo',
         fixedFee: 'Fixo',

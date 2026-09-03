@@ -919,6 +919,60 @@ do resto do design system), não só no hover do mouse. Verificado em
 browser real: hover no ícone abre o tooltip com o texto correto
 ("Usado pelo sistema para calcular a tabela de frete.").
 
+**3 correções pedidas direto pelo usuário em 2026-09-03, com captura do
+ícone/tooltip do `campaignPriceTooltip` (`ProductMarketplacePricingView.vue`)
+"quebrado"**:
+
+1. **`max-width: 260px` + `white-space: pre-line`** — achado real: um
+   texto explicativo longo (`campaignPriceTooltip`, ~230 caracteres,
+   uma frase só) nunca quebrava linha (sem `max-width`/wrap, `<span>`
+   crescia até quase a largura da viewport inteira) — o cálculo de
+   colisão do Reka UI, tentando reposicionar essa caixa gigante pra não
+   estourar a tela, jogava o tooltip pra um canto bem longe do próprio
+   ícone que abriu ele (lido pelo usuário como "o tooltip ficou na
+   linha errada"). `pre-line` respeita `\n\n` como quebra de parágrafo
+   (pedido: "podemos quebrar em blocos") sem impedir o wrap normal
+   dentro de cada bloco.
+2. **Ícone caindo pra linha própria, órfão embaixo do texto** (2ª
+   captura, "o ícone do tooltip segue quebrado") — causa raiz diferente
+   da acima, mesma classe de bug já documentada pro `DataTable.vue`
+   (`svg { max-width: 100% }` do reset global): aqui é o **`display:
+   block`** do MESMO reset (`img, picture, svg { display: block; }`,
+   `core/styles/_reset.scss`) que importa — um `<svg>` de bloco dentro
+   de um `<span tabindex="0">` no MEIO de uma linha de texto força
+   quebra de linha ANTES dele (bloco dentro de inline sempre quebra),
+   então o ícone caía sozinho pra linha de baixo. Não era falta de
+   espaço (`white-space: nowrap` no texto sozinho não resolvia) —
+   corrigido no CONSUMIDOR (`ProductMarketplacePricingView.vue`, célula
+   de preço/hint de campanha) com `:deep(svg) { display: inline-block;
+   vertical-align: middle; }`, mesma técnica `:deep()` já usada pro
+   `DataTable`. Registrado aqui porque é o mesmo padrão "ícone dentro de
+   texto corrido" que qualquer tooltip-com-ícone-inline futuro vai
+   repetir — a correção mora no consumidor, não no `Tooltip.vue`
+   genérico, porque o "bloco quebra linha" só acontece quando o ícone
+   está DENTRO de um fluxo de texto (não é o caso comum de ícone sozinho
+   num botão/célula).
+3. **Cursor `help` em QUALQUER trigger de tooltip**, pedido explícito
+   ("faça com q o ponteiro do mouse vire uma interrogação quando passada
+   por qualquer tooltip") — `TooltipTrigger as-child` ganhou
+   `class="ui-tooltip-trigger"`: como `as-child` MESCLA a classe no
+   elemento real que o slot renderiza (mesmo mecanismo que já mescla
+   `data-*`/listeners, padrão "as-child" do Reka UI), a classe chega
+   tanto num `<span>` solto (ícone decorativo) quanto num `<Button>`
+   inteiro usado como trigger (`ShowcaseView.vue`, 3 instâncias) — sem
+   precisar de CSS por consumidor. `:global(.ui-tooltip-trigger) {
+   cursor: help; }` no próprio `Tooltip.vue`. Verificado em browser
+   real, os dois tipos de trigger (`getComputedStyle().cursor === 'help'`
+   confirmado no `<span>` e nos 3 `<button class="ui-button ...">` da
+   vitrine).
+- Reverificado em browser real (bar view e table view, conexão com
+  desconto de campanha configurado): ícone e texto do hint de campanha
+  ficam na MESMA linha (`height: 15px`, uma linha só, antes `27px`/duas
+  linhas com o ícone órfão); tooltip abre ancorado perto do ícone (não
+  mais num canto distante), com o texto em 2 blocos visíveis separados
+  por uma linha em branco; cursor vira "?" ao passar sobre o ícone nos
+  dois views e sobre os 3 `Button`-trigger da vitrine.
+
 ### Spinner (`shared/components/ui/Spinner.vue`)
 
 Ícone `Loading` (de `snow-ui.generated.ts`, não `Loading1` — ver "Known
@@ -5147,6 +5201,65 @@ coluna coloque em colunas separadas o preço praticado e sugerido"):
   teste unitário de `outcomeTone('0')`; tabela mostra as colunas "Preço
   praticado"/"Preço sugerido" lado a lado, com `—` + lápis na linha sem
   preço praticado ainda.
+
+**2 mudanças de fórmula do backend, 2026-09-03, aviso cross-session da
+sessão de backend (mesma planilha real, confirmadas com o usuário antes
+de codar do lado deles — dinheiro de verdade)**:
+
+1. **`affiliate_percentage` entrou no cálculo** — 8ª parcela no
+   breakdown (`PricingBreakdown.affiliate`), mesmo tratamento de `ads`
+   (deduzida do lucro). Como a barra/legenda/colunas de segmento já
+   iteram `SEGMENT_KEYS` dinamicamente (nunca hardcoded no template),
+   bastou adicionar `'affiliate'` no array (entre `'ads'` e `'profit'`,
+   `services/pricingBreakdown.ts`) + a cor da rampa sequencial
+   (`color-mix(in srgb, {colors.accent-red} 20%, {colors.ink})`, mais
+   perto do preto que `ads` — continua a progressão custo→lucro) + o
+   label `segments.affiliate: 'Afiliado'` no catálogo — nenhuma mudança
+   de template. `PricingBreakdown`/`toPricingBreakdown()`
+   (`productMarketplacePricing.type.ts`) e os 3 fixtures de teste
+   (`pricingBreakdown.test.ts`) atualizados pro novo campo.
+2. **`suggestedCampaignPrice`/`practicedCampaignPrice`** (novo par em
+   `PricingEvaluation`, "VALOR DO ANÚNCIO PARA DESCONTO" da planilha) —
+   o preço MAIOR que o vendedor precisa anunciar pra, depois do
+   desconto de campanha configurado (`USER_MARKETPLACE.campaignDiscountPercentage`),
+   ainda render o preço sugerido/praticado de verdade
+   (`precoAtivo ÷ (1 − desconto%)`). **Pedido explícito da sessão de
+   backend, repassado pelo usuário**: like o valor sozinho na tela
+   convida a leitura invertida (achar que É o preço com desconto já
+   aplicado, o oposto do que é) — o texto precisa deixar isso claro, não
+   só o número solto. Resolvido com um rótulo autoexplicativo direto no
+   texto visível (`campaignPriceLabel`: "Preço a anunciar (compensa o
+   desconto de campanha)"), não escondido só num tooltip — o `Tooltip`/
+   ícone `Info` (mesmo padrão de `isApproximatedTooltip`) entra como
+   reforço COM o texto completo da ressalva, não no lugar dele.
+   - **`hasCampaignMarkup(campaignPrice, price)`** (`pricingBreakdown.ts`,
+     testado) — só mostra a linha quando `campaignPrice > price` de
+     verdade (desconto de campanha configurado). Sem desconto
+     configurado (`null`/`0%` em `USER_MARKETPLACE`), o backend devolve
+     o preço de campanha IGUAL ao preço de venda (divide por `1 − 0%`)
+     — repetir o mesmo número com um rótulo a mais seria ruído puro,
+     nem todo vendedor roda campanha com desconto.
+   - **Bar view**: nova linha (mesma classe `__suggested-hint` do hint
+     de "Sugerido: R$ X") logo abaixo do preço ativo, sempre que
+     `hasCampaignMarkup(active.campaignPrice, active.price)` — aparece
+     independente de `isPracticed` (é sobre o preço ATIVO, não um dos
+     dois específico).
+   - **Table view**: mesma linha dentro de CADA célula de preço
+     (`Preço praticado`/`Preço sugerido`), comparada contra o preço
+     daquela coluna especificamente (`practicedCampaignPrice` vs.
+     `practicedPrice`, `suggestedCampaignPrice` vs. `suggestedPrice`) —
+     precisou envolver o preço+hint num `div.__prices` (já existente,
+     reaproveitado do bar view) dentro da célula, que antes só tinha o
+     `<p>` de preço solto ao lado dos botões (`display:flex` da célula
+     não empilhava verticalmente sem esse wrapper).
+- Verificado em browser real contra a API de verdade (conexão com
+  `campaign_discount_percentage: 20`, 2 produtos — 1 só sugerido, 1
+  praticado): legenda/colunas mostram "Afiliado" corretamente nas duas
+  visões; hint "Preço a anunciar (compensa o desconto de campanha): R$
+  X" aparece nas 2 visões, sempre MAIOR que o preço de venda ao lado
+  (`R$ 69,68` > `R$ 55,74` sugerido; `R$ 125,00` > `R$ 100,00`
+  praticado; `R$ 120,54` > `R$ 96,43` sugerido da 2ª linha); tooltip do
+  ícone `Info` mostra o texto completo da ressalva ao passar o mouse.
 
 ## Do's and Don'ts
 

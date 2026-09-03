@@ -21,6 +21,7 @@ export const SEGMENT_KEYS = [
   'operationalCost',
   'tax',
   'ads',
+  'affiliate',
   'profit',
 ] as const
 
@@ -56,6 +57,7 @@ export function buildPriceSegments(breakdown: PricingBreakdown, price: string): 
 
 export interface ActivePricing {
   breakdown: PricingBreakdown
+  campaignPrice: string
   isPracticed: boolean
   marginPercent: number
   price: string
@@ -83,10 +85,12 @@ export function resolveActivePricing(row: ProductMarketplacePricing): ActivePric
   if (
     row.practicedPrice !== null &&
     pricing.practicedBreakdown &&
-    pricing.practicedProfit !== null
+    pricing.practicedProfit !== null &&
+    pricing.practicedCampaignPrice !== null
   ) {
     return {
       breakdown: pricing.practicedBreakdown,
+      campaignPrice: pricing.practicedCampaignPrice,
       isPracticed: true,
       marginPercent: Number(pricing.practicedMarginPercentage ?? '0'),
       price: row.practicedPrice,
@@ -96,6 +100,7 @@ export function resolveActivePricing(row: ProductMarketplacePricing): ActivePric
 
   return {
     breakdown: pricing.suggestedBreakdown,
+    campaignPrice: pricing.suggestedCampaignPrice,
     isPracticed: false,
     marginPercent: computeMarginPercent(pricing.suggestedProfit, pricing.suggestedPrice),
     price: pricing.suggestedPrice,
@@ -115,6 +120,19 @@ export type OutcomeTone = 'negative' | 'neutral' | 'positive'
  * qualquer coluna (praticado ou sugerido), sem precisar saber se é a
  * "ativa" ou não.
  */
+/**
+ * Só mostra o preço de campanha quando há desconto de campanha
+ * configurado de verdade nesta conexão
+ * (`USER_MARKETPLACE.campaignDiscountPercentage`) — sem desconto (`null`
+ * ou `0`), o backend devolve o preço de campanha IGUAL ao preço de venda
+ * (divisão por `1 - 0%`), e repetir o mesmo número com um rótulo a mais
+ * seria ruído, não informação (nem todo vendedor roda campanha com
+ * desconto, seção 2.4 de `docs/negocio/contexto-plataforma-precificacao.md`).
+ */
+export function hasCampaignMarkup(campaignPrice: string, price: string): boolean {
+  return Number(campaignPrice) > Number(price)
+}
+
 export function outcomeTone(profit: string): OutcomeTone {
   const profitNumber = Number(profit)
 

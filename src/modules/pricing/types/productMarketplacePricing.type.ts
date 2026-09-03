@@ -24,19 +24,27 @@ type PricingEvaluationResource = Omit<
 }
 
 /**
- * Quebra da composição do preço em 7 parcelas (pedido ao backend,
+ * Quebra da composição do preço em 8 parcelas (pedido ao backend,
  * 2026-09-03, pra desenhar a barra empilhada do mockup —
  * `PricingDashboardMockupView.vue` — com dado real). Soma sempre bate
  * com o preço correspondente: `costPrice + operationalCost + commission
- * + fixedFee + tax + ads + profit = price`. `profit` pode vir negativo
- * (prejuízo) se o preço praticado for baixo demais — nunca um segmento
- * de "comissão de campanha": `USER_MARKETPLACE.campaignDiscountPercentage`
- * não entra nessa fórmula (confirmado com o backend, campo só
- * armazenado, sem uso no cálculo ainda), diferente do mockup antigo
- * (100% especulado, sem API por trás) que tinha esse 8º segmento.
+ * + fixedFee + tax + ads + affiliate + profit = price`. `profit` pode
+ * vir negativo (prejuízo) se o preço praticado for baixo demais.
+ *
+ * `affiliate` entrou em 2026-09-03 (mesma planilha real, confirmado com
+ * o usuário antes de codar pelo backend) — mesmo tratamento de `ads`
+ * (deduzido do lucro na resolução do preço sugerido). Continua sem
+ * segmento de "comissão de campanha" na SOMA — o desconto de campanha
+ * (`USER_MARKETPLACE.campaignDiscountPercentage`) não reduz o lucro
+ * aqui, ele só define o preço de ANÚNCIO maior via
+ * `suggestedCampaignPrice`/`practicedCampaignPrice` (`PricingEvaluation`
+ * abaixo) — são conceitos diferentes: este breakdown é "de que o preço
+ * de VENDA é composto", aquele é "que preço anunciar pra, depois do
+ * desconto, chegar nesse preço de venda".
  */
 export interface PricingBreakdown {
   ads: string
+  affiliate: string
   commission: string
   costPrice: string
   fixedFee: string
@@ -56,14 +64,26 @@ export interface PricingBreakdown {
  * `suggestedBreakdown` sempre vêm calculados (preço que bateria a
  * `target_margin` do produto). `isApproximated` avisa quando nenhuma
  * faixa de comissão fechou exata (faixas contíguas, caso raro).
+ *
+ * `suggestedCampaignPrice`/`practicedCampaignPrice` (2026-09-03, "VALOR DO
+ * ANÚNCIO PARA DESCONTO" da planilha real) — o preço MAIOR que o vendedor
+ * precisa listar no anúncio pra, depois de aplicar o desconto de campanha
+ * configurado (`USER_MARKETPLACE.campaignDiscountPercentage`), ainda
+ * receber o preço sugerido/praticado de verdade. **Nunca é o preço já com
+ * desconto aplicado** — é o inverso: `precoAtivo ÷ (1 − desconto%)`,
+ * sempre MAIOR que o preço de venda correspondente. `practicedCampaignPrice`
+ * só existe junto de `practicedPrice` (mesma regra do resto do par
+ * praticado/sugerido).
  */
 export interface PricingEvaluation {
   isApproximated: boolean
   meetsTargetMargin: boolean | null
   practicedBreakdown: PricingBreakdown | null
+  practicedCampaignPrice: string | null
   practicedMarginPercentage: string | null
   practicedProfit: string | null
   suggestedBreakdown: PricingBreakdown
+  suggestedCampaignPrice: string
   suggestedPrice: string
   suggestedProfit: string
 }
@@ -90,6 +110,7 @@ function toPricingBreakdown(
 ): PricingBreakdown {
   return {
     ads: breakdown.ads,
+    affiliate: breakdown.affiliate,
     commission: breakdown.commission,
     costPrice: breakdown.cost_price,
     fixedFee: breakdown.fixed_fee,
@@ -115,9 +136,11 @@ export function toProductMarketplacePricing(
       practicedBreakdown: resource.pricing.practiced_breakdown
         ? toPricingBreakdown(resource.pricing.practiced_breakdown)
         : null,
+      practicedCampaignPrice: pricing.practiced_campaign_price,
       practicedMarginPercentage: pricing.practiced_margin_percentage,
       practicedProfit: pricing.practiced_profit,
       suggestedBreakdown: toPricingBreakdown(resource.pricing.suggested_breakdown),
+      suggestedCampaignPrice: pricing.suggested_campaign_price,
       suggestedPrice: pricing.suggested_price,
       suggestedProfit: pricing.suggested_profit,
     },

@@ -1,6 +1,7 @@
 import {
   buildPriceSegments,
   computeMarginPercent,
+  hasCampaignMarkup,
   outcomeTone,
   resolveActivePricing,
 } from '@/modules/pricing/services/pricingBreakdown'
@@ -11,6 +12,7 @@ import type {
 
 const breakdown: PricingBreakdown = {
   ads: '3.50',
+  affiliate: '2.00',
   commission: '13.98',
   costPrice: '20.00',
   fixedFee: '4.00',
@@ -28,9 +30,11 @@ const baseRow: ProductMarketplacePricing = {
     isApproximated: false,
     meetsTargetMargin: null,
     practicedBreakdown: null,
+    practicedCampaignPrice: null,
     practicedMarginPercentage: null,
     practicedProfit: null,
     suggestedBreakdown: breakdown,
+    suggestedCampaignPrice: '87.39',
     suggestedPrice: '69.91',
     suggestedProfit: '8.44',
   },
@@ -47,6 +51,7 @@ describe('resolveActivePricing', () => {
     expect(result.price).toBe('69.91')
     expect(result.breakdown).toBe(breakdown)
     expect(result.marginPercent).toBeCloseTo((8.44 / 69.91) * 100, 5)
+    expect(result.campaignPrice).toBe('87.39')
   })
 
   it('prefers the practiced price when it exists', () => {
@@ -58,6 +63,7 @@ describe('resolveActivePricing', () => {
         ...baseRow.pricing,
         meetsTargetMargin: true,
         practicedBreakdown,
+        practicedCampaignPrice: '112.38',
         practicedMarginPercentage: '16.68',
         practicedProfit: '15.00',
       },
@@ -70,6 +76,7 @@ describe('resolveActivePricing', () => {
     expect(result.profit).toBe('15.00')
     expect(result.marginPercent).toBe(16.68)
     expect(result.breakdown).toBe(practicedBreakdown)
+    expect(result.campaignPrice).toBe('112.38')
   })
 })
 
@@ -84,6 +91,7 @@ describe('buildPriceSegments', () => {
       'operationalCost',
       'tax',
       'ads',
+      'affiliate',
       'profit',
     ])
     expect(segments[0]).toEqual({
@@ -116,6 +124,16 @@ describe('computeMarginPercent', () => {
 
   it('returns 0 when price is 0 (avoids division by zero)', () => {
     expect(computeMarginPercent('8.44', '0')).toBe(0)
+  })
+})
+
+describe('hasCampaignMarkup', () => {
+  it('returns true when the campaign price is higher than the price (real discount configured)', () => {
+    expect(hasCampaignMarkup('87.39', '69.91')).toBe(true)
+  })
+
+  it('returns false when the campaign price equals the price (no campaign discount configured)', () => {
+    expect(hasCampaignMarkup('69.91', '69.91')).toBe(false)
   })
 })
 

@@ -75,6 +75,7 @@ import { useProductMarketplacePricingList } from '../composables/useProductMarke
 import {
   buildPriceSegments,
   computeMarginPercent,
+  hasCampaignMarkup,
   outcomeTone,
   resolveActivePricing,
   SEGMENT_KEYS,
@@ -234,12 +235,14 @@ const viewMode = ref<ViewMode>('bar')
 type PricingTableRow = {
   id: string
   isApproximated: boolean
+  practicedCampaignPrice: string | null
   practicedMarginPercent: number | null
   practicedPrice: string | null
   practicedProfit: string | null
   productId: string
   productName: string
   source: ProductMarketplacePricing
+  suggestedCampaignPrice: string
   suggestedMarginPercent: number
   suggestedPrice: string
   suggestedProfit: string
@@ -251,11 +254,15 @@ const tableRows = computed<PricingTableRow[]>(() =>
       segments.map((segment) => [segment.key, segment.value]),
     ) as Record<SegmentKey, string>
     const { pricing } = row
-    const hasPracticedPrice = row.practicedPrice !== null && pricing.practicedProfit !== null
+    const hasPracticedPrice =
+      row.practicedPrice !== null &&
+      pricing.practicedProfit !== null &&
+      pricing.practicedCampaignPrice !== null
 
     return {
       id: row.id,
       isApproximated: pricing.isApproximated,
+      practicedCampaignPrice: hasPracticedPrice ? pricing.practicedCampaignPrice : null,
       practicedMarginPercent: hasPracticedPrice
         ? Number(pricing.practicedMarginPercentage ?? '0')
         : null,
@@ -264,6 +271,7 @@ const tableRows = computed<PricingTableRow[]>(() =>
       productId: row.productId,
       productName: row.productName,
       source: row,
+      suggestedCampaignPrice: pricing.suggestedCampaignPrice,
       suggestedMarginPercent: computeMarginPercent(pricing.suggestedProfit, pricing.suggestedPrice),
       suggestedPrice: pricing.suggestedPrice,
       suggestedProfit: pricing.suggestedProfit,
@@ -450,6 +458,18 @@ const tableColumns = computed<DataTableColumn[]>(() => [
                       </span>
                     </Tooltip>
                   </p>
+                  <p
+                    v-if="hasCampaignMarkup(active.campaignPrice, active.price)"
+                    class="product-marketplace-pricing-view__suggested-hint"
+                  >
+                    {{ $t('pricing.productMarketplacePricing.campaignPriceLabel') }}:
+                    {{ formatMoney(active.campaignPrice) }}
+                    <Tooltip :text="$t('pricing.productMarketplacePricing.campaignPriceTooltip')">
+                      <span tabindex="0">
+                        <Icon :icon="Info" :size="12" style="color: var(--color-accent-yellow)" />
+                      </span>
+                    </Tooltip>
+                  </p>
                 </div>
 
                 <Button
@@ -523,17 +543,31 @@ const tableColumns = computed<DataTableColumn[]>(() => [
             >
               —
             </p>
-            <p v-else class="product-marketplace-pricing-view__product-price">
-              {{ formatMoney(row.practicedPrice) }}
-              <span
-                :class="[
-                  'product-marketplace-pricing-view__product-margin',
-                  marginToneClass(row.practicedProfit as string),
-                ]"
+            <div v-else class="product-marketplace-pricing-view__prices">
+              <p class="product-marketplace-pricing-view__product-price">
+                {{ formatMoney(row.practicedPrice) }}
+                <span
+                  :class="[
+                    'product-marketplace-pricing-view__product-margin',
+                    marginToneClass(row.practicedProfit as string),
+                  ]"
+                >
+                  ({{ formatPercent(row.practicedMarginPercent as number, 0) }})
+                </span>
+              </p>
+              <p
+                v-if="hasCampaignMarkup(row.practicedCampaignPrice as string, row.practicedPrice)"
+                class="product-marketplace-pricing-view__suggested-hint"
               >
-                ({{ formatPercent(row.practicedMarginPercent as number, 0) }})
-              </span>
-            </p>
+                {{ $t('pricing.productMarketplacePricing.campaignPriceLabel') }}:
+                {{ formatMoney(row.practicedCampaignPrice as string) }}
+                <Tooltip :text="$t('pricing.productMarketplacePricing.campaignPriceTooltip')">
+                  <span tabindex="0">
+                    <Icon :icon="Info" :size="12" style="color: var(--color-accent-yellow)" />
+                  </span>
+                </Tooltip>
+              </p>
+            </div>
             <Button
               :aria-label="$t('pricing.productMarketplacePricing.editPriceButton')"
               :icon-before="PencilSimpleLine"
@@ -545,25 +579,39 @@ const tableColumns = computed<DataTableColumn[]>(() => [
 
         <template #cell-suggestedPrice="{ row }">
           <div class="product-marketplace-pricing-view__table-price">
-            <p class="product-marketplace-pricing-view__product-price">
-              {{ formatMoney(row.suggestedPrice) }}
-              <span
-                :class="[
-                  'product-marketplace-pricing-view__product-margin',
-                  marginToneClass(row.suggestedProfit),
-                ]"
-              >
-                ({{ formatPercent(row.suggestedMarginPercent, 0) }})
-              </span>
-              <Tooltip
-                v-if="row.isApproximated"
-                :text="$t('pricing.productMarketplacePricing.isApproximatedTooltip')"
-              >
-                <span tabindex="0">
-                  <Icon :icon="Info" :size="12" style="color: var(--color-accent-yellow)" />
+            <div class="product-marketplace-pricing-view__prices">
+              <p class="product-marketplace-pricing-view__product-price">
+                {{ formatMoney(row.suggestedPrice) }}
+                <span
+                  :class="[
+                    'product-marketplace-pricing-view__product-margin',
+                    marginToneClass(row.suggestedProfit),
+                  ]"
+                >
+                  ({{ formatPercent(row.suggestedMarginPercent, 0) }})
                 </span>
-              </Tooltip>
-            </p>
+                <Tooltip
+                  v-if="row.isApproximated"
+                  :text="$t('pricing.productMarketplacePricing.isApproximatedTooltip')"
+                >
+                  <span tabindex="0">
+                    <Icon :icon="Info" :size="12" style="color: var(--color-accent-yellow)" />
+                  </span>
+                </Tooltip>
+              </p>
+              <p
+                v-if="hasCampaignMarkup(row.suggestedCampaignPrice, row.suggestedPrice)"
+                class="product-marketplace-pricing-view__suggested-hint"
+              >
+                {{ $t('pricing.productMarketplacePricing.campaignPriceLabel') }}:
+                {{ formatMoney(row.suggestedCampaignPrice) }}
+                <Tooltip :text="$t('pricing.productMarketplacePricing.campaignPriceTooltip')">
+                  <span tabindex="0">
+                    <Icon :icon="Info" :size="12" style="color: var(--color-accent-yellow)" />
+                  </span>
+                </Tooltip>
+              </p>
+            </div>
             <Button
               :aria-label="$t('pricing.productMarketplacePricing.copyPriceButton')"
               :icon-before="CopySimple"
@@ -785,6 +833,22 @@ const tableColumns = computed<DataTableColumn[]>(() => [
   margin-bottom: 0;
   font-size: $font-size-sm;
   color: $color-ink-40;
+  white-space: nowrap;
+}
+
+// Achado real, 2026-09-03 — mesma causa raiz já documentada pro
+// `DataTable.vue` (`svg { max-width: 100% }` do reset global), só que
+// aqui é o `display: block` do MESMO reset que importa: um ícone de
+// tooltip (`isApproximated`/`campaignPrice`) dentro de um `<span
+// tabindex="0">` no MEIO do texto de uma linha vira, sozinho, uma caixa
+// de bloco — um bloco dentro de conteúdo inline força quebra de linha
+// ANTES dele, então o ícone caía pra própria linha, órfão embaixo do
+// texto (não é bug de wrap por falta de espaço, `white-space: nowrap`
+// acima não resolvia isso sozinho). `:deep()` alcança o `<svg>` gerado
+// dentro do `Icon.vue` filho, mesma técnica do `DataTable.vue`.
+.product-marketplace-pricing-view__suggested-hint :deep(svg) {
+  display: inline-block;
+  vertical-align: middle;
 }
 
 .product-marketplace-pricing-view__bar {
@@ -804,9 +868,10 @@ const tableColumns = computed<DataTableColumn[]>(() => [
   }
 }
 
-// Mesma rampa sequencial de `PricingDashboardMockupView.vue`, só com 7
-// parcelas em vez de 8 (sem "Comissão campanha" — não entra na fórmula
-// real, ver comentário do `<script>`).
+// Mesma rampa sequencial de `PricingDashboardMockupView.vue` — 8
+// parcelas (afiliado entrou em 2026-09-03, mesma planilha real), ainda
+// sem "Comissão campanha": o desconto de campanha não entra nessa soma,
+// só define o preço de anúncio maior (ver `campaignPrice` no `<script>`).
 .product-marketplace-pricing-view__segment--costPrice {
   background-color: color-mix(in srgb, $color-accent-orange 30%, $color-bg-2);
 }
@@ -829,6 +894,10 @@ const tableColumns = computed<DataTableColumn[]>(() => [
 
 .product-marketplace-pricing-view__segment--ads {
   background-color: color-mix(in srgb, $color-accent-red 45%, $color-ink);
+}
+
+.product-marketplace-pricing-view__segment--affiliate {
+  background-color: color-mix(in srgb, $color-accent-red 20%, $color-ink);
 }
 
 .product-marketplace-pricing-view__segment--profit {
@@ -857,6 +926,10 @@ const tableColumns = computed<DataTableColumn[]>(() => [
 
 .product-marketplace-pricing-view__legend-swatch--ads {
   @extend .product-marketplace-pricing-view__segment--ads;
+}
+
+.product-marketplace-pricing-view__legend-swatch--affiliate {
+  @extend .product-marketplace-pricing-view__segment--affiliate;
 }
 
 .product-marketplace-pricing-view__legend-swatch--profit {
