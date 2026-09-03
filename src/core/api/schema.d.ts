@@ -815,6 +815,22 @@ export interface paths {
         delete: operations["productMarketplace.destroy"];
         options?: never;
         head?: never;
+        patch: operations["productMarketplace.update"];
+        trace?: never;
+    };
+    "/user-marketplaces/{userMarketplace}/products": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["productMarketplacePricing.index"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
         patch?: never;
         trace?: never;
     };
@@ -1642,12 +1658,56 @@ export interface components {
             /** Format: date-time */
             created_at: string | null;
         };
+        /** ProductMarketplacePricingResource */
+        ProductMarketplacePricingResource: {
+            id: string;
+            product_id: string;
+            product_name: string;
+            user_marketplace_id: string;
+            category_id: string | null;
+            practiced_price: string | null;
+            pricing: {
+                practiced_profit: string;
+                practiced_margin_percentage: string;
+                meets_target_margin: string;
+                suggested_price: string;
+                suggested_profit: string;
+                is_approximated: string;
+                /**
+                 * @description Quebra por parcela (pedido do frontend, 2026-09-03) — pra
+                 *     desenhar a barra empilhada de composição de preço.
+                 *     suggested_breakdown sempre existe, practiced_breakdown só
+                 *     quando há practiced_price (mesma regra dos campos acima).
+                 */
+                suggested_breakdown: {
+                    cost_price: string;
+                    operational_cost: string;
+                    commission: string;
+                    fixed_fee: string;
+                    tax: string;
+                    ads: string;
+                    profit: string;
+                };
+                practiced_breakdown: {
+                    cost_price: string;
+                    operational_cost: string;
+                    commission: string;
+                    fixed_fee: string;
+                    tax: string;
+                    ads: string;
+                    profit: string;
+                } | null;
+            };
+            /** Format: date-time */
+            created_at: string | null;
+        };
         /** ProductMarketplaceResource */
         ProductMarketplaceResource: {
             id: string;
             product_id: string;
             user_marketplace_id: string;
             category_id: string | null;
+            practiced_price: string | null;
             /** Format: date-time */
             created_at: string | null;
         };
@@ -1898,6 +1958,15 @@ export interface components {
             quantity?: number;
             /** Format: date-time */
             date?: string;
+        };
+        /**
+         * UpdateProductMarketplaceRequest
+         * @description Só practiced_price é mutável (tarefa 76) — categoria continua imutável,
+         *     trocar de canal continua sendo sempre DELETE + POST de novo (decisão da
+         *     tarefa 46, não revista).
+         */
+        UpdateProductMarketplaceRequest: {
+            practiced_price: number | null;
         };
         /** UpdateProductRequest */
         UpdateProductRequest: {
@@ -4780,6 +4849,95 @@ export interface operations {
                         success: boolean;
                         message: string;
                         data: null;
+                        errors: null;
+                    };
+                };
+            };
+            401: components["responses"]["AuthenticationException"];
+        };
+    };
+    "productMarketplace.update": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                product: string;
+                productMarketplace: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateProductMarketplaceRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        success: boolean;
+                        message: string;
+                        data: components["schemas"]["ProductMarketplaceResource"];
+                        errors: null;
+                    };
+                };
+            };
+            401: components["responses"]["AuthenticationException"];
+            422: components["responses"]["ValidationException"];
+        };
+    };
+    "productMarketplacePricing.index": {
+        parameters: {
+            query?: {
+                /**
+                 * @description Campos separados por vírgula. Prefixo "-" inverte pra desc. Permitido: created_at.
+                 * @example -created_at
+                 */
+                sort?: string;
+                /**
+                 * @description Busca por nome do produto (contém, não é match exato).
+                 * @example fone bluetooth
+                 */
+                "filter[product_name]"?: string;
+                /**
+                 * @description Tamanho de página, teto em 100.
+                 * @example 15
+                 */
+                per_page?: number;
+            };
+            header?: never;
+            path: {
+                userMarketplace: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        success: boolean;
+                        message: string;
+                        data: {
+                            items: components["schemas"]["ProductMarketplacePricingResource"][];
+                            meta: {
+                                current_page: number;
+                                per_page: number;
+                                total: number;
+                                totals: {
+                                    revenue: string;
+                                    profit: string;
+                                    average_margin: string;
+                                    product_count: number;
+                                };
+                            };
+                        };
                         errors: null;
                     };
                 };

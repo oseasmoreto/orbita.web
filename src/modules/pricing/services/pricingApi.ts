@@ -11,6 +11,10 @@ import {
 import { type PricingRule, toPricingRule } from '../types/pricingRule.type'
 import { type ProductCategory, toProductCategory } from '../types/productCategory.type'
 import { type ProductMarketplace, toProductMarketplace } from '../types/productMarketplace.type'
+import {
+  type ProductMarketplacePricing,
+  toProductMarketplacePricing,
+} from '../types/productMarketplacePricing.type'
 import { toUserMarketplace, type UserMarketplace } from '../types/userMarketplace.type'
 
 type MarketplaceResource = components['schemas']['MarketplaceResource']
@@ -25,6 +29,8 @@ type CreateUserMarketplaceRequest = components['schemas']['CreateUserMarketplace
 type UpdateUserMarketplaceRequest = components['schemas']['UpdateUserMarketplaceRequest']
 type ProductMarketplaceResource = components['schemas']['ProductMarketplaceResource']
 type CreateProductMarketplaceRequest = components['schemas']['CreateProductMarketplaceRequest']
+type UpdateProductMarketplaceRequest = components['schemas']['UpdateProductMarketplaceRequest']
+type ProductMarketplacePricingResource = components['schemas']['ProductMarketplacePricingResource']
 type ProductCategoryResource = components['schemas']['ProductCategoryResource']
 type CreateProductCategoryRequest = components['schemas']['CreateProductCategoryRequest']
 type UpdateProductCategoryRequest = components['schemas']['UpdateProductCategoryRequest']
@@ -225,11 +231,26 @@ export async function deleteUserMarketplace(id: string): Promise<void> {
   await apiClient.delete(`/user-marketplaces/${id}`)
 }
 
+/**
+ * Leitura mínima do nome da loja, só pro cabeçalho de
+ * `ProductMarketplacePricingView.vue` — mesmo critério de
+ * `getProductName` (decorativo, sem justificar buscar/mapear o
+ * `UserMarketplace` inteiro de novo já que a listagem principal não
+ * precisa dele).
+ */
+export async function getUserMarketplaceStoreName(userMarketplaceId: string): Promise<string> {
+  const { data } = await apiClient.get<ApiResponse<{ store_name: string }>>(
+    `/user-marketplaces/${userMarketplaceId}`,
+  )
+  return data.data.store_name
+}
+
 // ---------------------------------------------------------------------------
 // PRODUCT_MARKETPLACE — vínculo puro, sempre aninhado a UM produto
-// próprio. Sem PATCH/update (sem `suggested_price`/`is_approximated` não
-// sobra campo mutável — trocar de canal é sempre DELETE + POST de novo,
-// `pricing.php`).
+// próprio. `categoryId` continua imutável (trocar de canal é sempre
+// DELETE + POST de novo) — só `practicedPrice` é mutável via PATCH
+// (tarefa 76, motor de precificação real), ver `updateProductMarketplacePracticedPrice`
+// logo abaixo.
 // ---------------------------------------------------------------------------
 
 export interface ListProductMarketplacesParams {
@@ -266,6 +287,109 @@ export async function deleteProductMarketplace(
   productMarketplaceId: string,
 ): Promise<void> {
   await apiClient.delete(`/products/${productId}/marketplaces/${productMarketplaceId}`)
+}
+
+/**
+ * `practicedPrice: null` limpa o preço já definido — o backend exige a
+ * CHAVE sempre presente no corpo (`present`, não `sometimes`/`required`),
+ * nunca omitida (`UpdateProductMarketplaceRequest`, backend). Vem de
+ * `useNumberFieldModel` (string vazia → `null`) no consumidor, convertido
+ * pra `number` aqui só na borda da chamada de API — mesmo padrão de
+ * `useProductForm.ts` pros campos decimais opcionais.
+ */
+export async function updateProductMarketplacePracticedPrice(
+  productId: string,
+  productMarketplaceId: string,
+  practicedPrice: number | null,
+): Promise<ProductMarketplace> {
+  const payload: UpdateProductMarketplaceRequest = { practiced_price: practicedPrice }
+  const { data } = await apiClient.patch<ApiResponse<ProductMarketplaceResource>>(
+    `/products/${productId}/marketplaces/${productMarketplaceId}`,
+    payload,
+  )
+  return toProductMarketplace(data.data)
+}
+
+// ---------------------------------------------------------------------------
+// Tela de precificação (tarefa 76) — dado um `USER_MARKETPLACE` (a
+// conexão, ex.: a conta Shopee do usuário), lista todos os
+// `PRODUCT_MARKETPLACE` vinculados a ela já com o cálculo pronto
+// (`ProductMarketplacePricingCalculator`, motor real informado pela
+// planilha do usuário — nunca mais o `PricingCalculator` antigo, nunca
+// conectado a rota nenhuma). Endpoint dedicado (não
+// `listProductMarketplaces` acima) — é uma leitura ENRIQUECIDA
+// (cálculo), não o CRUD do vínculo em si. Sem `search` — a API só aceita
+// `sort`/`per_page` (`sort` só permite `created_at`), nenhum filtro de
+// texto existe ainda.
+// ---------------------------------------------------------------------------
+
+export interface ListProductMarketplacePricingParams {
+  page?: number
+  perPage?: number
+  productName?: string
+  sort?: string
+}
+
+/**
+ * `revenue`/`profit`/`averageMargin` continuam `string` (convenção Money
+ * da API, seção 4 de `fundamentos-api.md`) — formatados na borda
+ * (`formatMoney`/`formatPercent`) igual a qualquer outro valor
+ * monetário, nunca convertidos aqui. Calculados pelo backend sobre TODO
+ * o conjunto filtrado da conexão (respeitando `productName` quando
+ * presente), não só a página atual — preço/lucro "ativo" por produto é
+ * o mesmo critério de `resolveActivePricing()` (praticado quando existe,
+ * senão sugerido). `averageMargin` é ponderada (lucro÷faturamento), não
+ * média simples das margens — decisão do backend, evita que um produto
+ * de R$10 pese igual a um de R$10.000 no portfólio.
+ */
+export interface ProductMarketplacePricingTotals {
+  averageMargin: string
+  productCount: number
+  profit: string
+  revenue: string
+}
+
+export interface ProductMarketplacePricingPage extends Paginated<ProductMarketplacePricing> {
+  totals: ProductMarketplacePricingTotals
+}
+
+export async function listProductMarketplacePricing(
+  userMarketplaceId: string,
+  params: ListProductMarketplacePricingParams = {},
+): Promise<ProductMarketplacePricingPage> {
+  type ResponseData = Envelope<ProductMarketplacePricingResource> & {
+    meta: {
+      totals: {
+        average_margin: string
+        product_count: number
+        profit: string
+        revenue: string
+      }
+    }
+  }
+
+  const { data } = await apiClient.get<ApiResponse<ResponseData>>(
+    `/user-marketplaces/${userMarketplaceId}/products`,
+    {
+      params: {
+        'filter[product_name]': params.productName ?? undefined,
+        page: params.page,
+        per_page: params.perPage,
+        sort: params.sort,
+      },
+    },
+  )
+
+  return {
+    items: data.data.items.map(toProductMarketplacePricing),
+    meta: data.data.meta,
+    totals: {
+      averageMargin: data.data.meta.totals.average_margin,
+      productCount: data.data.meta.totals.product_count,
+      profit: data.data.meta.totals.profit,
+      revenue: data.data.meta.totals.revenue,
+    },
+  }
 }
 
 /**

@@ -54,6 +54,7 @@ const link: ProductMarketplace = {
   categoryId: null,
   createdAt: '2026-02-01T00:00:00Z',
   id: 'link-1',
+  practicedPrice: '69.90',
   productId: 'prod-1',
   userMarketplaceId: 'conn-1',
 }
@@ -62,6 +63,7 @@ const linkWithCategory: ProductMarketplace = {
   categoryId: 'cat-1',
   createdAt: '2026-02-01T00:00:00Z',
   id: 'link-2',
+  practicedPrice: null,
   productId: 'prod-1',
   userMarketplaceId: 'conn-1',
 }
@@ -91,6 +93,8 @@ describe('buildProductMarketplaceRows', () => {
         id: 'link-1',
         marketplaceLogoUrl: 'https://example.com/shopee-logo.png',
         marketplaceName: 'Shopee',
+        practicedPrice: '69.90',
+        productId: 'prod-1',
         storeName: 'Minha Loja Shopee',
         userMarketplaceId: 'conn-1',
       },

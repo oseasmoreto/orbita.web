@@ -15,15 +15,19 @@
  * do mesmo endpoint `GET /products/{id}` que Catalog já consome, sem
  * duplicar o tipo `Product`/`toProduct()` inteiro.
  *
- * Sem update — trocar de canal é sempre `DELETE` + `POST` de novo (sem
- * `suggested_price`/`is_approximated` não sobra campo mutável,
- * `pricing.php`).
+ * Sem update de categoria/marketplace — trocar de canal é sempre
+ * `DELETE` + `POST` de novo. `practicedPrice` (tarefa 76) é o único
+ * campo mutável — achado real, 2026-09-03: essa tabela (por PRODUTO)
+ * nunca mostrava/editava o preço praticado, só a tabela por CONEXÃO
+ * (`ProductMarketplacePricingView.vue`) tinha isso, apesar do backend já
+ * expor o campo aqui desde sempre. `UpdatePracticedPriceModal.vue`
+ * reaproveitado das duas telas — ver comentário nele.
  */
 import { computed, onMounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRoute, useRouter } from 'vue-router'
 import dayjs from 'dayjs'
-import { ArrowLineLeft, Trash } from '@/shared/components/icons/regular.generated'
+import { ArrowLineLeft, PencilSimpleLine, Trash } from '@/shared/components/icons/regular.generated'
 import ConfirmDialog from '@/shared/components/blocks/ConfirmDialog.vue'
 import DataTable from '@/shared/components/blocks/DataTable.vue'
 import Button from '@/shared/components/ui/Button.vue'
@@ -33,8 +37,10 @@ import Select from '@/shared/components/ui/Select.vue'
 import { useApiMessage } from '@/shared/composables/useApiMessage'
 import { useConfirmAction } from '@/shared/composables/useConfirmAction'
 import { useToast } from '@/shared/composables/useToast'
+import { formatMoney } from '@/shared/services/formatNumber'
 import { parseApiError } from '@/shared/services/parseApiError'
 import MarketplaceLogo from '../components/MarketplaceLogo.vue'
+import UpdatePracticedPriceModal from '../components/UpdatePracticedPriceModal.vue'
 import { useProductMarketplaces } from '../composables/useProductMarketplaces'
 import { getProductName } from '../services/pricingApi'
 import type { ProductMarketplaceRow } from '../composables/useProductMarketplaces'
@@ -74,6 +80,7 @@ const columns = computed<DataTableColumn[]>(() => [
   { key: 'marketplaceName', title: t('pricing.productMarketplaces.columns.marketplace') },
   { key: 'storeName', title: t('pricing.productMarketplaces.columns.storeName') },
   { key: 'categoryTitle', title: t('pricing.productMarketplaces.columns.category') },
+  { key: 'practicedPrice', title: t('pricing.productMarketplaces.columns.practicedPrice') },
   { key: 'createdAt', title: t('pricing.productMarketplaces.columns.createdAt') },
   { key: 'operations', title: t('common.actions.actions') },
 ])
@@ -133,6 +140,18 @@ async function handleUnlink(): Promise<void> {
   })
 }
 
+const isEditPriceModalOpen = ref(false)
+const editingPriceRow = ref<ProductMarketplaceRow | null>(null)
+
+function openEditPrice(row: ProductMarketplaceRow): void {
+  editingPriceRow.value = row
+  isEditPriceModalOpen.value = true
+}
+
+function handlePriceSaved(): void {
+  void productMarketplaces.refresh()
+}
+
 function goBackToProducts(): void {
   void router.push({ name: 'products' })
 }
@@ -186,6 +205,17 @@ function goBackToProducts(): void {
       </template>
       <template #cell-categoryTitle="{ row }">
         {{ row.categoryTitle ?? '—' }}
+      </template>
+      <template #cell-practicedPrice="{ row }">
+        <div class="product-marketplaces-view__price-cell">
+          <span>{{ row.practicedPrice !== null ? formatMoney(row.practicedPrice) : '—' }}</span>
+          <Button
+            :aria-label="$t('pricing.productMarketplacePricing.editPriceButton')"
+            :icon-before="PencilSimpleLine"
+            variant="ghost"
+            @click="openEditPrice(row)"
+          />
+        </div>
       </template>
       <template #cell-createdAt="{ row }">
         {{ formatCreatedAt(row.createdAt) }}
@@ -246,6 +276,17 @@ function goBackToProducts(): void {
       @cancel="unlinkConfirmation.cancel()"
       @confirm="handleUnlink()"
     />
+
+    <UpdatePracticedPriceModal
+      v-model="isEditPriceModalOpen"
+      :label="
+        editingPriceRow
+          ? `${editingPriceRow.marketplaceName} — ${editingPriceRow.storeName}`
+          : undefined
+      "
+      :row="editingPriceRow"
+      @saved="handlePriceSaved"
+    />
   </div>
 </template>
 
@@ -291,5 +332,12 @@ function goBackToProducts(): void {
 
 .product-marketplaces-view__category-select {
   margin-top: $spacing-16;
+}
+
+.product-marketplaces-view__price-cell {
+  display: flex;
+  align-items: center;
+  gap: $spacing-4;
+  white-space: nowrap;
 }
 </style>

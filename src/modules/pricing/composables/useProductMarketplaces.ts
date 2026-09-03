@@ -19,6 +19,8 @@ export interface ProductMarketplaceRow {
   id: string
   marketplaceLogoUrl: string | null
   marketplaceName: string
+  practicedPrice: string | null
+  productId: string
   storeName: string
   userMarketplaceId: string
 }
@@ -55,6 +57,8 @@ export function buildProductMarketplaceRows(
       id: link.id,
       marketplaceLogoUrl: marketplace?.logoUrl ?? null,
       marketplaceName: marketplace?.name ?? '—',
+      practicedPrice: link.practicedPrice,
+      productId: link.productId,
       storeName: connection?.storeName ?? '—',
       userMarketplaceId: link.userMarketplaceId,
     }

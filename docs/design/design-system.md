@@ -4076,6 +4076,33 @@ card. `.marketplaces-view__card-title-row` removido (voltou a ser
 cantos arredondados batendo com o card, claramente diferente das tags
 cinzas de categoria mais abaixo; botão "Conectar" continua desabilitado.
 
+**Bug real de overflow no rodapé do card conectado, reportado pelo
+usuário em 2026-09-03 com screenshot** ("veja como ficou bugado na
+lista de canais de venda") — o botão "Ver precificação"
+(`ProductMarketplacePricingView.vue`, mesmo dia) foi adicionado como
+3º botão de TEXTO em `.marketplaces-view__card-actions`
+("Gerenciar"/"Ver precificação"/"Excluir", todos com ícone+label,
+`display:flex` sem `flex-wrap`) — 3 botões de texto nunca cabiam na
+largura de um card do grid (`minmax(260px, 1fr)`), o terceiro
+("Excluir") estourava a borda direita do card, cortado visualmente
+exatamente como a captura mostrou. **Corrigido convertendo os 2 botões
+SECUNDÁRIOS ("Ver precificação"/"Excluir") pra ícone-only** (`Button`
+sem conteúdo no slot default vira a variante "Icon Only" do próprio
+componente, seção Button acima) — `aria-label` no lugar do texto
+visível (`pricing.marketplaces.pricingButton`/`common.actions.delete`,
+mesmas chaves já existentes, só reaproveitadas como rótulo acessível
+em vez de texto). "Gerenciar" continua com texto — é a ação primária do
+card, mesmo critério de hierarquia visual já usado noutros lugares do
+design system (ação principal com texto, secundárias ícone-only —
+mesmo padrão das colunas de ação do `DataTable`). `flex-wrap: wrap`
+também adicionado em `.marketplaces-view__card-actions` como defesa
+extra pra qualquer card ainda mais estreito no futuro. Verificado em
+browser real, `getBoundingClientRect()` nos 7 cards do grid (3
+desconectados, 1 conectado real): `actionsRight` sempre menor que
+`cardRight` em todos, nenhum overflow; card conectado renderiza
+"Gerenciar" (texto) + ícone de gráfico + ícone de lixeira + `Toggle`,
+tudo dentro da borda do card.
+
 ### ConnectMarketplaceModal (`modules/pricing/components/blocks/ConnectMarketplaceModal.vue`)
 
 **3 percentuais informativos por canal, 2026-09-02 (tarefa 65 de
@@ -4896,6 +4923,231 @@ botão de copy nas duas views"):
   da PÁGINA (`document.documentElement.scrollWidth -
   document.documentElement.clientWidth` confirmado em `0`).
 
+### ProductMarketplacePricingView (`modules/pricing/views/ProductMarketplacePricingView.vue`)
+
+**Motor de precificação real conectado pela primeira vez, 2026-09-03** —
+aviso cross-session da sessão de backend (tarefa 76, planilha real do
+usuário): `GET /user-marketplaces/{id}/products` lista todo
+`PRODUCT_MARKETPLACE` de UMA conexão já com o cálculo pronto
+(`ProductMarketplacePricingCalculator`), `PATCH /products/{id}/marketplaces/{id}`
+edita o preço praticado. Substitui conceitualmente o rascunho de
+`PricingDashboardMockupView.vue` (100% mockado) — mas a forma real é
+diferente do mockup: a API é por UMA conexão por vez (`userMarketplaceId`),
+não multi-marketplace com abas simuladas. Rota própria
+(`/marketplaces/:userMarketplaceId/pricing`, nome `marketplace-pricing`),
+alcançada pelo botão novo "Ver precificação" no card CONECTADO de
+`MarketplacesView.vue` (`ChartBar`, ao lado de "Gerenciar") — nunca item
+de sidebar próprio, mesmo padrão de `product-marketplaces`;
+`relatedRouteNames` no item `marketplaces` de `navigation.ts` garante o
+breadcrumb "Operação / Canais de venda / Precificação" em vez de cair só
+no título sozinho (mesmo achado real já documentado pra
+`catalog-products`).
+
+- **Achado real, schema OpenAPI gerado mente sobre 2 campos booleanos** —
+  `ProductMarketplacePricingResource.pricing.meets_target_margin`/
+  `is_approximated` chegam tipados como `string` em `schema.d.ts`
+  (Scramble não consegue seguir o tipo através de
+  `$evaluation->meetsTargetMargin`, propriedade dinâmica anexada ao
+  Model pela Action, nunca uma coluna real). Conferido contra a fonte de
+  verdade real do backend
+  (`Domain/Pricing/ValueObjects/PricingEvaluation.php`): os dois são
+  `bool`/`?bool` de verdade, serializam como booleano JSON nativo.
+  Corrigido no tipo de domínio (`productMarketplacePricing.type.ts`) com
+  `Omit` + override + cast via `unknown` (TS recusa cast direto entre
+  tipos que não se sobrepõem o bastante) — nunca redigitar o resource
+  inteiro à mão só por causa de 2 campos errados. Confirmado em browser
+  real que o runtime realmente manda booleano (`StatusDot` renderizou
+  "Dentro da meta"/"Sem preço praticado" corretamente a partir do valor
+  já tipado certo — só teria funcionado se a leitura do campo estivesse
+  correta).
+- **`practicedProfit`/`practicedMarginPercentage` vêm `null`** quando o
+  vínculo ainda não tem `practicedPrice` definido — não dá pra calcular
+  lucro/margem de um preço que não existe. `StatusDot` cobre os 3
+  estados (`gray`/"Sem preço praticado" quando `null`, `green`/"Dentro
+  da meta", `red`/"Abaixo da meta") — mesma paleta genérica já usada em
+  outras telas, o componente não sabe o que "bate meta" significa, só
+  recebe a cor already-decided pelo consumidor.
+- **`isApproximated`** (faixa de comissão sem fechar exata, faixas
+  contíguas, caso raro) vira um ícone `Info` com `Tooltip` ao lado do
+  preço sugerido — mesmo padrão de tooltip via `<span tabindex="0">`
+  (não um `Button`) já documentado em `ProductForm.vue`.
+- **Sem busca** — a API só aceita `sort`/`per_page`
+  (`sort` só permite `created_at`), nenhum filtro de texto existe ainda
+  (`useProductMarketplacePricingList.ts` não expõe `searchInput`,
+  diferente de `useProductList.ts` — UI que não filtra nada de verdade é
+  pior que não ter UI nenhuma).
+- **`UpdatePracticedPriceModal.vue`** — bespoke, mesma categoria de
+  `EditUserRoleModal.vue`/`OverrideSubscriptionModal.vue` (1 campo,
+  ação pontual, não o par create/update que `useResourceForm` modela).
+  Não emite a linha atualizada — preço praticado muda TAMBÉM lucro/
+  margem/`meetsTargetMargin` (calculados no backend), então o consumidor
+  sempre refaz `list.refresh()` inteiro depois de `saved`, nunca tenta
+  recalcular isso no cliente.
+- **Bug real do backend, encontrado testando em browser real, reportado
+  cross-session e corrigido no mesmo dia**: `PATCH .../marketplaces/{id}`
+  com `{"practiced_price": 99.9}` (exatamente o tipo `number | null` que
+  o próprio `UpdateProductMarketplaceRequest` documenta no OpenAPI)
+  devolvia `500` — `UpdateProductMarketplaceDto::__construct()` exigia
+  `?string`, mas `toDto()` passava `$this->input('practiced_price')` sem
+  cast, que chega como PHP `float` quando o JSON manda um number.
+  Confirmado no `storage/logs/laravel.log` real (TypeError), não era
+  erro de setup local — reportado pra sessão de backend via mensagem
+  cross-session (ela decidiu e aplicou o fix com o próprio TDD, esta
+  sessão nunca editou código de outro Bounded Context: `(string)
+  $this->input('practiced_price')` null-safe, mesmo padrão dos outros
+  campos Money da API). Reverificado depois em browser real contra a
+  API de verdade: editar (`79.90` → `200`, tabela recalcula lucro/margem
+  em tempo real) e LIMPAR o preço (`practiced_price: null` → volta pro
+  estado "Sem preço praticado") funcionam ponta a ponta.
+
+**Gap real encontrado pelo usuário, 2026-09-03 — `ProductMarketplacesView.vue`
+(tabela POR PRODUTO, não por conexão) nunca mostrava/editava o preço
+praticado**, mesmo o backend expondo `practiced_price` em
+`ProductMarketplaceResource` desde sempre (não é campo novo — o tipo de
+domínio do frontend (`ProductMarketplace`, `productMarketplace.type.ts`)
+só nunca tinha sido atualizado quando a tarefa 76 adicionou o campo; só
+`ProductMarketplacePricing`, o tipo da listagem CALCULADA, tinha ganhado
+`practicedPrice`). Corrigido:
+
+- `ProductMarketplace` (tipo base) ganhou `practicedPrice: string | null`.
+- `UpdatePracticedPriceModal.vue`/`useUpdatePracticedPriceForm.ts`
+  generalizados pra aceitar só o mínimo necessário
+  (`PracticedPriceTarget = Pick<ProductMarketplace, 'id' | 'practicedPrice'
+  | 'productId'>`) em vez do `ProductMarketplacePricing` inteiro — as duas
+  telas editam o MESMO vínculo `PRODUCT_MARKETPLACE`, só serializado por
+  2 Resources diferentes do backend (`ProductMarketplaceResource` vs.
+  `ProductMarketplacePricingResource`), então reaproveitar o modal é
+  reaproveitar a operação de verdade, não só copiar UI parecida. `label`
+  virou prop explícita (`description` do `Modal`) — cada consumidor
+  decide o subtítulo (nome do PRODUTO numa tela, `"{marketplace} —
+  {loja}"` na outra), o modal não sabe de onde a linha veio.
+- Nova coluna "Preço praticado" em `ProductMarketplacesView.vue` (entre
+  "Categoria" e "Vinculado em"), mesmo par ícone-de-lápis+valor já usado
+  em `ProductMarketplacePricingView.vue`.
+- Verificado em browser real contra a API de verdade: a coluna mostra
+  `R$ 55,50` (preço seedado), abrir o modal mostra o subtítulo "Shopee —
+  Loja Verify PM" corretamente, editar pra `123,45` dispara o `PATCH`
+  real (`200`) e a tabela atualiza sem reload.
+
+**Reescrita completa reaproveitando o visual do mockup, 2026-09-03,
+pedido direto do usuário** ("temos uma tela linda de precificação a do
+mockup, pq vc nao usou ela? se faltar campos peça ao backend") — a v1
+desta tela (`DataTable` simples, colunas numéricas soltas) foi
+substituída pela barra empilhada + alternância barra/tabela + copiar
+preço de `PricingDashboardMockupView.vue`, agora com dado 100% real.
+Causa da v1 ter ficado mais pobre que o mockup: a API só devolvia preço
+final + lucro agregado, sem a quebra por parcela (custo/comissão/taxa
+fixa/operacional/imposto/ads/lucro) que a barra precisa pra desenhar os
+segmentos — pedido de campo novo ao backend
+(`pricing.suggested_breakdown`/`practiced_breakdown`, ver
+`ProductMarketplacePricingCalculator.php`, que já calculava cada parcela
+internamente e só não expunha), atendido no mesmo dia.
+
+- **Não é reuso 1:1 do markup do mockup** — 3 diferenças reais:
+  1. **Sem `TabBar`** — o contrato real é por UMA conexão
+     (`userMarketplaceId`) por vez, não multi-marketplace simulado.
+  2. **7 segmentos, não 8** — sem "Comissão campanha":
+     `USER_MARKETPLACE.campaignDiscountPercentage` não entra na fórmula
+     real (confirmado com o backend, campo só armazenado sem uso ainda),
+     era 100% especulado no mockup. `SEGMENT_KEYS`/`buildPriceSegments`/
+     `resolveActivePricing` (`services/pricingBreakdown.ts`, testado —
+     `tests/modules/pricing/services/pricingBreakdown.test.ts`) — mesma
+     régua de "decisão de negócio real merece teste" já usada em
+     `buildProductSortParam`.
+  3. **Dois preços por produto agora** (praticado E sugerido, não um
+     `salePrice` só) — `resolveActivePricing()` decide qual vira a barra
+     principal: PRATICADO quando existe (a situação real — "quanto estou
+     ganhando de verdade"), senão SUGERIDO (nada real ainda, mostra a
+     recomendação, com `Badge` "Sugerido" ao lado do preço). Quando o
+     praticado é o principal, uma linha secundária mostra o sugerido +
+     botão de copiar + aviso de aproximação (mesmo ícone/tooltip já
+     existente na v1).
+- **`widthPercent` de cada segmento nunca fica negativo** (`Math.max(...,
+  0)`, testado) — `profit` pode vir negativo de verdade (prejuízo, preço
+  praticado baixo demais), mas `flex-basis` negativo é inválido em CSS;
+  sem o clamp as parcelas positivas somariam mais que 100% da barra. O
+  `overflow: hidden` do container (reaproveitado do mockup) corta o
+  excesso — barra fica "cheia" sem verde de lucro visível, comunicação
+  razoável de "não cobre nem os custos" sem quebrar layout.
+- **Cor do preço/margem é vermelha quando o resultado é ruim de
+  verdade** — margem negativa (sinal claro, independe de meta) OU
+  `meetsTargetMargin: false` no preço praticado; verde nos outros casos,
+  inclusive sugerido (que por construção sempre bate a meta — é o preço
+  que RESOLVE pra ela). Confirmado em browser real: um produto com
+  preço praticado propositalmente baixo (13% de margem contra meta de
+  20%) rendeu `rgb(255, 71, 71)` via `getComputedStyle` — a checagem
+  visual a olho nu no screenshot (baixa resolução) tinha sido enganosa,
+  só a leitura programática confirmou a cor certa.
+- **Sem busca/KPIs** — mesma disciplina já documentada na v1: API só
+  pagina/ordena, um "faturamento total" calculado só sobre a página
+  atual (15 itens) seria enganoso perto do catálogo inteiro.
+- Verificado em browser real contra a API de verdade (5 produtos reais,
+  1 sem preço praticado, 1 com margem abaixo da meta): barra renderiza
+  os 7 segmentos com a rampa de cor correta, badge "Sugerido"/hint
+  secundário aparecem nos casos certos, copiar preço sugerido funciona
+  (clipboard confirmado), editar o preço praticado de um produto sem
+  preço (`PATCH` `200`) atualiza a barra/badge/margem em tempo real sem
+  reload, visão em tabela mostra as mesmas 7 colunas de parcela + preço
+  com os mesmos botões, rolagem horizontal do wrapper (`overflow-x:
+  auto` do `DataTable.vue`) revela as ações completas sem estourar a
+  página.
+
+**3 correções pedidas direto pelo usuário no mesmo dia, com captura
+mostrando o preço inteiro colorido de verde** ("so a porcentagem mude a
+cor, outro ponto tem q deixar explicito o q é preço sugerido e botar o
+preço praticado" + "onde tem valor pago, coloque custo, quando der lucro
+é verde, quando fica no 0x0 amarelo e prejuizo é vermelho, na visão de
+coluna coloque em colunas separadas o preço praticado e sugerido"):
+
+1. **Cor só na porcentagem, nunca no valor em R$** — a regra anterior
+   (`isNegativeOutcome`) e a marcação HTML aplicavam a classe de cor no
+   `<p>` inteiro (`__product-price`), incluindo o valor monetário; a
+   classe agora vive só no `<span>` da porcentagem
+   (`__product-margin--positive/--neutral/--negative`), o valor em R$
+   fica sempre `{colors.ink}`.
+2. **Regra de cor trocada de "margem negativa OU abaixo da meta" pra um
+   sinal direto de 3 estados sobre o LUCRO** (`outcomeTone`,
+   `services/pricingBreakdown.ts`, testado) — verde quando `profit > 0`,
+   amarelo no empate exato "0x0" (`profit === 0`), vermelho no prejuízo
+   (`profit < 0`). Mais simples e a mesma leitura em qualquer coluna
+   (praticado ou sugerido), sem depender de saber qual preço é o
+   "ativo" nem de `meetsTargetMargin`. `computeMarginPercent` (mesmo
+   arquivo, testado) extraído de dentro de `resolveActivePricing` pra
+   ficar reutilizável — a tabela agora precisa calcular a margem do
+   sugerido MESMO quando o praticado é quem manda na barra (ver item 3).
+3. **"Valor pago" virou "Custo"** (`segments.costPrice` no catálogo
+   i18n) — nome mais direto pro primeiro segmento da barra/coluna.
+4. **Visão de tabela: praticado e sugerido viram 2 colunas sempre
+   visíveis** (`Preço praticado`/`Preço sugerido`), não mais uma coluna
+   só com o preço "ativo" + Badge + hint secundário (esse padrão
+   continua exclusivo da visão em barra, onde só cabe 1 preço em
+   destaque por linha). `PricingTableRow` ganhou os dois conjuntos
+   completos (`practicedPrice`/`practicedMarginPercent`/
+   `practicedProfit`, todos `null` juntos quando ainda não há preço
+   praticado — os 3 nascem/faltam em conjunto — e
+   `suggestedPrice`/`suggestedMarginPercent`/`suggestedProfit`, este
+   último sempre presente). Célula de "Preço praticado" mostra um
+   `—` (mesma classe `__suggested-hint`, `{colors.ink-40}`) quando
+   `null`, com o botão de editar do lado; célula de "Preço sugerido"
+   sempre tem valor, com os botões de copiar/ver marketplaces. As 7
+   colunas de parcela (Custo/Comissão/Fixo/Operacional/Imposto/Ads/
+   Lucro) continuam vindo do breakdown do preço "ativo"
+   (praticado-quando-existe-senão-sugerido) — só as 2 colunas de PREÇO
+   foram desdobradas, não a composição de custo inteira, escopo do
+   pedido era só sobre os preços.
+- Reverificado em browser real com 3 produtos (sugerido puro, praticado
+  com lucro, praticado com prejuízo) e `getComputedStyle` em cada
+  `__product-price`/`__product-margin`: o valor em R$ resolve sempre
+  `rgb(0, 0, 0)` (nunca colorido) nas duas visões; a porcentagem resolve
+  `rgb(113, 221, 140)` (verde) no caso de lucro e `rgb(255, 71, 71)`
+  (vermelho) no de prejuízo — o caso neutro (amarelo, `profit === 0`)
+  não foi reproduzido no browser (não dá pra forçar um lucro
+  EXATAMENTE zero digitando um preço via UI, os centavos nunca fecham
+  redondo contra comissão percentual + taxa fixa), coberto só pelo
+  teste unitário de `outcomeTone('0')`; tabela mostra as colunas "Preço
+  praticado"/"Preço sugerido" lado a lado, com `—` + lápis na linha sem
+  preço praticado ainda.
+
 ## Do's and Don'ts
 
 ### Do
@@ -5001,10 +5253,15 @@ Media queries sempre `min-width` (mobile-first) — sem exceção.
 - **Gap "sem card/tabela/badge" — RESOLVIDO há tempos, bullet ficou
   esquecido aqui**: `Badge`/`DataTable`/`StatCard`/o padrão de "seção com
   borda" (`{radius.16}`) já existem e são usados extensivamente desde as
-  Fases 1-9. A dashboard de precificação real (Fase 4) continua sem
-  implementar — `PricingCalculator` nunca foi conectado a rota nenhuma —
-  mas já tem um primeiro rascunho VISUAL mockado (`PricingDashboardMockupView.vue`,
-  seção própria acima, 2026-09-02), sem dado real ainda.
+  Fases 1-9. A dashboard de precificação (Fase 4) tem tanto o rascunho
+  VISUAL mockado (`PricingDashboardMockupView.vue`, seção própria acima,
+  2026-09-02, sem dado real) quanto — desde 2026-09-03 — uma tela REAL
+  por conexão (`ProductMarketplacePricingView.vue`, seção própria acima):
+  `PricingCalculator` antigo nunca foi conectado a rota nenhuma, mas o
+  motor novo (`ProductMarketplacePricingCalculator`, backend) já está.
+  Listagem/cálculo funcionam contra a API de verdade; só a edição do
+  preço praticado tem um bug real do backend ainda aberto (ver seção
+  `ProductMarketplacePricingView` acima).
 - **Os quase 2600 ícones gerados não foram revisados um a um
   visualmente** — a estrutura é uniforme e validada programaticamente
   (todo `<path>`/`<circle>` extraído, `fill` trocado por `currentColor`

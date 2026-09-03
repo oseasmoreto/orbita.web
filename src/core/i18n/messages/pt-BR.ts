@@ -513,6 +513,8 @@ export default {
   errorMessageServer: 'Ocorreu um erro no servidor. Tente novamente em instantes.',
   errorMessageSubscriptionAlreadyActive: 'Você já tem uma assinatura ativa.',
   errorMessageSubscriptionNotActive: 'Sua assinatura não está ativa no momento.',
+  errorMessageTargetMarginUnreachable:
+    'A margem alvo desse produto é impossível de atingir com as taxas desse marketplace. Ajuste a margem alvo ou o custo do produto.',
   errorMessageTicketNotResolved: 'Só é possível disputar um chamado que já foi resolvido.',
   errorMessageTooManyRequests: 'Muitas tentativas. Aguarde um momento e tente de novo.',
   errorMessageTrialNotEligible: 'O plano de teste grátis é só para quem ainda não assinou antes.',
@@ -1211,8 +1213,65 @@ export default {
       disconnectSuccess: 'Marketplace desconectado com sucesso.',
       manageButton: 'Gerenciar',
       pauseSuccess: 'Conexão pausada com sucesso.',
+      pricingButton: 'Ver precificação',
       title: 'Canais de venda',
       usage: '{total} de {max} marketplaces conectados',
+    },
+    productMarketplacePricing: {
+      backToConnections: 'Voltar para Marketplaces',
+      copyPriceButton: 'Copiar preço sugerido',
+      editConnectionButton: 'Editar vínculo do marketplace',
+      editModal: {
+        errors: {
+          priceMin: 'Preço não pode ser negativo.',
+        },
+        fields: {
+          practicedPrice: 'Preço praticado (R$)',
+        },
+        placeholder: 'Deixe em branco pra limpar',
+        success: 'Preço praticado atualizado com sucesso.',
+        title: 'Editar preço praticado',
+      },
+      editPriceButton: 'Editar preço praticado',
+      empty: 'Nenhum produto vinculado a este marketplace ainda.',
+      isApproximatedTooltip:
+        'Nenhuma faixa de comissão bateu exata pra esse valor — o cálculo usa a faixa mais próxima como aproximação.',
+      kpis: {
+        averageMargin: 'Margem média',
+        productCount: 'Produtos',
+        totalProfit: 'Lucro total',
+        totalRevenue: 'Faturamento total',
+      },
+      noActiveConnectionsHint:
+        'Nenhuma conexão ativa disponível — conecte um marketplace antes de ver a precificação.',
+      practicedBadge: 'Praticado',
+      priceCopied: 'Preço copiado para a área de transferência.',
+      priceCopyFailed: 'Não foi possível copiar o preço.',
+      searchPlaceholder: 'Buscar produto por nome...',
+      segments: {
+        ads: 'Ads',
+        commission: 'Comissão',
+        costPrice: 'Custo',
+        fixedFee: 'Fixo',
+        operationalCost: 'Operacional',
+        profit: 'Lucro',
+        tax: 'Imposto',
+      },
+      suggestedBadge: 'Sugerido',
+      suggestedPriceLabel: 'Sugerido',
+      table: {
+        columns: {
+          practicedPrice: 'Preço praticado',
+          product: 'Produto',
+          suggestedPrice: 'Preço sugerido',
+        },
+      },
+      title: 'Precificação',
+      viewModes: {
+        bar: 'Ver em barras',
+        table: 'Ver em tabela',
+      },
+      viewToggleLabel: 'Alternar visualização',
     },
     productMarketplaces: {
       backToProducts: 'Voltar para Produtos',
@@ -1220,6 +1279,7 @@ export default {
         category: 'Categoria',
         createdAt: 'Vinculado em',
         marketplace: 'Marketplace',
+        practicedPrice: 'Preço praticado',
         storeName: 'Loja',
       },
       empty: 'Nenhum marketplace vinculado ainda.',

@@ -26,7 +26,13 @@
  */
 import { onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { ArrowsDownUp, ArrowSquareOut, Trash } from '@/shared/components/icons/regular.generated'
+import { useRouter } from 'vue-router'
+import {
+  ArrowsDownUp,
+  ArrowSquareOut,
+  ChartBar,
+  Trash,
+} from '@/shared/components/icons/regular.generated'
 import Badge from '@/shared/components/ui/Badge.vue'
 import ConfirmDialog from '@/shared/components/blocks/ConfirmDialog.vue'
 import Button from '@/shared/components/ui/Button.vue'
@@ -61,8 +67,20 @@ function hostnameOf(url: string): string {
 }
 
 const { t } = useI18n()
+const router = useRouter()
 const toast = useToast()
 const { resolveMessage } = useApiMessage()
+
+function openPricing(card: MarketplaceConnectionCard): void {
+  if (!card.connection) {
+    return
+  }
+
+  void router.push({
+    name: 'marketplace-pricing',
+    params: { userMarketplaceId: card.connection.id },
+  })
+}
 
 const connections = useMarketplaceConnections()
 onMounted(connections.refresh)
@@ -186,12 +204,17 @@ async function handleDisconnect(): Promise<void> {
                 {{ $t('pricing.marketplaces.manageButton') }}
               </Button>
               <Button
+                :aria-label="$t('pricing.marketplaces.pricingButton')"
+                :icon-before="ChartBar"
+                variant="outline"
+                @click="openPricing(card)"
+              />
+              <Button
+                :aria-label="$t('common.actions.delete')"
                 :icon-before="Trash"
                 variant="ghost"
                 @click="disconnectConfirmation.request(card.connection)"
-              >
-                {{ $t('common.actions.delete') }}
-              </Button>
+              />
             </template>
           </div>
 
@@ -349,6 +372,7 @@ async function handleDisconnect(): Promise<void> {
 
 .marketplaces-view__card-actions {
   display: flex;
+  flex-wrap: wrap;
   gap: $spacing-8;
 }
 </style>

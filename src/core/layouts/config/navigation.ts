@@ -107,6 +107,14 @@ export const operationGroup: NavGroup = {
       icon: Storefront,
       id: 'marketplaces',
       label: t('sidebar.nav.salesChannels'),
+      // `marketplace-pricing` (tarefa 76, backend) — alcançada só pela
+      // ação de linha "Ver precificação" do card conectado
+      // (`MarketplacesView.vue`), nunca item de sidebar próprio, mesmo
+      // achado real já corrigido pra `product-marketplaces`
+      // (`catalog-products` acima): sem isso, o breadcrumb não acha a
+      // rota na árvore e cai só no título sozinho, sem "Operação / Canais
+      // de venda /" na frente.
+      relatedRouteNames: ['marketplace-pricing'],
       to: { name: 'marketplaces' },
     },
     {

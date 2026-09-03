@@ -50,4 +50,16 @@ export const pricingRoutes: RouteRecordRaw[] = [
     name: 'product-marketplaces',
     path: 'products/:id/marketplaces',
   },
+  {
+    // Tela de precificação real (tarefa 76, backend) — alcançada a
+    // partir do card CONECTADO em `MarketplacesView.vue` ("Ver
+    // precificação"), nunca item de sidebar próprio (mesmo padrão de
+    // `product-marketplaces`). `userMarketplaceId` (a conexão), não
+    // `marketplaceId` — é o que `GET /user-marketplaces/{id}/products`
+    // espera.
+    component: () => import('./views/ProductMarketplacePricingView.vue'),
+    meta: { title: 'pricing.productMarketplacePricing.title' },
+    name: 'marketplace-pricing',
+    path: 'marketplaces/:userMarketplaceId/pricing',
+  },
 ]
