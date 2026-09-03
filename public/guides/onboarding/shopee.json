@@ -9,98 +9,98 @@
       "group": "empresa",
       "title": "Cadastre os dados da sua empresa",
       "description": "Você pode revisar ou atualizar os dados da sua empresa a qualquer momento em Conta > Empresa — é o mesmo formulário que a Orbita pede antes de assinar um plano (o CPF ou CNPJ é usado pra emitir a cobrança da assinatura). Empresas com CNPJ precisam informar também o CPF de um responsável (o Mercado Pago só aceita CPF como documento do pagador); com CPF, esse campo nem aparece. O imposto sobre venda é opcional e ainda informativo, sem uso no cálculo de preço.",
-      "image": "/help/onboarding/shopee/01-empresa-conta.png"
+      "image": "/guides/onboarding/shopee/01-empresa-conta.png"
     },
     {
       "id": "canais-lista",
       "group": "marketplace",
       "title": "Veja os canais de venda disponíveis",
       "description": "Em \"Canais de venda\" você encontra todos os marketplaces que a Orbita já suporta. Cada card mostra uma breve descrição e as categorias que aquele canal costuma vender melhor. Clique em \"Conectar\" no card da Shopee.",
-      "image": "/help/onboarding/shopee/02-canais-lista.png"
+      "image": "/guides/onboarding/shopee/02-canais-lista.png"
     },
     {
       "id": "canais-conectar",
       "group": "marketplace",
       "title": "Conecte sua conta da Shopee",
       "description": "Dê um nome pra essa conexão (o nome da sua loja na Shopee) e, se usar, informe os percentuais de ads, desconto de campanha e comissão de afiliado — todos opcionais, mas entram direto no cálculo do preço sugerido quando preenchidos.",
-      "image": "/help/onboarding/shopee/03-canais-conectar-modal.png"
+      "image": "/guides/onboarding/shopee/03-canais-conectar-modal.png"
     },
     {
       "id": "canais-conectado",
       "group": "marketplace",
       "title": "Pronto — a Shopee está conectada",
       "description": "O card agora mostra o nome da sua loja, o botão \"Gerenciar\" (pra editar os dados da conexão), o atalho \"Ver precificação\" e um interruptor pra pausar a conexão sem perder os vínculos já feitos.",
-      "image": "/help/onboarding/shopee/04-canais-conectado.png"
+      "image": "/guides/onboarding/shopee/04-canais-conectado.png"
     },
     {
       "id": "produtos-vazio",
       "group": "produto",
       "title": "Cadastre seu primeiro produto",
       "description": "Em \"Produtos\", clique em \"Novo produto\". É aqui que ficam os dados que alimentam o cálculo de preço: nome, SKU, EAN, NCM, preço de custo e a margem de lucro mínima que você aceita.",
-      "image": "/help/onboarding/shopee/05-produtos-vazio.png"
+      "image": "/guides/onboarding/shopee/05-produtos-vazio.png"
     },
     {
       "id": "produtos-formulario",
       "group": "produto",
       "title": "Preencha os dados do produto",
       "description": "O \"Preço de custo\" é o quanto você paga pra comprar ou fabricar o produto — sem contar frete, embalagem ou mão de obra (isso vai no campo \"Custo operacional\", opcional). A \"Margem alvo\" é o lucro mínimo, sobre o preço de venda, que você quer garantir.",
-      "image": "/help/onboarding/shopee/06-produtos-form.png"
+      "image": "/guides/onboarding/shopee/06-produtos-form.png"
     },
     {
       "id": "produtos-lista",
       "group": "produto",
       "title": "Produto cadastrado",
       "description": "O produto já aparece na sua lista. Ele ainda não está vinculado a nenhum marketplace — por enquanto é só um cadastro no seu catálogo.",
-      "image": "/help/onboarding/shopee/07-produtos-lista.png"
+      "image": "/guides/onboarding/shopee/07-produtos-lista.png"
     },
     {
       "id": "vinculo-vazio",
       "group": "vinculo",
       "title": "Vincule o produto a um marketplace conectado",
       "description": "Clique no ícone de loja ao lado do produto (ou entre pelo próprio produto) pra abrir \"Marketplaces do produto\". Um produto só pode ser vinculado a um marketplace que você já conectou — nunca a um canal qualquer.",
-      "image": "/help/onboarding/shopee/08-produto-marketplaces-vazio.png"
+      "image": "/guides/onboarding/shopee/08-produto-marketplaces-vazio.png"
     },
     {
       "id": "vinculo-modal",
       "group": "vinculo",
       "title": "Escolha a conexão",
       "description": "Selecione a conta/loja em que esse produto vai ser vendido — nesse exemplo, a conexão da Shopee criada no passo anterior. Se o marketplace cobrar comissão por categoria, um segundo campo de categoria aparece aqui (opcional).",
-      "image": "/help/onboarding/shopee/09-produto-marketplaces-modal.png"
+      "image": "/guides/onboarding/shopee/09-produto-marketplaces-modal.png"
     },
     {
       "id": "vinculo-feito",
       "group": "vinculo",
       "title": "Vínculo criado",
       "description": "Agora esse produto já está associado à sua conta Shopee — é esse vínculo que o motor de precificação usa pra calcular o preço sugerido daqui pra frente. Repare na coluna \"Preço praticado\": ela começa em \"—\" (nenhum preço registrado ainda) e já tem um ícone de lápis pra você informar o preço que pratica de verdade nesse marketplace direto por aqui — é o mesmo preço praticado que aparece (e pode ser editado) na tela de precificação, só que essa tabela mostra todos os marketplaces DESSE produto, enquanto a precificação mostra todos os produtos DESSE marketplace.",
-      "image": "/help/onboarding/shopee/10-produto-marketplaces-vinculado.png"
+      "image": "/guides/onboarding/shopee/10-produto-marketplaces-vinculado.png"
     },
     {
       "id": "precificacao-barras",
       "group": "precificacao",
       "title": "Veja o preço sugerido calculado",
       "description": "Voltando em \"Canais de venda\", clique em \"Ver precificação\" no card da Shopee. Cada produto vinculado aparece com uma barra mostrando de que o preço é composto: custo, comissão, taxa fixa, custo operacional, imposto, ads, afiliado e lucro. Sem preço praticado ainda, a barra mostra o preço SUGERIDO — aquele que bate exatamente a margem alvo do produto.",
-      "image": "/help/onboarding/shopee/11-precificacao-barras.png"
+      "image": "/guides/onboarding/shopee/11-precificacao-barras.png"
     },
     {
       "id": "precificacao-tabela",
       "group": "precificacao",
       "title": "Ou veja tudo em formato de tabela",
       "description": "O botão no canto superior direito alterna entre a visão em barras e uma tabela — mais densa, útil quando você tem muitos produtos pra comparar de uma vez. As colunas de preço praticado e sugerido ficam sempre lado a lado.",
-      "image": "/help/onboarding/shopee/12-precificacao-tabela.png"
+      "image": "/guides/onboarding/shopee/12-precificacao-tabela.png"
     },
     {
       "id": "precificacao-editar",
       "group": "precificacao",
       "title": "Registre o preço que você pratica de verdade",
       "description": "Clique no ícone de lápis ao lado do preço pra informar o valor que você efetivamente cobra nesse marketplace. O preço sugerido continua calculado do lado, sempre disponível pra comparação.",
-      "image": "/help/onboarding/shopee/13-precificacao-editar-modal.png"
+      "image": "/guides/onboarding/shopee/13-precificacao-editar-modal.png"
     },
     {
       "id": "precificacao-atualizada",
       "group": "precificacao",
       "title": "Pronto — agora você vê seu lucro real",
       "description": "Com o preço praticado salvo, a barra e o percentual de margem passam a refletir o que você realmente ganha (verde = lucro, amarelo = zero a zero, vermelho = prejuízo) — e o preço sugerido continua exibido como referência, caso você queira ajustar.",
-      "image": "/help/onboarding/shopee/14-precificacao-atualizada.png"
+      "image": "/guides/onboarding/shopee/14-precificacao-atualizada.png"
     }
   ]
 }

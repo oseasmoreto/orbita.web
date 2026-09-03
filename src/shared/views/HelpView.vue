@@ -8,13 +8,28 @@
  * motor de precificação já validado (`docs/design/design-system.md`,
  * seção `ProductMarketplacePricingView`).
  *
- * Conteúdo é 100% estático (`public/help/onboarding/shopee.json` +
+ * Conteúdo é 100% estático (`public/guides/onboarding/shopee.json` +
  * screenshots na mesma pasta), sem chamada nenhuma à API do backend —
  * `useHelpGuide`/`fetchHelpGuide` (`shared/`) cuidam disso. Vive em
  * `shared/views/`, não em `modules/<contexto>/`, porque não mapeia pra
  * nenhum Bounded Context do backend — mesmo precedente de
  * `ShowcaseView.vue`/`PricingDashboardMockupView.vue`, views roteadas
  * sem dono de domínio único.
+ *
+ * **`public/guides/`, nunca `public/help/`** — bug real de produção,
+ * 2026-09-03: a pasta estática nasceu como `public/help/onboarding/...`,
+ * MESMO nome da rota `/help` (`core/router/index.ts`). O build da Vite
+ * copia `public/` verbatim pra `dist/`, então isso virava uma pasta REAL
+ * `dist/help/` — no F5 (nunca na navegação via SPA, que não passa pelo
+ * nginx), `try_files $uri $uri/ /index.html;` (`docker/nginx.conf`)
+ * encontrava esse diretório antes do fallback pro `index.html`, o nginx
+ * disparava o PRÓPRIO redirect 301 (dono/exigindo barra final) — e como
+ * esse container escuta numa porta interna (`listen 5173`, atrás do
+ * Traefik/Dokploy), o `Location` desse redirect vazava a porta interna,
+ * mandando o navegador pra um endereço não-público (loop de carregamento
+ * infinito). Renomear pra `guides` elimina a colisão; `nginx.conf` também
+ * ganhou `absolute_redirect off;` e `try_files` sem `$uri/` como defesa
+ * contra qualquer colisão futura do mesmo tipo (ver `docker/nginx.conf`).
  *
  * Só existe UM guia hoje — `GUIDE_PATH` fixo, sem seletor de guia nem
  * rota parametrizada. Se um segundo guia (outro marketplace) aparecer,
@@ -27,7 +42,7 @@ import Button from '@/shared/components/ui/Button.vue'
 import Spinner from '@/shared/components/ui/Spinner.vue'
 import { useHelpGuide } from '@/shared/composables/useHelpGuide'
 
-const GUIDE_PATH = '/help/onboarding/shopee.json'
+const GUIDE_PATH = '/guides/onboarding/shopee.json'
 
 const { t } = useI18n()
 const {

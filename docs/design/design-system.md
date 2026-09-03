@@ -5272,7 +5272,7 @@ preço), usando a Shopee como exemplo por ser o único marketplace com o
 motor de precificação já validado (`ProductMarketplacePricingView`,
 seção acima).
 
-- **Conteúdo é 100% estático** — `public/help/onboarding/shopee.json`
+- **Conteúdo é 100% estático** — `public/guides/onboarding/shopee.json`
   (14 passos, cada um com `id`/`group`/`title`/`description`/`image`) +
   os screenshots na mesma pasta, gerados via Playwright contra a
   aplicação real (usuário/empresa/produto seedados, não dado
@@ -5346,6 +5346,59 @@ seção acima).
   corretamente (clique na lista lateral e nos botões Anterior/Próximo,
   incluindo os dois ficarem `disabled` nas pontas), progresso "Passo X
   de 14" acompanha, ícone "Ajuda" do `AppHeader` navega pra `/help`.
+
+**Bug real de produção, reportado pelo usuário em 2026-09-03 — F5 na
+rota `/help` entrava em loop de carregamento infinito e acabava
+redirecionando pra `dominio.com:5173`** (navegação via SPA continuava
+funcionando normal — só quebrava no reload/acesso direto pela URL, já
+que a navegação da SPA nunca passa pelo nginx). Causa raiz, confirmada
+direto no `docker/nginx.conf`:
+
+1. `public/guides/onboarding/...` tinha nascido como `public/**help**/onboarding/...`
+   — MESMO nome da rota `/help`. O build da Vite copia `public/` pra
+   `dist/` tal como está, então isso virava uma pasta REAL `dist/help/`
+   no servidor.
+2. `try_files $uri $uri/ /index.html;` — pedindo `/help` (sem barra),
+   nginx via que `/help/` (com barra) batia num DIRETÓRIO existente
+   ANTES de cair no fallback `/index.html`, e disparava seu PRÓPRIO
+   redirect 301 pra adicionar a barra final — nunca chegando no Vue
+   Router.
+3. Esse container escuta numa porta INTERNA (`listen 5173`, atrás do
+   Traefik/Dokploy, que termina TLS no domínio público em 443) — o
+   `Location` desse redirect automático, por padrão
+   (`absolute_redirect on` é o default do nginx), usa host+PORTA DE
+   ESCUTA do próprio nginx pra montar a URL absoluta, vazando a porta
+   interna `5173` — não roteável fora da rede do container — direto pro
+   navegador do usuário. Dava exatamente o sintoma relatado: a URL na
+   barra de endereço virava `dominio.com:5173/help/`, uma porta
+   inatingível pela internet pública, e a conexão simplesmente travava.
+
+**Corrigido em 3 frentes** (a 1ª já bastaria pra ESTE caso específico, as
+outras 2 são defesa contra qualquer colisão do mesmo tipo no futuro):
+
+1. Pasta estática renomeada `public/help/` → `public/guides/` — elimina
+   a colisão de nome com a rota `/help` (nenhuma pasta em `public/`
+   deve levar o nome de uma rota da SPA, regra geral daqui pra frente).
+2. `try_files $uri /index.html;` (`docker/nginx.conf`, `$uri/` removido)
+   — sem o parâmetro de diretório, só um ARQUIVO de verdade intercepta o
+   fallback; qualquer rota da SPA, mesmo colidindo de nome com uma pasta
+   estática futura, sempre cai em `/index.html`. Assets em `public/`
+   continuam servidos normalmente (são arquivos, `$uri` sozinho já
+   resolve).
+3. `absolute_redirect off;` (`docker/nginx.conf`) — qualquer redirect
+   que o nginx venha a gerar sozinho no futuro (esse cenário ou outro)
+   emite só o PATH no `Location`, nunca host:porta — o navegador resolve
+   contra o host/porta que ele já está usando de verdade (o domínio
+   público via Traefik), a porta interna do container nunca mais
+   aparece numa resposta.
+- Verificado localmente com nginx real (Docker, `docker/nginx.conf` +
+  `dist/` da build de produção montados, replicando a mesma colisão de
+  nome antes da correção): `curl -I http://localhost:5173/help`
+  ANTES da correção devolvia `301 Location: http://localhost:5173/help/`
+  (a mesma classe de bug, porta vazada); DEPOIS das 3 correções, a mesma
+  chamada devolve `200` servindo `index.html` direto, sem redirect
+  nenhum — F5/acesso direto em `/help` funciona igual à navegação via
+  SPA.
 
 ## Do's and Don'ts
 
