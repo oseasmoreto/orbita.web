@@ -38,6 +38,7 @@ const { resolveMessage } = useApiMessage()
 const icon = computed(() => notificationIconFor(props.notification.type))
 const tint = computed(() => notificationTintFor(props.notification.type))
 const title = computed(() => resolveMessage(props.notification.title))
+const message = computed(() => resolveMessage(props.notification.message))
 const timestamp = computed(() => formatRelativeTime(props.notification.createdAt))
 </script>
 
@@ -57,6 +58,7 @@ const timestamp = computed(() => formatRelativeTime(props.notification.createdAt
       >
         {{ title }}
       </p>
+      <p v-if="message" class="notification-item__message">{{ message }}</p>
       <p class="notification-item__timestamp">{{ timestamp }}</p>
     </div>
     <span
@@ -106,7 +108,16 @@ const timestamp = computed(() => formatRelativeTime(props.notification.createdAt
   font-weight: $font-weight-semibold;
 }
 
+.notification-item__message {
+  margin-top: $spacing-4;
+  overflow-wrap: break-word;
+  font-size: $font-size-sm;
+  color: $color-ink-80;
+  white-space: pre-line;
+}
+
 .notification-item__timestamp {
+  margin-top: $spacing-4;
   font-size: $font-size-sm;
   color: $color-ink-40;
 }

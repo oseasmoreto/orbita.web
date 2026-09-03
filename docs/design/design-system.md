@@ -4230,6 +4230,32 @@ catalogada ou texto livre, mesma disciplina de sempre).
   sino, painel com os 2 itens (ícone/cor/timestamp relativo corretos),
   clique marca como lida e o ponto some da notificação e do sino.
 
+**Descrição (`message`) exibida, 2026-09-03, pedido direto do usuário**
+("as notificações não exibem a descrição, é importante q mostre todo o
+conteudo") — a Fase 5 já resolvia `message` via `resolveMessage()`
+(`title`/`message` "via `useApiMessage().resolveMessage()`", citado
+acima), mas o valor nunca chegava a ser renderizado em lugar nenhum —
+`NotificationItem.vue` só mostrava `title`+timestamp, o corpo real da
+notificação ficava invisível nas duas superfícies (`NotificationPanel`/
+`NotificationsView`, os dois reaproveitam o mesmo item). Corrigido com
+um `computed` novo (`message`) + um `<p
+class="notification-item__message">` entre o título e o timestamp,
+`v-if="message"` (`NOTIFICATION.message` é sempre preenchido no domínio,
+mas o guard cobre o caso degenerado de string vazia sem esconder um
+parágrafo em branco). **Sem truncamento/`line-clamp` de propósito** — o
+pedido foi explicitamente "mostre todo o conteudo": `white-space:
+pre-line` preserva quebras de linha reais do texto (backend aceita texto
+livre, seção 2.5 de `docs/negocio/contexto-plataforma-precificacao.md`)
+em vez de colapsar tudo numa linha só, `overflow-wrap: break-word` evita
+overflow horizontal com uma palavra longa sem espaço. Cor
+`{colors.ink-80}` (mais escura que o timestamp em `{colors.ink-40}`,
+mais clara que o título em `{colors.ink}`) — hierarquia visual de 3
+níveis (título > descrição > timestamp) sem inventar um 4º tom fora da
+escala de opacidade já existente. Verificado em browser real contra o
+backend local (notificação seedada com uma `message` de texto livre
+mais longa que o título): parágrafo da descrição aparece completo, sem
+corte, nas duas telas (painel do sino e `/notifications`).
+
 ### useNotificationStore (`core/store/useNotificationStore.ts`)
 
 **Fase 5, 2026-09-01** — só o CONTADOR de não lidas (`unreadCount`/
