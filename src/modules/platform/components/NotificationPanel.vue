@@ -23,8 +23,10 @@
  * toda sessão, não vale buscar 10 notificações à toa em todo carregamento
  * só pra alimentar um painel que pode nunca abrir.
  */
-import { onMounted, watch } from 'vue'
+import { watch } from 'vue'
 import { useAppShell } from '@/core/layouts/composables/useAppShell'
+import { useAuthStore } from '@/core/store/useAuthStore'
+import { useNotificationStore } from '@/core/store/useNotificationStore'
 import { Bell } from '@/shared/components/icons/regular.generated'
 import Drawer from '@/shared/components/ui/Drawer.vue'
 import Icon from '@/shared/components/ui/Icon.vue'
@@ -34,8 +36,38 @@ import type { Notification } from '../types/notification.type'
 
 const { closeNotificationPanel, isNotificationPanelOpen } = useAppShell()
 const { items, markAsRead, refresh, refreshUnreadCount } = useNotificationFeed()
+const authStore = useAuthStore()
+const notificationStore = useNotificationStore()
 
-onMounted(refreshUnreadCount)
+/**
+ * `NotificationPanel` é montado uma vez em `App.vue`, pra TODA rota —
+ * inclusive as de guest (`/login`, `/reset-password`...), onde o
+ * `AppHeader`/sino nem existe pra abrir este painel. Achado real,
+ * reportado pelo usuário em 2026-09-03: `onMounted(refreshUnreadCount)`
+ * disparava `GET /notifications` incondicionalmente no boot do app —
+ * sem sessão, a API devolve 401, o que dispara o `UNAUTHORIZED_EVENT`
+ * global (`core/api/client.ts`) e força `router.push({ name: 'login' })`
+ * em `main.ts`, atropelando o guard e a própria rota que o usuário
+ * estava tentando abrir (`/reset-password?token=...`, sempre acessada
+ * deslogado — o clássico "abrir o link do e-mail te manda pro login").
+ * Corrigido trocando `onMounted` por um `watch` em
+ * `authStore.isAuthenticated` (`immediate: true`, cobre o boot já
+ * logado): só busca o contador quando HÁ sessão, e zera o contador
+ * (`setUnreadCount(0)`) quando ela deixa de existir (login em outra aba
+ * expirando, logout) — sem isso o badge do sino ficaria com o número
+ * antigo até o próximo reload.
+ */
+watch(
+  () => authStore.isAuthenticated,
+  (isAuthenticated) => {
+    if (isAuthenticated) {
+      void refreshUnreadCount()
+    } else {
+      notificationStore.setUnreadCount(0)
+    }
+  },
+  { immediate: true },
+)
 
 watch(isNotificationPanelOpen, (isOpen) => {
   if (isOpen) {

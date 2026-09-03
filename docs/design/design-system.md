@@ -4256,6 +4256,36 @@ backend local (notificação seedada com uma `message` de texto livre
 mais longa que o título): parágrafo da descrição aparece completo, sem
 corte, nas duas telas (painel do sino e `/notifications`).
 
+**Bug real, reportado pelo usuário em 2026-09-03 — link de `/reset-password`
+mandava pro `/login` em vez de mostrar o formulário**, tanto em produção
+quanto local. Causa raiz não era o router guard nem `ResetPasswordView.vue`
+(os dois continuam corretos — a rota é `requiresGuest`, sem `requiresAuth`,
+e o guard não redireciona um convidado nela): `NotificationPanel.vue` é
+montado uma única vez em `App.vue`, pra TODA rota, inclusive as de guest
+(`/login`, `/register`, `/forgot-password`, `/reset-password`), onde o
+sino do `AppHeader` nem existe pra abrir este painel de verdade.
+`onMounted(refreshUnreadCount)` disparava `GET /notifications` incondicional
+no boot do app — sem sessão, a API devolve `401`, o que dispara o
+`UNAUTHORIZED_EVENT` global (`core/api/client.ts`) e força
+`router.push({ name: 'login' })` em `main.ts` (`window.addEventListener`),
+atropelando o guard e a própria rota que o usuário estava tentando abrir —
+exatamente o "abrir o link do e-mail te manda pro login" reportado.
+Reproduzido via Playwright contra a URL de produção antes de corrigir
+(`GET /v1/notifications?...` 401 → `framenavigated` pra `/login`,
+confirmado no log de rede).
+
+**Corrigido** trocando `onMounted(refreshUnreadCount)` por um `watch` em
+`authStore.isAuthenticated` (`immediate: true`) — só busca o contador
+quando HÁ sessão real, e zera o contador (`notificationStore.setUnreadCount(0)`)
+quando ela deixa de existir (cobre também o logout, que antes deixava o
+badge do sino com o número antigo até o próximo reload — achado colateral,
+não reportado, mas mesma causa raiz). Verificado em browser real contra o
+backend local: abrir `/reset-password?token=...&email=...` deslogado
+mantém a URL e renderiza o formulário (sem nenhum `framenavigated` extra);
+fluxo completo de redefinição de senha (preencher, submeter, ver modal
+"Senha atualizada com sucesso") funciona ponta a ponta contra a API real.
+327 testes (`vitest run`) continuam passando, sem regressão.
+
 ### useNotificationStore (`core/store/useNotificationStore.ts`)
 
 **Fase 5, 2026-09-01** — só o CONTADOR de não lidas (`unreadCount`/
