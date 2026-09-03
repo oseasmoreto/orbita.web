@@ -9,6 +9,12 @@ RUN npm ci
 
 COPY . .
 
+# .env.production está commitado (decisão do time: só valores públicos,
+# sem segredo) — vite build roda em modo production por padrão e já
+# carrega esse arquivo sozinho. Nunca passar VITE_API_BASE_URL via
+# ARG/ENV aqui: um build arg vazio (Dokploy sem o campo preenchido)
+# sobrescreveria silenciosamente o valor correto do .env.production,
+# porque env de processo tem precedência maior que .env.[modo] no Vite.
 RUN npm run build
 
 # Runtime
