@@ -94,7 +94,23 @@ function toggleAll(): void {
 </script>
 
 <template>
-  <div class="ui-data-table-wrapper">
+  <!--
+    `data-vaul-no-drag` — achado real, reportado pelo usuário em
+    2026-09-03 (`AdminPricingRuleList.vue`, dentro do `Drawer.vue` de
+    editar marketplace): arrastar o scroll horizontal da tabela também
+    arrastava/fechava o Drawer. Causa: `vaul-vue` intercepta gesto de
+    arrasto no MESMO eixo da direção do drawer (`direction="right"` →
+    horizontal) pra decidir "arrastando pra fechar" — sem diferenciar de
+    um scroll horizontal comum dentro do conteúdo. `data-vaul-no-drag` é
+    o escape hatch documentado da própria lib (`node_modules/vaul-vue`,
+    checado via `el.closest('[data-vaul-no-drag]')` no handler de
+    pointerdown) pra excluir uma área do gesto de arrasto do drawer sem
+    desativar o scroll dela. Fixado aqui (bloco compartilhado, não só na
+    tela de regras de comissão) porque qualquer `DataTable` dentro de
+    qualquer `Drawer.vue` teria o mesmo bug — sem efeito nenhum fora de
+    um Drawer, é só um atributo que a lib lê.
+  -->
+  <div class="ui-data-table-wrapper" data-vaul-no-drag>
     <table class="ui-data-table">
       <thead>
         <tr>
