@@ -604,6 +604,31 @@ cada form já é a fonte de verdade real pra inteiro-vs-decimal
 (`.int()` quando faz sentido), o `step` do HTML nunca deveria ser mais
 restritivo que isso.
 
+**Prop `autocomplete`, 2026-09-03, pedido direto do usuário com
+captura real** — `CreateAdminUserForm.vue` (admin cria a conta de OUTRO
+usuário) tinha os campos de e-mail/senha destacados em amarelo pelo
+Chrome, autopreenchidos com o e-mail/senha do próprio admin LOGADO — o
+browser lê "campo de e-mail + campo de senha" e assume que é um
+formulário de login/cadastro da PRÓPRIA conta de quem está digitando,
+oferecendo autofill (e depois "salvar senha") com a credencial errada.
+`Input.vue` não tinha `autocomplete` nenhum antes disso — sem valor
+explícito, o browser decide sozinho, o que já é o comportamento CORRETO
+pra login/cadastro real (autofill da própria conta é esperado ali).
+Prop nova, opcional (repassada 1:1 pro `<input>` nativo, sem
+`autocomplete` nenhum quando omitida — zero mudança nos consumidores
+existentes), usada só onde o autofill do browser erra o alvo:
+`CreateAdminUserForm.vue` ganhou `autocomplete="off"` em nome/e-mail e
+`autocomplete="new-password"` nos dois campos de senha — `new-password`
+é o valor padrão da indústria pra "isto não é uma senha existente pra
+autopreencher, nem a mesma sessão de quem está logado", mais confiável
+que `off` nesse caso específico (Chrome historicamente ignora `off` em
+campo de senha). Verificado em browser real (Playwright, sessão de
+`admin_master` real): os 4 campos do Drawer "Novo usuário" carregam o
+atributo certo no DOM (`text`→`off`, `email`→`off`,
+`password`/`password`→`new-password`); nenhum outro consumidor de
+`Input.vue` (login, cadastro, reset de senha) foi alterado — só quem
+precisava do valor explícito ganhou a prop.
+
 ### Textarea (`shared/components/ui/Textarea.vue`)
 
 **Pedido direto pelo usuário em 2026-09-01** ("crie um componente de

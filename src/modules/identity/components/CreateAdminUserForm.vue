@@ -52,18 +52,28 @@ async function handleSubmit(): Promise<void> {
   <form class="create-admin-user-form" @submit.prevent="handleSubmit">
     <div class="create-admin-user-form__fields">
       <FormGroup :error="fieldError('name')" :label="$t('identity.admin.users.form.fields.name')">
-        <Input v-model="values.name" :invalid="Boolean(fieldError('name'))" />
+        <Input v-model="values.name" autocomplete="off" :invalid="Boolean(fieldError('name'))" />
       </FormGroup>
 
       <FormGroup :error="fieldError('email')" :label="$t('identity.admin.users.form.fields.email')">
-        <Input v-model="values.email" :invalid="Boolean(fieldError('email'))" type="email" />
+        <Input
+          v-model="values.email"
+          autocomplete="off"
+          :invalid="Boolean(fieldError('email'))"
+          type="email"
+        />
       </FormGroup>
 
       <FormGroup
         :error="fieldError('password')"
         :label="$t('identity.admin.users.form.fields.password')"
       >
-        <Input v-model="values.password" :invalid="Boolean(fieldError('password'))" type="password" />
+        <Input
+          v-model="values.password"
+          autocomplete="new-password"
+          :invalid="Boolean(fieldError('password'))"
+          type="password"
+        />
       </FormGroup>
 
       <FormGroup
@@ -72,6 +82,7 @@ async function handleSubmit(): Promise<void> {
       >
         <Input
           v-model="values.passwordConfirmation"
+          autocomplete="new-password"
           :invalid="Boolean(fieldError('passwordConfirmation'))"
           type="password"
         />

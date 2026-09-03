@@ -11,6 +11,17 @@ const props = withDefaults(
     disabled?: boolean
     invalid?: boolean
     /**
+     * Repassado direto pro `<input>` nativo — sem valor, o browser decide
+     * sozinho (comportamento de sempre, ex.: login/cadastro continuam se
+     * beneficiando do autofill normal). Existe pra dar ao consumidor o
+     * controle explícito quando o autofill do browser erra o alvo — ex.:
+     * `CreateAdminUserForm.vue` (admin criando credencial de OUTRO
+     * usuário, não a própria — o browser não deveria nem sugerir
+     * preencher com a sessão de quem está logado, nem oferecer salvar
+     * essa senha).
+     */
+    autocomplete?: string
+    /**
      * Label renderizada dentro da própria caixa do campo — variante
      * "Input-B" do Figma (padding maior, altura por conteúdo). Sem
      * `label`, é a variante "Input-A" (campo isolado, altura fixa).
@@ -26,6 +37,7 @@ const props = withDefaults(
     iconBefore?: Component
   }>(),
   {
+    autocomplete: undefined,
     disabled: false,
     iconBefore: undefined,
     invalid: false,
@@ -84,6 +96,7 @@ function toggleReveal(): void {
       <input
         :id="label ? inputId : undefined"
         v-model="model"
+        :autocomplete="autocomplete"
         :class="['ui-input', { 'ui-input--invalid': invalid }]"
         :disabled="disabled"
         :placeholder="placeholder"
