@@ -57,7 +57,6 @@ async function handleSubmit(): Promise<void> {
 </template>
 
 <style scoped lang="scss">
-@use '@/core/styles/variables' as *;
 
 .create-ticket-form__fields {
   display: flex;

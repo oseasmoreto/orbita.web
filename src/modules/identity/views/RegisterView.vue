@@ -111,7 +111,6 @@ function signUpWithSso(provider: SsoProvider): void {
 </template>
 
 <style scoped lang="scss">
-@use '@/core/styles/variables' as *;
 
 .register-view__title {
   font-size: $font-size-xl;

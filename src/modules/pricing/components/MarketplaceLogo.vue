@@ -41,7 +41,6 @@ const hasFailed = ref(false)
 </template>
 
 <style scoped lang="scss">
-@use '@/core/styles/variables' as *;
 
 .marketplace-logo {
   flex-shrink: 0;

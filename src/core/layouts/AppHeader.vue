@@ -200,8 +200,6 @@ function goBack(): void {
 </template>
 
 <style scoped lang="scss">
-@use '@/core/styles/variables' as *;
-@use '@/core/styles/mixins' as *;
 
 // Sticky no topo (pedido direto do usuário, 2026-08-28) — sem isso o
 // header rolava junto com `.app-layout__content` feito qualquer elemento

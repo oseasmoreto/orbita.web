@@ -80,7 +80,6 @@ onMounted(() => {
 </template>
 
 <style scoped lang="scss">
-@use '@/core/styles/variables' as *;
 
 .sso-callback-view {
   display: flex;

@@ -37,7 +37,6 @@ const initials = computed(() => {
 </template>
 
 <style scoped lang="scss">
-@use '@/core/styles/variables' as *;
 
 .ui-avatar {
   position: relative;

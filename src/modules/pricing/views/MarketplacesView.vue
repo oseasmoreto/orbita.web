@@ -250,7 +250,6 @@ async function handleDisconnect(): Promise<void> {
 </template>
 
 <style scoped lang="scss">
-@use '@/core/styles/variables' as *;
 
 .marketplaces-view {
   display: flex;

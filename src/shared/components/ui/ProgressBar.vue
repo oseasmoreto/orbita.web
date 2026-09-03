@@ -51,7 +51,6 @@ const percentage = computed(() => Math.round((props.value / props.max) * 100))
 </template>
 
 <style scoped lang="scss">
-@use '@/core/styles/variables' as *;
 
 .ui-progress-bar {
   position: relative;

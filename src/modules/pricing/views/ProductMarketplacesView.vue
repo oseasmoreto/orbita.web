@@ -291,7 +291,6 @@ function goBackToProducts(): void {
 </template>
 
 <style scoped lang="scss">
-@use '@/core/styles/variables' as *;
 
 .product-marketplaces-view {
   display: flex;

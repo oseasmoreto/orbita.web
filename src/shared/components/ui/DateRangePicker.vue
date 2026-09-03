@@ -308,8 +308,6 @@ function toggleMeridiem(): void {
 </template>
 
 <style scoped lang="scss">
-@use '@/core/styles/variables' as *;
-@use '@/core/styles/mixins' as *;
 
 .ui-date-range-picker-wrapper {
   display: flex;

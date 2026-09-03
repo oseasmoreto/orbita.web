@@ -45,7 +45,6 @@ withDefaults(
 </template>
 
 <style scoped lang="scss">
-@use '@/core/styles/variables' as *;
 
 .ui-status-dot {
   display: inline-flex;

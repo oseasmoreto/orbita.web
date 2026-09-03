@@ -135,7 +135,6 @@ async function handleSubmit(): Promise<void> {
 </template>
 
 <style scoped lang="scss">
-@use '@/core/styles/variables' as *;
 
 .admin-plan-form__fields {
   display: flex;

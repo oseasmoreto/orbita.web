@@ -60,7 +60,6 @@ async function handleSaved(): Promise<void> {
 </template>
 
 <style scoped lang="scss">
-@use '@/core/styles/variables' as *;
 
 .company-registration-view {
   min-height: 100vh;

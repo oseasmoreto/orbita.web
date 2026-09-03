@@ -46,7 +46,6 @@ const { closeMobileNav, isDesktopSidebarCollapsed, isMobileNavOpen } = useAppShe
 </template>
 
 <style scoped lang="scss">
-@use '@/core/styles/variables' as *;
 
 // Largura não confirmada pixel a pixel no Figma (ver AppLayout.vue) —
 // repetida aqui porque o desktop (coluna estática) e o mobile (drawer)

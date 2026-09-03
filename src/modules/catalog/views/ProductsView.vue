@@ -346,7 +346,6 @@ function handleSaved(): void {
 </template>
 
 <style scoped lang="scss">
-@use '@/core/styles/variables' as *;
 
 .products-view {
   display: flex;

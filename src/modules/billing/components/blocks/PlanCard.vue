@@ -159,7 +159,6 @@ const description = computed(() => {
 </template>
 
 <style scoped lang="scss">
-@use '@/core/styles/variables' as *;
 
 .plan-card {
   position: relative;

@@ -72,8 +72,6 @@ const fieldId = useId()
 </template>
 
 <style scoped lang="scss">
-@use '@/core/styles/variables' as *;
-@use '@/core/styles/mixins' as *;
 
 // Mesmo tratamento visual de Input-A/B / Select / DatePicker — variante
 // "boxed" só entra com `label` (padding maior, coluna com legenda em

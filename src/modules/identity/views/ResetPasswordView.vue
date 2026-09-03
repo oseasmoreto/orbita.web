@@ -128,7 +128,6 @@ function goToLogin(): void {
 </template>
 
 <style scoped lang="scss">
-@use '@/core/styles/variables' as *;
 
 .reset-password-view__title {
   font-size: $font-size-xl;

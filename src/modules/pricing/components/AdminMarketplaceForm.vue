@@ -177,7 +177,6 @@ async function handleSubmit(): Promise<void> {
 </template>
 
 <style scoped lang="scss">
-@use '@/core/styles/variables' as *;
 
 .admin-marketplace-form {
   display: flex;

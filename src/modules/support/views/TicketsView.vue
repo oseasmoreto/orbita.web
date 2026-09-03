@@ -168,7 +168,6 @@ function handleUpdated(): void {
 </template>
 
 <style scoped lang="scss">
-@use '@/core/styles/variables' as *;
 
 .tickets-view {
   display: flex;

@@ -50,7 +50,6 @@ withDefaults(
 </template>
 
 <style scoped lang="scss">
-@use '@/core/styles/variables' as *;
 
 // Espelha `.app-header` (`AppHeader.vue`): `position: sticky` sem um
 // ancestral com `overflow` próprio gruda no viewport de verdade, não só

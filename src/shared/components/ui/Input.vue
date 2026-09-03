@@ -117,8 +117,6 @@ function toggleReveal(): void {
 </template>
 
 <style scoped lang="scss">
-@use '@/core/styles/variables' as *;
-@use '@/core/styles/mixins' as *;
 
 .ui-input-wrapper {
   width: 100%;

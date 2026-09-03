@@ -184,7 +184,6 @@ async function handleDeleteConfirm(password: string): Promise<void> {
 </template>
 
 <style scoped lang="scss">
-@use '@/core/styles/variables' as *;
 
 .account-view {
   max-width: 1200px;

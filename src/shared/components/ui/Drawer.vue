@@ -91,8 +91,6 @@ const direction = computed(() => (isMobile.value ? 'bottom' : 'right'))
 </template>
 
 <style scoped lang="scss">
-@use '@/core/styles/variables' as *;
-@use '@/core/styles/mixins' as *;
 
 // `DrawerPortal` teletransporta pro fim do <body>, mesmo achado já
 // documentado pro Select/Tooltip/Modal/AppSidebar — seletores sempre

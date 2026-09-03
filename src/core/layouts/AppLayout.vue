@@ -40,7 +40,6 @@ import ImpersonationBanner from './ImpersonationBanner.vue'
 </template>
 
 <style scoped lang="scss">
-@use '@/core/styles/variables' as *;
 
 .app-layout {
   display: flex;

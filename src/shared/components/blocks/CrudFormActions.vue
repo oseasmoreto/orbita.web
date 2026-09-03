@@ -35,7 +35,6 @@ const emit = defineEmits<{ cancel: [] }>()
 </template>
 
 <style scoped lang="scss">
-@use '@/core/styles/variables' as *;
 
 .crud-form-actions {
   display: flex;

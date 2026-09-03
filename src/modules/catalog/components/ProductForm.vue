@@ -159,8 +159,6 @@ async function handleSubmit(): Promise<void> {
 </template>
 
 <style scoped lang="scss">
-@use '@/core/styles/variables' as *;
-@use '@/core/styles/mixins' as *;
 
 .product-form {
   display: flex;

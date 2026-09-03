@@ -58,7 +58,6 @@ const emit = defineEmits<{
 </template>
 
 <style scoped lang="scss">
-@use '@/core/styles/variables' as *;
 
 // `DropdownMenuPortal` teletransporta pro fim do <body>, mesmo achado já
 // documentado pro Select/Tooltip/Modal — seletores sempre "planos" dentro

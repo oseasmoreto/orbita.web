@@ -40,8 +40,6 @@ const model = defineModel<string>({ default: '' })
 </template>
 
 <style scoped lang="scss">
-@use '@/core/styles/variables' as *;
-@use '@/core/styles/mixins' as *;
 
 .ui-block-tab {
   display: flex;

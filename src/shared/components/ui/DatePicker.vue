@@ -251,8 +251,6 @@ function toggleMeridiem(): void {
 </template>
 
 <style scoped lang="scss">
-@use '@/core/styles/variables' as *;
-@use '@/core/styles/mixins' as *;
 
 // Mesmo tratamento visual de Input-A/B / Select — o trigger é um campo de
 // formulário como qualquer outro do frame "Form", só que abre um popover

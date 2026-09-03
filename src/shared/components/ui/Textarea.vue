@@ -71,8 +71,6 @@ watch(model, resize)
 </template>
 
 <style scoped lang="scss">
-@use '@/core/styles/variables' as *;
-@use '@/core/styles/mixins' as *;
 
 .ui-textarea-wrapper {
   width: 100%;

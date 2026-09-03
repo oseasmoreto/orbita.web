@@ -45,8 +45,6 @@ function handleLabelClick(): void {
 </template>
 
 <style scoped lang="scss">
-@use '@/core/styles/variables' as *;
-@use '@/core/styles/mixins' as *;
 
 // Dimensões não confirmadas no Figma (rate limit da API bateu antes de
 // medir esse componente) — proporção comum de toggle (trilho 2:1, thumb

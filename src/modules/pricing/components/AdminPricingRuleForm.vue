@@ -107,7 +107,6 @@ async function handleSubmit(): Promise<void> {
 </template>
 
 <style scoped lang="scss">
-@use '@/core/styles/variables' as *;
 
 .admin-pricing-rule-form__fields {
   display: flex;

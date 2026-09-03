@@ -100,7 +100,6 @@ const isResolved = computed(() => thread.ticket.value.status === 'resolved')
 </template>
 
 <style scoped lang="scss">
-@use '@/core/styles/variables' as *;
 
 .ticket-thread-panel {
   display: flex;

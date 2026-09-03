@@ -94,7 +94,6 @@ function goTo(page: number): void {
 </template>
 
 <style scoped lang="scss">
-@use '@/core/styles/variables' as *;
 
 .ui-pagination {
   display: flex;

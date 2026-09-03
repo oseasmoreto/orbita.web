@@ -64,8 +64,6 @@ function handleClick(): void {
 </template>
 
 <style scoped lang="scss">
-@use '@/core/styles/variables' as *;
-@use '@/core/styles/mixins' as *;
 
 .app-sidebar-nav-item__link {
   position: relative;

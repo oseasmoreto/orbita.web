@@ -196,7 +196,6 @@ function handleSaved(): void {
 </template>
 
 <style scoped lang="scss">
-@use '@/core/styles/variables' as *;
 
 .admin-product-categories-view {
   display: flex;

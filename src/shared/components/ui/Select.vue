@@ -84,8 +84,6 @@ const triggerId = useId()
 </template>
 
 <style scoped lang="scss">
-@use '@/core/styles/variables' as *;
-@use '@/core/styles/mixins' as *;
 
 // Mesmo tratamento visual do Input.vue (Input-A/B) — o Select do Figma
 // compartilha padding/borda/fundo com os outros campos do frame "Form".

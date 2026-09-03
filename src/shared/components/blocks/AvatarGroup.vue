@@ -48,7 +48,6 @@ const overflowCount = computed(() => Math.max(props.people.length - props.max, 0
 </template>
 
 <style scoped lang="scss">
-@use '@/core/styles/variables' as *;
 
 .ui-avatar-group {
   display: inline-flex;

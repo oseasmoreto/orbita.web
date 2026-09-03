@@ -66,7 +66,6 @@ onMounted(() => {
 </template>
 
 <style scoped lang="scss">
-@use '@/core/styles/variables' as *;
 
 .sso-exchange-view {
   display: flex;

@@ -93,7 +93,6 @@ async function handleSubmit(): Promise<void> {
 </template>
 
 <style scoped lang="scss">
-@use '@/core/styles/variables' as *;
 
 .product-launch-form__fields {
   display: flex;

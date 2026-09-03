@@ -182,7 +182,6 @@ function handleSaved(): void {
 </template>
 
 <style scoped lang="scss">
-@use '@/core/styles/variables' as *;
 
 .admin-category-marketplace-list {
   display: flex;

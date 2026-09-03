@@ -14,6 +14,26 @@ export default defineConfig(() => ({
       },
     },
   },
+  css: {
+    preprocessorOptions: {
+      // Pedido direto do usuário, 2026-09-03: todo componente repetia
+      // `@use '@/core/styles/variables' as *;`/`@use '@/core/styles/mixins'
+      // as *;` no topo do próprio `<style scoped lang="scss">` — `additionalData`
+      // prepende isso automaticamente em TODO bloco `lang="scss"` (SFC ou
+      // `.scss` solto), então nenhum componente precisa mais escrever essas
+      // 2 linhas. Só `variables`/`mixins` entram aqui (nenhum dos dois emite
+      // CSS de verdade sozinho — só `$var`s e `@mixin`/`@function`s — então
+      // injetar em toda parte, inclusive dentro de `main.scss`, nunca duplica
+      // CSS real no output). `tokens`/`reset` continuam de fora de propósito:
+      // os dois têm CSS de verdade (`:root {...}`/reset de elemento), e
+      // `docs/infra/convencoes-frontend-infra.md` seção 7 já proíbe `@use`
+      // desses dois fora de `main.scss` — duplicar isso aqui repetiria esse
+      // CSS em CADA componente compilado.
+      scss: {
+        additionalData: `@use '@/core/styles/variables' as *;\n@use '@/core/styles/mixins' as *;\n`,
+      },
+    },
+  },
   plugins: [
     vue(),
     VitePWA({

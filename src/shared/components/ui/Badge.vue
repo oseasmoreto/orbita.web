@@ -27,7 +27,6 @@ withDefaults(
 </template>
 
 <style scoped lang="scss">
-@use '@/core/styles/variables' as *;
 
 .ui-badge {
   display: inline-flex;

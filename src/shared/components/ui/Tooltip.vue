@@ -36,7 +36,6 @@ withDefaults(
 </template>
 
 <style scoped lang="scss">
-@use '@/core/styles/variables' as *;
 
 // `:global()`: `TooltipPortal` teletransporta pro <body>, mesmo achado
 // real do Select/Drawer (ver design-system.md, seção Components).

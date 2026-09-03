@@ -41,7 +41,6 @@ withDefaults(
 </template>
 
 <style scoped lang="scss">
-@use '@/core/styles/variables' as *;
 
 .ui-icon-tile {
   display: flex;

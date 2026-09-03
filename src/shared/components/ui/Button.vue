@@ -54,8 +54,6 @@ const iconSize = computed(() => (props.size === 'large' ? 28 : 20))
 </template>
 
 <style scoped lang="scss">
-@use '@/core/styles/variables' as *;
-@use '@/core/styles/mixins' as *;
 
 .ui-button {
   display: inline-flex;

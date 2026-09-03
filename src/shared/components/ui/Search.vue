@@ -47,8 +47,6 @@ function clear(): void {
 </template>
 
 <style scoped lang="scss">
-@use '@/core/styles/variables' as *;
-@use '@/core/styles/mixins' as *;
 
 // Os 3 "Type=Grey/White/Typing" do Figma são só aparência por interação
 // (idle → hover → foco), não props/variantes escolhidas pelo consumidor —

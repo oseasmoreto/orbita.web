@@ -121,8 +121,6 @@ onMounted(load)
 </template>
 
 <style scoped lang="scss">
-@use '@/core/styles/variables' as *;
-@use '@/core/styles/mixins' as *;
 
 .help-view__title {
   margin-bottom: $spacing-8;

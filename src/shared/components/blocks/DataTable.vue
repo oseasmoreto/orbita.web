@@ -168,7 +168,6 @@ function toggleAll(): void {
 </template>
 
 <style scoped lang="scss">
-@use '@/core/styles/variables' as *;
 
 .ui-data-table-wrapper {
   overflow-x: auto;

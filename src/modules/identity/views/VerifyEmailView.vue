@@ -52,7 +52,6 @@ const { checkVerification, isChecking, isResending, resend } = useVerifyEmail()
 </template>
 
 <style scoped lang="scss">
-@use '@/core/styles/variables' as *;
 
 .verify-email-view {
   display: flex;

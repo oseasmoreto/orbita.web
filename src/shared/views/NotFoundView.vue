@@ -9,7 +9,6 @@
 </template>
 
 <style scoped lang="scss">
-@use '@/core/styles/variables' as *;
 
 .not-found {
   display: flex;

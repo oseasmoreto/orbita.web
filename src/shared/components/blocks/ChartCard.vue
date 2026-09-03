@@ -385,7 +385,6 @@ const chartOptions = computed(() => ({
 </template>
 
 <style scoped lang="scss">
-@use '@/core/styles/variables' as *;
 
 // Fundo levemente acinzentado (não branco puro, sem borda) — grounded nos
 // 3 screenshots de referência, os 3 cards usam o mesmo fundo sutil contra

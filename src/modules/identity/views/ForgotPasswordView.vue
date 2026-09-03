@@ -61,7 +61,6 @@ function fieldError(key: keyof ForgotPasswordFormValues): string | undefined {
 </template>
 
 <style scoped lang="scss">
-@use '@/core/styles/variables' as *;
 
 .forgot-password-view__title {
   font-size: $font-size-xl;

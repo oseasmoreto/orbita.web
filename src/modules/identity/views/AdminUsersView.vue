@@ -206,7 +206,6 @@ function canImpersonateRow(user: AdminUser): boolean {
 </template>
 
 <style scoped lang="scss">
-@use '@/core/styles/variables' as *;
 
 .admin-users-view {
   display: flex;

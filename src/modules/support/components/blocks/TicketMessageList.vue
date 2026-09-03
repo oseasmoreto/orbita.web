@@ -101,7 +101,6 @@ const groups = computed<MessageGroup[]>(() => {
 </template>
 
 <style scoped lang="scss">
-@use '@/core/styles/variables' as *;
 
 .ticket-message-list {
   display: flex;

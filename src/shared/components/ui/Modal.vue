@@ -79,8 +79,6 @@ const open = defineModel<boolean>({ default: false })
 </template>
 
 <style scoped lang="scss">
-@use '@/core/styles/variables' as *;
-@use '@/core/styles/mixins' as *;
 
 // `DialogPortal` teletransporta pro fim do <body>, mesma classe de achado
 // já documentada pro Select/Tooltip — seletores sempre "planos" dentro do

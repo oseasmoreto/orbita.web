@@ -147,7 +147,6 @@ const search = defineModel<string>('search', { default: '' })
 </template>
 
 <style scoped lang="scss">
-@use '@/core/styles/variables' as *;
 
 // Achado real, testado com o primeiro CRUD (`ProductsView.vue`,
 // 2026-08-28): `addLabel` deixa o botão de criar bem mais largo que o

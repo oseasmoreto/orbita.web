@@ -40,7 +40,6 @@ const { isProcessing, stopImpersonating } = useImpersonation()
 </template>
 
 <style scoped lang="scss">
-@use '@/core/styles/variables' as *;
 
 // Sem `position: sticky` de propósito — `AppHeader.vue` já é sticky em
 // `top: 0`; empilhar 2 elementos sticky no mesmo `top` exigiria travar o

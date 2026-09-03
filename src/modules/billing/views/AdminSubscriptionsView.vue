@@ -201,7 +201,6 @@ function handleEdited(): void {
 </template>
 
 <style scoped lang="scss">
-@use '@/core/styles/variables' as *;
 
 .admin-subscriptions-view {
   display: flex;

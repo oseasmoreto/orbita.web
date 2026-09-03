@@ -111,8 +111,6 @@ const inputId = useId()
 </template>
 
 <style scoped lang="scss">
-@use '@/core/styles/variables' as *;
-@use '@/core/styles/mixins' as *;
 
 // Mesmo tratamento visual de `Select.vue` — mesma caixa/borda/raio, só o
 // conteúdo interno troca de botão pra campo de texto digitável.

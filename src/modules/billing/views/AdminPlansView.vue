@@ -191,7 +191,6 @@ function handleSaved(): void {
 </template>
 
 <style scoped lang="scss">
-@use '@/core/styles/variables' as *;
 
 .admin-plans-view {
   display: flex;

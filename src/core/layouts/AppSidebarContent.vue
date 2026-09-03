@@ -174,8 +174,6 @@ const visibleNavGroups = computed(() =>
 </template>
 
 <style scoped lang="scss">
-@use '@/core/styles/variables' as *;
-@use '@/core/styles/mixins' as *;
 
 // Container em coluna com altura total travada no pai (que por sua vez
 // trava em 100vh — ver AppSidebar.vue) — `__scroll` é o único filho que

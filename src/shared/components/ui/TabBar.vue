@@ -38,7 +38,6 @@ const model = defineModel<string>({ default: '' })
 </template>
 
 <style scoped lang="scss">
-@use '@/core/styles/variables' as *;
 
 .ui-tab-bar {
   display: flex;

@@ -257,7 +257,6 @@ async function handleCancelConfirm(): Promise<void> {
 </template>
 
 <style scoped lang="scss">
-@use '@/core/styles/variables' as *;
 
 .my-subscription-view {
   display: flex;

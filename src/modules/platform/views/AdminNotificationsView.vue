@@ -317,7 +317,6 @@ async function handleDelete(): Promise<void> {
 </template>
 
 <style scoped lang="scss">
-@use '@/core/styles/variables' as *;
 
 .admin-notifications-view {
   display: flex;

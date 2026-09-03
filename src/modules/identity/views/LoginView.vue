@@ -140,7 +140,6 @@ onMounted(() => {
 </template>
 
 <style scoped lang="scss">
-@use '@/core/styles/variables' as *;
 
 .login-view__title {
   font-size: $font-size-xl;

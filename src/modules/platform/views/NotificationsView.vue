@@ -57,7 +57,6 @@ function handleSelect(notification: Notification): void {
 </template>
 
 <style scoped lang="scss">
-@use '@/core/styles/variables' as *;
 
 .notifications-view {
   display: flex;

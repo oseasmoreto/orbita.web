@@ -246,7 +246,6 @@ const activeChartMetric = ref('price')
 </template>
 
 <style scoped lang="scss">
-@use '@/core/styles/variables' as *;
 
 .dashboard {
   display: flex;

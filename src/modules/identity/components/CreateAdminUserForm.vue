@@ -110,7 +110,6 @@ async function handleSubmit(): Promise<void> {
 </template>
 
 <style scoped lang="scss">
-@use '@/core/styles/variables' as *;
 
 .create-admin-user-form__fields {
   display: flex;

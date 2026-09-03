@@ -83,7 +83,6 @@ function formatCreatedAt(value: string | null): string {
 </template>
 
 <style scoped lang="scss">
-@use '@/core/styles/variables' as *;
 
 .transactions-view {
   display: flex;

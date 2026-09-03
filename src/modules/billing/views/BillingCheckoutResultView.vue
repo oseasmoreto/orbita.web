@@ -110,7 +110,6 @@ async function handleCta(): Promise<void> {
 </template>
 
 <style scoped lang="scss">
-@use '@/core/styles/variables' as *;
 
 .checkout-result-view {
   display: flex;

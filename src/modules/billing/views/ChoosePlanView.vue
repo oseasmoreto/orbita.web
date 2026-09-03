@@ -155,7 +155,6 @@ function savingsFor(plan: Plan): number | null {
 </template>
 
 <style scoped lang="scss">
-@use '@/core/styles/variables' as *;
 
 .choose-plan-view {
   min-height: 100vh;
