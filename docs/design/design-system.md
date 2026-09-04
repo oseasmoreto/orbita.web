@@ -3868,6 +3868,79 @@ tem senha cadastrada (conta só-SSO não tem), então a UI nunca sabe se
 deve exigir preenchimento — manda o que foi digitado e deixa o backend
 recusar com `errorMessageIncorrectPassword` se for o caso.
 
+### Instalar aplicativo / PWA install prompt (`core/pwa/composables/useInstallPrompt.ts`, seção em `AccountView.vue`)
+
+**Pedido direto do usuário, 2026-09-04** ("em navegadores com suporte a
+pwa, vamos colocar um botão em account para ativar o pwa e instalar o
+app no pc ou smartphone") — botão de instalação nativa do PWA, visível
+só em navegadores/plataformas que suportam o evento `beforeinstallprompt`
+(Chromium — Chrome/Edge/Android; Firefox desktop e Safari/iOS não têm
+essa API), seguindo a convenção "nunca link morto" já estabelecida no
+projeto: a seção inteira fica ausente do DOM (não desabilitada, não
+mostrando uma mensagem de "indisponível") quando o navegador não suporta.
+
+- **Singleton em nível de módulo, mesmo padrão de `useTheme.ts`/
+  `useAppUpdatePrompt.ts`** — `beforeinstallprompt` dispara UMA vez só,
+  cedo no carregamento da página; se o listener fosse registrado dentro
+  da função exportada `useInstallPrompt()` (chamada de verdade só em
+  `AccountView.vue`, rota lazy-loaded), o evento já teria disparado e
+  sido perdido antes do listener existir. O listener é registrado como
+  código de nível de MÓDULO (`window.addEventListener` fora de qualquer
+  função exportada) — `App.vue` (componente raiz, nunca lazy) faz um
+  import só pelo efeito colateral (`import
+  './core/pwa/composables/useInstallPrompt'`, sem nome vinculado, ao
+  lado da chamada de `useAppUpdatePrompt()`), garantindo que o listener
+  já está ativo desde o boot do app.
+- **`isInstalled` nasce já resolvido**, sem esperar o evento
+  `appinstalled`: `window.matchMedia('(display-mode: standalone)').matches`
+  (cross-browser) OU `navigator.standalone === true` (iOS/Safari, não
+  existe em `lib.dom.ts`, precisa de cast) — cobre o usuário que já
+  tinha instalado o app antes desta sessão de página carregar.
+  `appinstalled` (fires quando a instalação de fato acontece, por
+  qualquer caminho) marca `isInstalled = true` daí em diante — transição
+  de mão única, nunca reverte sozinha.
+- `BeforeInstallPromptEvent` é tipado à mão (interface própria
+  estendendo `Event`) — não existe em `lib.dom.ts` do TypeScript, mesma
+  categoria de gap já documentada nesta seção pra outras APIs
+  específicas de browser (`navigator.standalone`).
+- `canInstall` = evento capturado E ainda não instalado; `promptInstall()`
+  chama `.prompt()` no evento guardado, aguarda `.userChoice`, marca
+  `isInstalled = true` só se `outcome === 'accepted'`, e sempre limpa o
+  evento guardado depois (não reutilizável, mesmo em caso de recusa).
+- Seção em `AccountView.vue` (`v-if="canInstall || isInstalled"`) — 2
+  estados visuais: já instalado (mensagem informativa, sem botão) ou
+  instalável (descrição + `Button` `variant="outline"` com
+  `icon-before="DownloadSimple"`, chamando `promptInstall`). Sem um
+  terceiro estado "indisponível" — a seção nunca aparece pra Firefox/
+  Safari, em vez de aparecer desabilitada com uma explicação (decisão
+  revertida durante a implementação: uma chave `unavailableDescription`
+  chegou a ser escrita e removida antes de ir pro código, texto morto
+  nunca referenciado).
+- **Verificação**: 6 testes unitários
+  (`tests/core/pwa/composables/useInstallPrompt.test.ts`, mesma técnica
+  de dispatch sintético de `beforeinstallprompt` já usada — evento
+  criado via `new Event(...)` com `prompt`/`userChoice` anexados
+  manualmente antes do `dispatchEvent`, já que não é um evento
+  construtível padrão) cobrindo estado inicial, captura do evento,
+  recusa, compartilhamento de estado entre chamadas independentes
+  (singleton), aceite com `promptInstall()`, e `appinstalled` mantendo
+  o estado instalado — todos passando, junto com a suíte completa (361
+  testes), ESLint, `vue-tsc` (typecheck) e o build de produção
+  (incluindo o build do service worker via `vite-plugin-pwa`), todos
+  limpos. **Confirmação em navegador real (Chrome/Edge desktop e "Add to
+  Home Screen" no Android) não foi possível nesta sessão** — o ambiente
+  sandbox não tem as bibliotecas nativas que o Chromium do Playwright
+  precisa (`libnspr4.so`/`libnss3.so`/`libnssutil3.so`/`libsmime3.so`,
+  confirmado ausentes em todo o sistema de arquivos via `ldd` e busca
+  global) e não há acesso root/sudo pra instalá-las
+  (`playwright install-deps` exige senha, indisponível no ambiente); só
+  o engine Chromium está baixado localmente (sem Firefox/WebKit pra
+  tentar como alternativa). Fica pendente de confirmação manual do
+  usuário num navegador real — o fluxo completo (aparecimento do botão,
+  clique disparando o prompt nativo do browser, e o estado virando "já
+  instalado" depois de aceitar) depende dessa API do browser em si, não
+  reproduzível de outra forma neste ambiente.
+
 ### ProductLaunchList (`modules/catalog/components/blocks/ProductLaunchList.vue`)
 
 "Lançamentos" (`PRODUCT_LAUNCH`) — pedido direto do usuário em 2026-08-31

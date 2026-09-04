@@ -3,6 +3,11 @@ import { Toaster } from 'vue-sonner'
 import { Check, Info, Warning, WarningCircle } from '@/shared/components/icons/regular.generated'
 import Icon from '@/shared/components/ui/Icon.vue'
 import { useAppUpdatePrompt } from './core/pwa/composables/useAppUpdatePrompt'
+// Só a importação já basta pra registrar o listener de `beforeinstallprompt`
+// (código de nível de módulo em `useInstallPrompt.ts`) o mais cedo possível
+// — `useInstallPrompt()` é chamado de verdade só em `AccountView.vue`
+// (rota lazy-loaded), tarde demais pro evento que só dispara uma vez.
+import './core/pwa/composables/useInstallPrompt'
 import NotificationPanel from './modules/platform/components/NotificationPanel.vue'
 
 useAppUpdatePrompt()

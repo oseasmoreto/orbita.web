@@ -15,6 +15,7 @@
 import { onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import {
+  DownloadSimple,
   EnvelopeSimple,
   GoogleLogo,
   LockSimple,
@@ -22,6 +23,7 @@ import {
   User,
   WindowsLogo,
 } from '@/shared/components/icons/regular.generated'
+import { useInstallPrompt } from '@/core/pwa/composables/useInstallPrompt'
 import FormGroup from '@/shared/components/blocks/FormGroup.vue'
 import Button from '@/shared/components/ui/Button.vue'
 import Icon from '@/shared/components/ui/Icon.vue'
@@ -40,6 +42,7 @@ const { t } = useI18n()
 const { errors, isSubmitting, submit, values } = useUpdateProfileForm()
 const ssoAccounts = useSsoAccounts()
 const { confirmDelete, isDeleting } = useDeleteAccount()
+const { canInstall, isInstalled, promptInstall } = useInstallPrompt()
 
 onMounted(ssoAccounts.load)
 
@@ -162,6 +165,23 @@ async function handleDeleteConfirm(password: string): Promise<void> {
           </ul>
         </section>
 
+        <section v-if="canInstall || isInstalled" class="account-view__section">
+          <h2 class="account-view__section-title">{{ $t('identity.account.installApp.title') }}</h2>
+
+          <p v-if="isInstalled" class="account-view__install-description">
+            {{ $t('identity.account.installApp.installedDescription') }}
+          </p>
+
+          <template v-else>
+            <p class="account-view__install-description">
+              {{ $t('identity.account.installApp.description') }}
+            </p>
+            <Button :icon-before="DownloadSimple" variant="outline" @click="promptInstall">
+              {{ $t('identity.account.installApp.cta') }}
+            </Button>
+          </template>
+        </section>
+
         <section class="account-view__section account-view__section--danger">
           <h2 class="account-view__section-title">{{ $t('identity.account.dangerZone.title') }}</h2>
           <p class="account-view__danger-description">
@@ -275,6 +295,12 @@ async function handleDeleteConfirm(password: string): Promise<void> {
   gap: $spacing-8;
   font-size: $font-size-sm;
   color: $color-ink;
+}
+
+.account-view__install-description {
+  margin-bottom: $spacing-16;
+  font-size: $font-size-sm;
+  color: $color-ink-40;
 }
 
 .account-view__danger-description {

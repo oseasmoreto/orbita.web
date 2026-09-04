@@ -651,6 +651,13 @@ export default {
         password: 'Nova senha',
         passwordConfirmation: 'Confirmar nova senha',
       },
+      installApp: {
+        cta: 'Instalar aplicativo',
+        description:
+          'Instale o Orbita no seu computador ou smartphone para acessar mais rápido, direto da tela inicial.',
+        installedDescription: 'O Orbita já está instalado neste dispositivo.',
+        title: 'Instalar aplicativo',
+      },
       placeholders: {
         password: 'Deixe em branco pra manter a atual',
         passwordConfirmation: 'Repita a nova senha',
