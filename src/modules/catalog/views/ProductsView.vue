@@ -43,12 +43,18 @@
  *   listagem já carregada (`list.items.value`); se o id não existir,
  *   mostra o erro e volta pra `/products`.
  */
-import { PencilSimpleLine, Storefront, Trash } from '@/shared/components/icons/regular.generated'
+import {
+  ChartBar,
+  PencilSimpleLine,
+  Storefront,
+  Trash,
+} from '@/shared/components/icons/regular.generated'
 import dayjs from 'dayjs'
 import { computed, ref, watch } from 'vue'
 import { TabsContent } from 'reka-ui'
 import { useI18n } from 'vue-i18n'
 import { useRoute, useRouter } from 'vue-router'
+import { useFirstActiveMarketplaceConnection } from '@/core/composables/useFirstActiveMarketplaceConnection'
 import { useApiMessage } from '@/shared/composables/useApiMessage'
 import { useCrudDrawer } from '@/shared/composables/useCrudDrawer'
 import { useConfirmAction } from '@/shared/composables/useConfirmAction'
@@ -79,6 +85,29 @@ const { resolveMessage } = useApiMessage()
 
 const list = useProductList()
 void list.refresh()
+
+/**
+ * Atalho "Ver precificação" (2026-09-04, pedido direto do usuário) — a
+ * listagem de produtos não tem nenhum marketplace em contexto (a rota de
+ * destino, `marketplace-pricing`, é por CONEXÃO), então usa a primeira
+ * conexão ATIVA do usuário como destino (`useFirstActiveMarketplaceConnection.ts`,
+ * `core/`). Botão fica desabilitado enquanto carrega/se não houver
+ * nenhuma conexão ativa — mesmo critério proativo já usado em
+ * `planLimit.isLimitReached` (nunca um clique que não leva a lugar
+ * nenhum).
+ */
+const firstActiveConnection = useFirstActiveMarketplaceConnection()
+void firstActiveConnection.load()
+
+function goToPricing(): void {
+  const userMarketplaceId = firstActiveConnection.connectionId.value
+
+  if (!userMarketplaceId) {
+    return
+  }
+
+  void router.push({ name: 'marketplace-pricing', params: { userMarketplaceId } })
+}
 
 const listErrorMessage = computed(() =>
   list.error.value ? resolveMessage(parseApiError(list.error.value).messageKey) : null,
@@ -219,7 +248,24 @@ function handleSaved(): void {
 
 <template>
   <div class="products-view">
-    <h1 class="products-view__title">{{ $t('catalog.products.title') }}</h1>
+    <div class="products-view__header">
+      <h1 class="products-view__title">{{ $t('catalog.products.title') }}</h1>
+      <Button
+        :disabled="firstActiveConnection.isLoading.value || !firstActiveConnection.connectionId.value"
+        :icon-before="ChartBar"
+        variant="outline"
+        @click="goToPricing"
+      >
+        {{ $t('catalog.products.pricingShortcut') }}
+      </Button>
+    </div>
+
+    <p
+      v-if="!firstActiveConnection.isLoading.value && !firstActiveConnection.connectionId.value"
+      class="products-view__plan-limit"
+    >
+      {{ $t('catalog.products.pricingShortcutUnavailable') }}
+    </p>
 
     <!--
       `filterable`/`sortable` desligados de propósito (2026-08-28, achado
@@ -358,6 +404,13 @@ function handleSaved(): void {
 // (`TabsContent`) encosta direto nele sem esse respiro.
 .products-view :deep(.ui-tab-bar) {
   margin-bottom: $spacing-16;
+}
+
+.products-view__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: $spacing-16;
 }
 
 .products-view__title {

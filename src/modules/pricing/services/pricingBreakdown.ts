@@ -76,7 +76,14 @@ export function buildPriceSegments(breakdown: PricingBreakdown): PriceSegment[] 
 
 export interface ActivePricing {
   breakdown: PricingBreakdown
-  campaignPrice: string
+  /**
+   * `null` quando o preço praticado não bate a `target_margin` do
+   * produto — o backend deliberadamente não calcula "preço a anunciar"
+   * em cima de um preço que nem bate a meta (`meetsTargetMargin: false`,
+   * ver achado real documentado em `resolveActivePricing` abaixo). O
+   * sugerido nunca é `null` aqui (sempre bate a meta, por construção).
+   */
+  campaignPrice: string | null
   isPracticed: boolean
   marginPercent: number
   price: string
@@ -97,6 +104,21 @@ export function computeMarginPercent(profit: string, price: string): number {
  * recomendação). `marginPercent` do sugerido não vem pronto da API
  * (só `practicedMarginPercentage` existe) — calculado via
  * `computeMarginPercent`.
+ *
+ * **Achado real, 2026-09-04, reportado pelo usuário ("por que não
+ * mostra mais o preço praticado?")** — a checagem de "existe preço
+ * praticado" exigia `practicedCampaignPrice !== null` junto dos outros
+ * 3 campos, mas o backend passou a mandar `practiced_campaign_price:
+ * null` de propósito quando `meetsTargetMargin` é `false` (decisão
+ * real do backend, não bug: "não faz sentido sugerir preço de anúncio
+ * em cima de um preço que nem bate a margem", comentário no código do
+ * `ProductMarketplacePricingCalculator`) — então qualquer produto com
+ * preço praticado ABAIXO da meta caía inteiro pro ramo do SUGERIDO,
+ * escondendo o preço praticado real. `practicedCampaignPrice` saiu da
+ * condição — só `practicedPrice`/`practicedBreakdown`/`practicedProfit`
+ * (que o backend sempre manda juntos, sem exceção) decidem se há preço
+ * praticado; `campaignPrice` virou `string | null` pra carregar esse
+ * "não aplicável" sem mentir que é o preço sugerido.
  */
 export function resolveActivePricing(row: ProductMarketplacePricing): ActivePricing {
   const { pricing } = row
@@ -104,8 +126,7 @@ export function resolveActivePricing(row: ProductMarketplacePricing): ActivePric
   if (
     row.practicedPrice !== null &&
     pricing.practicedBreakdown &&
-    pricing.practicedProfit !== null &&
-    pricing.practicedCampaignPrice !== null
+    pricing.practicedProfit !== null
   ) {
     return {
       breakdown: pricing.practicedBreakdown,
@@ -130,37 +151,67 @@ export function resolveActivePricing(row: ProductMarketplacePricing): ActivePric
 export type OutcomeTone = 'negative' | 'neutral' | 'positive'
 
 /**
- * Tom de cor pro resultado financeiro de uma linha — verde quando dá
- * lucro de verdade (`profit > 0`), amarelo no empate exato ("0x0",
- * `profit === 0`), vermelho no prejuízo (`profit < 0`). Pedido direto do
- * usuário em 2026-09-03, substitui a regra anterior (que misturava sinal
- * de margem com `meetsTargetMargin`) por uma leitura direta do sinal do
- * lucro — mais simples e mais honesta: a cor conta a mesma história em
- * qualquer coluna (praticado ou sugerido), sem precisar saber se é a
- * "ativa" ou não.
- */
-/**
  * Só mostra o preço de campanha quando há desconto de campanha
  * configurado de verdade nesta conexão
  * (`USER_MARKETPLACE.campaignDiscountPercentage`) — sem desconto (`null`
  * ou `0`), o backend devolve o preço de campanha IGUAL ao preço de venda
  * (divisão por `1 - 0%`), e repetir o mesmo número com um rótulo a mais
  * seria ruído, não informação (nem todo vendedor roda campanha com
- * desconto, seção 2.4 de `docs/negocio/contexto-plataforma-precificacao.md`).
+ * desconto, seção 2.4 de `docs/infra/convencoes-frontend-infra.md`).
+ *
+ * `campaignPrice` aceita `null` (2026-09-04) — o backend manda
+ * `practiced_campaign_price: null` de propósito quando o preço
+ * praticado não bate a meta (`ActivePricing.campaignPrice`, ver
+ * `resolveActivePricing`); sem preço de campanha nenhum pra comparar,
+ * não há markup a mostrar. Type predicate (`campaignPrice is string`),
+ * não `boolean` solto — deixa o `v-if` do template
+ * (`ProductMarketplacePricingView.vue`) estreitar `string | null` pra
+ * `string` sozinho dentro do bloco, sem precisar de `as string` no
+ * `formatMoney()` logo depois.
  */
-export function hasCampaignMarkup(campaignPrice: string, price: string): boolean {
-  return Number(campaignPrice) > Number(price)
+export function hasCampaignMarkup(
+  campaignPrice: string | null,
+  price: string,
+): campaignPrice is string {
+  return campaignPrice !== null && Number(campaignPrice) > Number(price)
 }
 
-export function outcomeTone(profit: string): OutcomeTone {
+/**
+ * Tom de cor pro resultado financeiro de uma linha. Base (2026-09-03,
+ * pedido direto do usuário): verde quando dá lucro de verdade
+ * (`profit > 0`), amarelo no empate exato ("0x0", `profit === 0`),
+ * vermelho no prejuízo (`profit < 0`) — leitura direta do sinal do
+ * lucro, mesma história em qualquer coluna (praticado ou sugerido).
+ *
+ * **Correção, 2026-09-04, reportada pelo usuário com bug real**: o
+ * preço PRATICADO podia mostrar verde mesmo abaixo da `target_margin`
+ * cadastrada do produto — a regra original só olhava o SINAL do lucro,
+ * então um preço com lucro pequeno mas insuficiente pra bater a margem
+ * alvo (`meetsTargetMargin: false`, já calculado pelo backend,
+ * `PricingEvaluation`) ainda pintava verde, lendo como "tudo certo"
+ * quando não estava. `meetsTargetMargin` (2º parâmetro, opcional) força
+ * `neutral` (amarelo — "não é prejuízo, mas não bate a meta") quando
+ * `false`, SEM sobrepor o vermelho de um prejuízo de verdade (prejuízo
+ * é sempre pior que "só não bate meta", checado primeiro). Só se aplica
+ * ao preço PRATICADO — o SUGERIDO é construído pra sempre bater a meta
+ * (`ProductMarketplacePricingCalculator`), então nunca tem
+ * `meetsTargetMargin` de verdade; chamadores do sugerido continuam sem
+ * passar o 2º argumento, mesmo comportamento de antes (`undefined`/`null`
+ * = regra antiga, só sinal do lucro).
+ */
+export function outcomeTone(profit: string, meetsTargetMargin?: boolean | null): OutcomeTone {
   const profitNumber = Number(profit)
-
-  if (profitNumber > 0) {
-    return 'positive'
-  }
 
   if (profitNumber < 0) {
     return 'negative'
+  }
+
+  if (meetsTargetMargin === false) {
+    return 'neutral'
+  }
+
+  if (profitNumber > 0) {
+    return 'positive'
   }
 
   return 'neutral'

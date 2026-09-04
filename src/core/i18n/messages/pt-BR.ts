@@ -325,6 +325,8 @@ export default {
           'Você atingiu o limite de produtos do seu plano. Faça upgrade para cadastrar mais.',
         usage: '{total} de {max} produtos cadastrados',
       },
+      pricingShortcut: 'Ver precificação',
+      pricingShortcutUnavailable: 'Conecte um marketplace antes de ver a precificação.',
       searchPlaceholder: 'Buscar por SKU',
       title: 'Produtos',
     },

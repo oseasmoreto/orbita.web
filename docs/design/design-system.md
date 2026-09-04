@@ -4029,6 +4029,57 @@ produto.
   dentro do `Modal`, confirmando o fix de z-index) → editar → excluir,
   ciclo completo funcionando ponta a ponta contra a API real.
 
+### ProductsView (`modules/catalog/views/ProductsView.vue`) — atalho "Ver precificação"
+
+**Pedido direto do usuário, 2026-09-04** — a listagem de produtos não
+tinha nenhum caminho pra chegar na tela de precificação
+(`ProductMarketplacePricingView.vue`), só alcançável até então pelo
+card de um marketplace específico já conectado
+(`MarketplacesView.vue`). Botão novo `variant="outline"` +
+`icon-before="ChartBar"` (mesmo ícone já usado no toggle barra/tabela
+daquela tela) ao lado do `<h1>`, num header novo
+(`.products-view__header`, `display:flex; justify-content:space-between`).
+
+- **Problema real de navegação, não só estético**: a rota de destino
+  (`marketplace-pricing`) é por CONEXÃO (`userMarketplaceId` na URL) —
+  a listagem de produtos não sabe de nenhuma conexão específica ("como
+  vamos chegar aqui sem mktplace, vai ter que pegar a primeira conexão
+  ativa", pedido literal do usuário). Resolvido com
+  `useFirstActiveMarketplaceConnection` (novo, `core/composables/`) —
+  busca `GET /user-marketplaces?filter[active]=true&per_page=1` e usa o
+  primeiro resultado.
+- **Por que mora em `core/`, não em `modules/catalog/`**: a
+  regra de fronteira de módulo (`docs/infra/convencoes-frontend-infra.md`
+  seção 2) proíbe `modules/catalog` importar de `modules/pricing`
+  diretamente — mas `core/` importando de `modules/pricing/services/`
+  já é padrão estabelecido (`useAdminUserOptions.ts`, mesmo critério:
+  "core→módulo é permitido, só módulo→módulo é proibido"). Segue
+  exatamente essa receita: a busca (`listUserMarketplaces`) continua
+  morando no `pricingApi.ts` de sempre, só a ORQUESTRAÇÃO cross-módulo
+  sobe pra `core/`.
+- **`firstActiveConnectionId` extraído como função pura, testada**
+  (`tests/core/composables/useFirstActiveMarketplaceConnection.test.ts`)
+  — mesmo critério de `isMarketplaceLimitReached` (`useMarketplaceLimit.ts`):
+  a lógica de decisão ("primeira conexão da lista, ou `null` se
+  vazia") fica isolada e testável sem precisar mockar a chamada HTTP; o
+  composable em volta (`ref`/`load()`) é só encanamento, sem teste
+  próprio (mesmo critério de "wrapper fino" já usado em `useToast.ts`).
+- **Botão desabilitado, nunca escondido, enquanto não há conexão
+  ativa** (`firstActiveConnection.isLoading.value ||
+  !firstActiveConnection.connectionId.value`) — mesma checagem
+  PROATIVA já usada em `planLimit.isLimitReached` (`ListToolbar`,
+  `addDisabled`): nunca um clique que não leva a lugar nenhum. Como um
+  botão `disabled` não dispara hover/tooltip de forma confiável em
+  todo browser, a explicação (`pricingShortcutUnavailable`, "Conecte um
+  marketplace antes de ver a precificação.") vira um parágrafo comum
+  abaixo do header (mesmo estilo `.products-view__plan-limit` já usado
+  pro aviso de limite de plano), não um `Tooltip` sobre o botão.
+- Verificado (typecheck/lint/suíte completa — 379 testes, sem
+  regressão — e build de produção), mesma limitação de navegador real
+  desta sessão. Round-trip real (clicar o botão, cair na conexão certa,
+  e o caso de conta sem nenhuma conexão ativa mostrando o aviso em vez
+  do botão quebrado) fica pendente do usuário.
+
 ### AdminMarketplacesView (`modules/pricing/views/AdminMarketplacesView.vue`)
 
 Primeira tela ADMIN do projeto (Fase 4, 2026-08-31) — mesma forma visual
@@ -4533,6 +4584,149 @@ trocar `storeDocumentType` entre PF/PJ via `PATCH /user-marketplaces/{id}`
   registrada. Confirmação visual do décimo segmento na barra (incluindo
   o cenário real de alternar `storeDocumentType` PF↔PJ numa mesma
   conexão e ver o lucro recalcular) fica pendente do usuário.
+
+**2 bugs visuais reais, reportados pelo usuário em 2026-09-04**:
+
+1. **"Lucro total" (KPI) sempre verde, mesmo negativo** — o `<p>` do
+   valor tinha uma classe FIXA (`__kpi-value--profit`, sempre
+   `$color-accent-green`), nunca calculada a partir do sinal de
+   `list.totals.value.profit`. Um total negativo (soma de vários
+   produtos com prejuízo) continuava pintado de verde — o oposto do que
+   a cor deveria comunicar. Corrigido trocando a classe fixa pelas
+   mesmas 3 variantes de `outcomeTone` já usadas por linha
+   (`--positive`/`--neutral`/`--negative`, cores idênticas às de
+   `__product-margin--*`), aplicadas dinamicamente
+   (`` `...--${outcomeTone(list.totals.value.profit)}` ``) — sem passar
+   `meetsTargetMargin` aqui: o total é uma soma de produtos com margens-
+   alvo DIFERENTES entre si, não existe uma única meta pra comparar.
+2. **% do preço PRATICADO sempre verde quando há lucro, mesmo abaixo da
+   `target_margin` cadastrada do produto** — `outcomeTone` (decisão de
+   2026-09-03, documentada acima na própria seção) tinha sido
+   simplificada pra olhar só o SINAL do lucro, abandonando de propósito
+   o `meetsTargetMargin` que o backend já calcula
+   (`PricingEvaluation.meetsTargetMargin`) — um preço com lucro pequeno
+   mas insuficiente pra bater a margem alvo do vendedor ainda pintava
+   verde, lendo como "tudo certo" quando não estava. **Correção, não
+   reversão total**: `outcomeTone(profit, meetsTargetMargin?)` ganhou um
+   2º parâmetro opcional — quando `meetsTargetMargin === false`, força
+   `neutral` (amarelo), SEM sobrepor o vermelho de um prejuízo de
+   verdade (prejuízo continua checado PRIMEIRO, é sempre pior que "só
+   não bate meta"). Só se aplica ao preço PRATICADO — o SUGERIDO é
+   construído pra sempre bater a meta
+   (`ProductMarketplacePricingCalculator`), então nunca tem
+   `meetsTargetMargin` de verdade; os 2 chamadores do sugerido (barra
+   quando não há praticado, coluna "Preço sugerido" da tabela) continuam
+   sem passar o 2º argumento — mesmo comportamento de antes, puro sinal
+   do lucro. Efeito colateral bem-vindo: o amarelo (antes só alcançável
+   num "profit === 0" quase impossível de reproduzir digitando um preço
+   real, já registrado como achado anterior) agora tem um caminho real e
+   comum de aparecer.
+- `marginToneClass(profit, meetsTargetMargin?)` (view) repassa o 2º
+  parâmetro pro `outcomeTone`. Na barra, só passa
+  `row.pricing.meetsTargetMargin` quando `active.isPracticed` é `true`
+  (senão `null`, mesma regra do "sugerido nunca tem essa checagem"). Na
+  tabela, `PricingTableRow` ganhou o campo `meetsTargetMargin` (`boolean
+  | null`, nasce/falta em conjunto com `practicedPrice`/`practicedProfit`
+  — mesmo padrão já documentado pros outros 3 campos do praticado),
+  passado só na célula "Preço praticado".
+- 6 testes novos em `outcomeTone` (`pricingBreakdown.test.ts`) cobrindo
+  as combinações reais: lucro que não bate meta (novo caso, `neutral`),
+  lucro que bate meta (`positive`), prejuízo vence mesmo com
+  `meetsTargetMargin: false` (`negative`), e `null`/`undefined`
+  continuam caindo na regra antiga (`positive` só pelo sinal).
+- Verificado (typecheck/lint/suíte completa — 375 testes, sem regressão
+  — e build de produção), mesma limitação de navegador real desta
+  sessão. Confirmação visual dos 2 fixes (KPI vermelho/amarelo com dado
+  real de prejuízo, e a % do praticado virando amarela quando abaixo da
+  margem alvo) fica pendente do usuário.
+
+**3º bug real, mesmo dia, reportado pelo usuário: "por que não mostra
+mais o preço praticado?"** — screenshot mostrando a coluna "Preço
+praticado" com `—` (traço) pra TODAS as linhas, mesmo em produtos que
+já tinham preço praticado gravado. Investigado direto contra o backend
+local (não só suposição): rodei `ListProductMarketplacePricingAction` à
+mão via `tinker` pra um `PRODUCT_MARKETPLACE` com `practiced_price`
+confirmado no banco (`69.90`) e capturei o JSON real da resposta —
+`pricing.practiced_profit: "5.44"` (existe), mas
+`pricing.practiced_campaign_price: null`. Causa raiz encontrada no
+código do backend (`ProductMarketplacePricingCalculator.php`, repo
+`backend`): **não é bug do backend** — é uma decisão real, já
+comentada no código ("Pedido direto do usuário, 2026-09-04 — achado
+real na UI: não faz sentido sugerir 'preço a anunciar' em cima de um
+preço praticado que nem bate a margem cadastrada, quanto mais um que dá
+prejuízo"), que passou a mandar `practiced_campaign_price: null` de
+propósito sempre que `meetsTargetMargin` é `false` — sem aviso
+cross-session pra esta sessão, essa mudança de contrato só apareceu
+pelo sintoma na UI.
+
+- **O bug era só do frontend**: `hasPracticedPrice` (`tableRows`,
+  `ProductMarketplacePricingView.vue`) e a condição de
+  `resolveActivePricing` (`pricingBreakdown.ts`) exigiam os TRÊS campos
+  não-nulos (`practicedPrice`/`practicedProfit`/`practicedCampaignPrice`)
+  pra considerar "existe preço praticado" — presunção que já não era
+  mais verdadeira depois da decisão acima. Qualquer produto com preço
+  praticado ABAIXO da meta caía inteiro pro ramo do SUGERIDO (inclusive
+  na BARRA, não só na tabela — mesma causa raiz nos dois lugares),
+  escondendo um preço praticado real só porque uma 4ª informação
+  (opcional por natureza) tinha ficado `null`.
+- **Corrigido tirando `practicedCampaignPrice` da condição de
+  presença** nos dois lugares — só `practicedPrice`/`practicedProfit`
+  (que o backend sempre manda juntos, sem exceção) decidem se há preço
+  praticado. `ActivePricing.campaignPrice` e `hasCampaignMarkup()`
+  ganharam suporte a `null` de primeira classe — `hasCampaignMarkup`
+  virou **type predicate** (`campaignPrice is string`), não `boolean`
+  solto, pra deixar o `v-if` do template estreitar `string | null` pra
+  `string` sozinho (sem precisar de `as string` logo depois, no
+  `formatMoney()`) — mesma técnica de type guard já usada em
+  `isCheckoutSkipped()` (Billing).
+- **2 testes novos** cobrindo exatamente o cenário reportado:
+  `resolveActivePricing` com `practicedCampaignPrice: null` mas
+  `practicedPrice`/`practicedProfit` reais (deve continuar resolvendo
+  pro PRATICADO, não cair pro sugerido) e `hasCampaignMarkup(null, ...)`
+  (deve retornar `false`, nunca quebrar).
+- Verificado (typecheck/lint/suíte completa — 377 testes, sem regressão
+  — e build de produção) contra o JSON real capturado do backend local
+  via `tinker` (não um dado inventado) — confirma que o cenário exato
+  reportado pelo usuário agora resolve pro preço praticado. Confirmação
+  visual em navegador real (a coluna "Preço praticado" voltando a
+  mostrar o valor) fica pendente do usuário, mesma limitação de
+  ambiente desta sessão.
+
+**4º ajuste, mesmo dia — 2 rodadas, reportado pelo usuário**:
+`affiliate`/`coupon`/`individualFixedFee` ficavam praticamente
+idênticos na barra.
+
+- **1ª tentativa (insuficiente)**: respaçar o percentual de vermelho
+  misturado em `$color-ink` (`70`/`55`/`38`/`22`/`8`, era
+  `70`/`45`/`20`/`8`/`3`) — o usuário reportou de novo, com screenshot,
+  que continuava "praticamente a mesma cor". Causa raiz real: no modo
+  claro, `$color-ink` é preto — os 3 últimos degraus convergiam pra uma
+  luminância muito baixa, faixa onde o olho não distingue bem variações
+  de matiz da MESMA cor (vermelho bem escuro vs. vermelho um pouco
+  menos escuro ainda), não importa quantos pontos percentuais separem
+  cada mistura.
+- **2ª tentativa (correção de verdade)**: trocada a estratégia — em vez
+  de continuar espremendo tons na rampa vermelho→preto,
+  `affiliate`/`coupon`/`individualFixedFee` saíram dela e passaram a
+  usar 3 acentos "frios" DISTINTOS da paleta
+  (`$color-accent-purple`/`$color-accent-indigo`/`$color-accent-blue`,
+  cores sólidas, sem `color-mix()`) — mesma técnica já validada no
+  design system pra distinguir N categorias quando uma rampa de matiz
+  único não aguenta mais (paleta categórica cíclica do `ChartCard.vue`,
+  seção própria acima). `tax`/`ads` continuam na família vermelho/ink
+  (sem reclamação do usuário sobre esses dois) — a barra agora lê como
+  3 grupos visuais: quente (custo/comissão/fixo/operacional/imposto/
+  ads) → frio (afiliado/cupom/taxa PF) → verde (lucro). Como os 3
+  acentos escolhidos são "idênticos entre claro/escuro" (nunca
+  misturam com `ink`, ao contrário da rampa anterior), o resultado
+  também para de correr risco de flip de contraste entre temas — o
+  mesmo tipo de cuidado já documentado acima na escolha do pill de %.
+- Verificado (typecheck/lint/suíte completa — 379 testes, sem
+  regressão — e build de produção, confirmando que os 3 tokens de cor
+  resolvem sem erro no SCSS). Confirmação visual da distinção real
+  entre os 3 tons (e que realmente não se parecem mais entre si, dessa
+  vez) fica pendente do usuário — mesma limitação de navegador real
+  desta sessão.
 
 ### ProductMarketplacesView (`modules/pricing/views/ProductMarketplacesView.vue`)
 

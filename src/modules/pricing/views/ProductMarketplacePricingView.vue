@@ -176,9 +176,15 @@ function segmentLabel(key: SegmentKey): string {
   return t(`pricing.productMarketplacePricing.segments.${key}`)
 }
 
-/** Classe de cor da margem — verde (lucro) / amarelo (0x0) / vermelho (prejuízo), ver `outcomeTone`. */
-function marginToneClass(profit: string): string {
-  return `product-marketplace-pricing-view__product-margin--${outcomeTone(profit)}`
+/**
+ * Classe de cor da margem — verde (lucro E bate a meta) / amarelo
+ * (prejuízo zero, ou lucro que não bate a `target_margin` do produto) /
+ * vermelho (prejuízo), ver `outcomeTone`. `meetsTargetMargin` só faz
+ * sentido pro preço PRATICADO — chamadores do preço sugerido não
+ * passam o 2º argumento.
+ */
+function marginToneClass(profit: string, meetsTargetMargin?: boolean | null): string {
+  return `product-marketplace-pricing-view__product-margin--${outcomeTone(profit, meetsTargetMargin)}`
 }
 
 async function copySuggestedPrice(price: string): Promise<void> {
@@ -249,6 +255,7 @@ type SegmentCell = Pick<PriceSegment, 'percent' | 'value'>
 type PricingTableRow = {
   id: string
   isApproximated: boolean
+  meetsTargetMargin: boolean | null
   practicedCampaignPrice: string | null
   practicedMarginPercent: number | null
   practicedPrice: string | null
@@ -268,14 +275,18 @@ const tableRows = computed<PricingTableRow[]>(() =>
       segments.map((segment) => [segment.key, { percent: segment.percent, value: segment.value }]),
     ) as Record<SegmentKey, SegmentCell>
     const { pricing } = row
-    const hasPracticedPrice =
-      row.practicedPrice !== null &&
-      pricing.practicedProfit !== null &&
-      pricing.practicedCampaignPrice !== null
+    // Achado real, 2026-09-04 (mesmo motivo de `resolveActivePricing`,
+    // `pricingBreakdown.ts`) — `practicedCampaignPrice` NÃO entra mais
+    // nesta checagem: o backend manda `null` de propósito quando o
+    // preço praticado não bate a meta, e isso não significa "não existe
+    // preço praticado". Só `practicedPrice`/`practicedProfit` (que o
+    // backend sempre manda juntos) decidem.
+    const hasPracticedPrice = row.practicedPrice !== null && pricing.practicedProfit !== null
 
     return {
       id: row.id,
       isApproximated: pricing.isApproximated,
+      meetsTargetMargin: hasPracticedPrice ? pricing.meetsTargetMargin : null,
       practicedCampaignPrice: hasPracticedPrice ? pricing.practicedCampaignPrice : null,
       practicedMarginPercent: hasPracticedPrice
         ? Number(pricing.practicedMarginPercentage ?? '0')
@@ -373,7 +384,10 @@ const tableColumns = computed<DataTableColumn[]>(() => [
               {{ $t('pricing.productMarketplacePricing.kpis.totalProfit') }}
             </p>
             <p
-              class="product-marketplace-pricing-view__kpi-value product-marketplace-pricing-view__kpi-value--profit"
+              :class="[
+                'product-marketplace-pricing-view__kpi-value',
+                `product-marketplace-pricing-view__kpi-value--${outcomeTone(list.totals.value.profit)}`,
+              ]"
             >
               {{ formatMoney(list.totals.value.profit) }}
             </p>
@@ -444,7 +458,10 @@ const tableColumns = computed<DataTableColumn[]>(() => [
                     <span
                       :class="[
                         'product-marketplace-pricing-view__product-margin',
-                        marginToneClass(active.profit),
+                        marginToneClass(
+                          active.profit,
+                          active.isPracticed ? row.pricing.meetsTargetMargin : null,
+                        ),
                       ]"
                     >
                       ({{ formatPercent(active.marginPercent, 0) }})
@@ -570,18 +587,18 @@ const tableColumns = computed<DataTableColumn[]>(() => [
                 <span
                   :class="[
                     'product-marketplace-pricing-view__product-margin',
-                    marginToneClass(row.practicedProfit as string),
+                    marginToneClass(row.practicedProfit as string, row.meetsTargetMargin),
                   ]"
                 >
                   ({{ formatPercent(row.practicedMarginPercent as number, 0) }})
                 </span>
               </p>
               <p
-                v-if="hasCampaignMarkup(row.practicedCampaignPrice as string, row.practicedPrice)"
+                v-if="hasCampaignMarkup(row.practicedCampaignPrice, row.practicedPrice)"
                 class="product-marketplace-pricing-view__suggested-hint"
               >
                 {{ $t('pricing.productMarketplacePricing.campaignPriceLabel') }}:
-                {{ formatMoney(row.practicedCampaignPrice as string) }}
+                {{ formatMoney(row.practicedCampaignPrice) }}
                 <Tooltip :text="$t('pricing.productMarketplacePricing.campaignPriceTooltip')">
                   <span tabindex="0">
                     <Icon :icon="Info" :size="12" style="color: var(--color-accent-yellow)" />
@@ -748,8 +765,25 @@ const tableColumns = computed<DataTableColumn[]>(() => [
   color: $color-ink;
 }
 
-.product-marketplace-pricing-view__kpi-value--profit {
+// Achado real, 2026-09-04, reportado pelo usuário: "Lucro total" tinha
+// UMA classe fixa (`--profit`, sempre verde) — um total negativo (soma
+// de vários produtos com prejuízo) continuava pintado de verde, o
+// oposto do que a cor deveria comunicar. Trocado pelas mesmas 3
+// variantes de `outcomeTone` já usadas por linha
+// (`__product-margin--positive/neutral/negative`), aplicadas
+// dinamicamente pelo sinal do total (`list.totals.value.profit`) —
+// sem `meetsTargetMargin` aqui, o total é uma soma de vários produtos
+// com margens-alvo DIFERENTES, não existe uma única meta pra comparar.
+.product-marketplace-pricing-view__kpi-value--positive {
   color: $color-accent-green;
+}
+
+.product-marketplace-pricing-view__kpi-value--neutral {
+  color: $color-accent-yellow;
+}
+
+.product-marketplace-pricing-view__kpi-value--negative {
+  color: $color-accent-red;
 }
 
 .product-marketplace-pricing-view__error {
@@ -939,6 +973,22 @@ const tableColumns = computed<DataTableColumn[]>(() => [
   background-color: color-mix(in srgb, $color-accent-orange 50%, $color-accent-red);
 }
 
+// Achado real, 2026-09-04, reportado pelo usuário DUAS vezes ("mesma
+// cor ainda" mesmo depois de respaçar) — a 1ª correção só reespaçou o
+// percentual de vermelho misturado em `$color-ink` (70/55/38/22/8), mas
+// os 3 últimos degraus continuavam convergindo pra perto do preto puro
+// (light mode) — a essa luminância baixa, o olho não distingue bem
+// diferenças de matiz da MESMA cor (vermelho escuro vs. vermelho mais
+// escuro ainda), não importa o quanto o percentual varie. Trocado de
+// estratégia: `affiliate`/`coupon`/`individualFixedFee` saem da rampa
+// vermelho→preto e passam a usar 3 acentos "frios" DISTINTOS da paleta
+// (`accent-purple`/`accent-indigo`/`accent-blue`) — mesma técnica já
+// usada pra distinguir N categorias que a rampa de 1 matiz só não
+// aguenta mais (paleta categórica cíclica do `ChartCard.vue`, seção
+// própria acima). `tax`/`ads` continuam na família vermelho/laranja
+// (sem reclamação do usuário sobre esses dois) — a barra passa a ler
+// como 2 grupos visuais: quente (custo/comissão/imposto/ads) → frio
+// (afiliado/cupom/taxa PF) → verde (lucro).
 .product-marketplace-pricing-view__segment--tax {
   background-color: color-mix(in srgb, $color-accent-red 70%, $color-ink);
 }
@@ -948,15 +998,15 @@ const tableColumns = computed<DataTableColumn[]>(() => [
 }
 
 .product-marketplace-pricing-view__segment--affiliate {
-  background-color: color-mix(in srgb, $color-accent-red 20%, $color-ink);
+  background-color: $color-accent-purple;
 }
 
 .product-marketplace-pricing-view__segment--coupon {
-  background-color: color-mix(in srgb, $color-accent-red 8%, $color-ink);
+  background-color: $color-accent-indigo;
 }
 
 .product-marketplace-pricing-view__segment--individualFixedFee {
-  background-color: color-mix(in srgb, $color-accent-red 3%, $color-ink);
+  background-color: $color-accent-blue;
 }
 
 .product-marketplace-pricing-view__segment--profit {

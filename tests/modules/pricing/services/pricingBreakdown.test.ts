@@ -97,6 +97,30 @@ describe('resolveActivePricing', () => {
     expect(result.breakdown).toBe(practicedBreakdown)
     expect(result.campaignPrice).toBe('112.38')
   })
+
+  it('still resolves to the practiced price when practicedCampaignPrice is null (bug real, 2026-09-04 — backend sends null on purpose when the margin target is not met, not "no practiced price")', () => {
+    const practicedBreakdown: PricingBreakdown = { ...breakdown, profit: '5.44' }
+    const row: ProductMarketplacePricing = {
+      ...baseRow,
+      practicedPrice: '69.90',
+      pricing: {
+        ...baseRow.pricing,
+        meetsTargetMargin: false,
+        practicedBreakdown,
+        practicedCampaignPrice: null,
+        practicedMarginPercentage: '7.78',
+        practicedProfit: '5.44',
+      },
+    }
+
+    const result = resolveActivePricing(row)
+
+    expect(result.isPracticed).toBe(true)
+    expect(result.price).toBe('69.90')
+    expect(result.profit).toBe('5.44')
+    expect(result.breakdown).toBe(practicedBreakdown)
+    expect(result.campaignPrice).toBeNull()
+  })
 })
 
 describe('buildPriceSegments', () => {
@@ -194,6 +218,10 @@ describe('hasCampaignMarkup', () => {
   it('returns false when the campaign price equals the price (no campaign discount configured)', () => {
     expect(hasCampaignMarkup('69.91', '69.91')).toBe(false)
   })
+
+  it('returns false when the campaign price is null (backend did not compute one, e.g. practiced price below target margin)', () => {
+    expect(hasCampaignMarkup(null, '69.91')).toBe(false)
+  })
 })
 
 describe('outcomeTone', () => {
@@ -207,5 +235,22 @@ describe('outcomeTone', () => {
 
   it('returns negative on a loss', () => {
     expect(outcomeTone('-5.00')).toBe('negative')
+  })
+
+  it('returns neutral when there is real profit but it does not meet the target margin (bug real, 2026-09-04)', () => {
+    expect(outcomeTone('8.44', false)).toBe('neutral')
+  })
+
+  it('returns positive when there is real profit and it meets the target margin', () => {
+    expect(outcomeTone('8.44', true)).toBe('positive')
+  })
+
+  it('stays negative on a loss even when meetsTargetMargin is explicitly false — loss always wins', () => {
+    expect(outcomeTone('-5.00', false)).toBe('negative')
+  })
+
+  it('ignores meetsTargetMargin when null/undefined (suggested price never carries it)', () => {
+    expect(outcomeTone('8.44', null)).toBe('positive')
+    expect(outcomeTone('8.44', undefined)).toBe('positive')
   })
 })
