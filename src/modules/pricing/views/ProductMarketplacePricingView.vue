@@ -55,7 +55,6 @@ import { useRoute, useRouter } from 'vue-router'
 import {
   ArrowLineLeft,
   ChartBar,
-  CopySimple,
   Info,
   PencilSimpleLine,
   Storefront,
@@ -71,9 +70,9 @@ import Search from '@/shared/components/ui/Search.vue'
 import TabBar from '@/shared/components/ui/TabBar.vue'
 import Tooltip from '@/shared/components/ui/Tooltip.vue'
 import { useApiMessage } from '@/shared/composables/useApiMessage'
-import { useToast } from '@/shared/composables/useToast'
 import { formatMoney, formatPercent } from '@/shared/services/formatNumber'
 import { parseApiError } from '@/shared/services/parseApiError'
+import CopyablePrice from '../components/CopyablePrice.vue'
 import UpdatePracticedPriceModal from '../components/UpdatePracticedPriceModal.vue'
 import { useMarketplaceConnections } from '../composables/useMarketplaceConnections'
 import { useProductMarketplacePricingList } from '../composables/useProductMarketplacePricingList'
@@ -93,7 +92,6 @@ import type { TabBarOption } from '@/shared/components/ui/types/tabBar.type'
 const route = useRoute()
 const router = useRouter()
 const { t } = useI18n()
-const toast = useToast()
 const { resolveMessage } = useApiMessage()
 
 const activeConnectionId = ref((route.params.userMarketplaceId as string) ?? '')
@@ -185,15 +183,6 @@ function segmentLabel(key: SegmentKey): string {
  */
 function marginToneClass(profit: string, meetsTargetMargin?: boolean | null): string {
   return `product-marketplace-pricing-view__product-margin--${outcomeTone(profit, meetsTargetMargin)}`
-}
-
-async function copySuggestedPrice(price: string): Promise<void> {
-  try {
-    await navigator.clipboard.writeText(formatMoney(price))
-    toast.success(t('pricing.productMarketplacePricing.priceCopied'))
-  } catch {
-    toast.error(t('pricing.productMarketplacePricing.priceCopyFailed'))
-  }
 }
 
 function goToProductEdit(productId: string): void {
@@ -305,14 +294,19 @@ const tableRows = computed<PricingTableRow[]>(() =>
   }),
 )
 
+// `align: 'right'` em toda coluna numérica (pedido direto do usuário,
+// 2026-09-04) — as 10 parcelas do breakdown + os 2 preços finais, nunca
+// `productName` (texto).
 const tableColumns = computed<DataTableColumn[]>(() => [
   { key: 'productName', title: t('pricing.productMarketplacePricing.table.columns.product') },
-  ...SEGMENT_KEYS.map((key) => ({ key, title: segmentLabel(key) })),
+  ...SEGMENT_KEYS.map((key) => ({ align: 'right' as const, key, title: segmentLabel(key) })),
   {
+    align: 'right',
     key: 'practicedPrice',
     title: t('pricing.productMarketplacePricing.table.columns.practicedPrice'),
   },
   {
+    align: 'right',
     key: 'suggestedPrice',
     title: t('pricing.productMarketplacePricing.table.columns.suggestedPrice'),
   },
@@ -454,7 +448,8 @@ const tableColumns = computed<DataTableColumn[]>(() => [
               <div class="product-marketplace-pricing-view__product-meta">
                 <div class="product-marketplace-pricing-view__prices">
                   <p class="product-marketplace-pricing-view__product-price">
-                    {{ formatMoney(active.price) }}
+                    <CopyablePrice v-if="!active.isPracticed" :value="active.price" />
+                    <template v-else>{{ formatMoney(active.price) }}</template>
                     <span
                       :class="[
                         'product-marketplace-pricing-view__product-margin',
@@ -479,7 +474,7 @@ const tableColumns = computed<DataTableColumn[]>(() => [
                     class="product-marketplace-pricing-view__suggested-hint"
                   >
                     {{ $t('pricing.productMarketplacePricing.suggestedPriceLabel') }}:
-                    {{ formatMoney(row.pricing.suggestedPrice) }}
+                    <CopyablePrice :value="row.pricing.suggestedPrice" />
                     <Tooltip
                       v-if="row.pricing.isApproximated"
                       :text="$t('pricing.productMarketplacePricing.isApproximatedTooltip')"
@@ -494,7 +489,7 @@ const tableColumns = computed<DataTableColumn[]>(() => [
                     class="product-marketplace-pricing-view__suggested-hint"
                   >
                     {{ $t('pricing.productMarketplacePricing.campaignPriceLabel') }}:
-                    {{ formatMoney(active.campaignPrice) }}
+                    <CopyablePrice :value="active.campaignPrice" />
                     <Tooltip :text="$t('pricing.productMarketplacePricing.campaignPriceTooltip')">
                       <span tabindex="0">
                         <Icon :icon="Info" :size="12" style="color: var(--color-accent-yellow)" />
@@ -503,12 +498,6 @@ const tableColumns = computed<DataTableColumn[]>(() => [
                   </p>
                 </div>
 
-                <Button
-                  :aria-label="$t('pricing.productMarketplacePricing.copyPriceButton')"
-                  :icon-before="CopySimple"
-                  variant="ghost"
-                  @click="copySuggestedPrice(row.pricing.suggestedPrice)"
-                />
                 <Button
                   :aria-label="$t('pricing.productMarketplacePricing.editPriceButton')"
                   :icon-before="PencilSimpleLine"
@@ -598,7 +587,7 @@ const tableColumns = computed<DataTableColumn[]>(() => [
                 class="product-marketplace-pricing-view__suggested-hint"
               >
                 {{ $t('pricing.productMarketplacePricing.campaignPriceLabel') }}:
-                {{ formatMoney(row.practicedCampaignPrice) }}
+                <CopyablePrice :value="row.practicedCampaignPrice" />
                 <Tooltip :text="$t('pricing.productMarketplacePricing.campaignPriceTooltip')">
                   <span tabindex="0">
                     <Icon :icon="Info" :size="12" style="color: var(--color-accent-yellow)" />
@@ -619,7 +608,7 @@ const tableColumns = computed<DataTableColumn[]>(() => [
           <div class="product-marketplace-pricing-view__table-price">
             <div class="product-marketplace-pricing-view__prices">
               <p class="product-marketplace-pricing-view__product-price">
-                {{ formatMoney(row.suggestedPrice) }}
+                <CopyablePrice :value="row.suggestedPrice" />
                 <span
                   :class="[
                     'product-marketplace-pricing-view__product-margin',
@@ -642,7 +631,7 @@ const tableColumns = computed<DataTableColumn[]>(() => [
                 class="product-marketplace-pricing-view__suggested-hint"
               >
                 {{ $t('pricing.productMarketplacePricing.campaignPriceLabel') }}:
-                {{ formatMoney(row.suggestedCampaignPrice) }}
+                <CopyablePrice :value="row.suggestedCampaignPrice" />
                 <Tooltip :text="$t('pricing.productMarketplacePricing.campaignPriceTooltip')">
                   <span tabindex="0">
                     <Icon :icon="Info" :size="12" style="color: var(--color-accent-yellow)" />
@@ -650,12 +639,6 @@ const tableColumns = computed<DataTableColumn[]>(() => [
                 </Tooltip>
               </p>
             </div>
-            <Button
-              :aria-label="$t('pricing.productMarketplacePricing.copyPriceButton')"
-              :icon-before="CopySimple"
-              variant="ghost"
-              @click="copySuggestedPrice(row.suggestedPrice)"
-            />
             <Button
               :aria-label="$t('catalog.products.marketplacesButton')"
               :icon-before="Storefront"
@@ -1054,9 +1037,14 @@ const tableColumns = computed<DataTableColumn[]>(() => [
 }
 
 .product-marketplace-pricing-view__table-product,
+// `justify-content: flex-end` — a coluna inteira já fica `text-align:
+// right` (`DataTable.vue`, `column.align`), mas isso não reposiciona um
+// filho `display: flex` sozinho; sem isso o conteúdo continuaria colado
+// à esquerda da célula mesmo com a coluna "alinhada à direita".
 .product-marketplace-pricing-view__table-price {
   display: flex;
   align-items: center;
+  justify-content: flex-end;
   gap: $spacing-4;
   white-space: nowrap;
 }

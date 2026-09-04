@@ -4728,6 +4728,93 @@ idênticos na barra.
   vez) fica pendente do usuário — mesma limitação de navegador real
   desta sessão.
 
+**5º ajuste, mesmo dia — copiar preço sugerido/a anunciar, 2 rodadas de
+UX, reportado pelo usuário**: pedido inicial — "temos q permitir o
+usuario copiar o preço sugerido e o preço sugerido a anunciar, e só
+mandar o numero não mandar o R$ junto".
+
+- **`formatDecimal` novo** (`shared/services/formatNumber.ts`) — mesmo
+  formatador `Intl.NumberFormat('pt-BR')` de `formatMoney`, sem
+  `style: 'currency'` — devolve `"75,47"`, não `"R$ 75,47"`. O vendedor
+  cola direto num campo de preço do marketplace, que não aceita o
+  símbolo de moeda junto. Testado (`formatNumber.test.ts`, 4 testes
+  novos).
+- **1ª versão (revertida)**: um `Button` ícone-only (`CopySimple`)
+  separado ao lado de cada preço, um por valor copiável — o usuário
+  rejeitou: "nao gostei, coloque pra copiar clicando em cima do numero
+  e quando passar por cima mostrar o tooltip 'click pra copiar'".
+- **2ª versão (definitiva)**: `CopyablePrice.vue`, componente novo
+  (`modules/pricing/components/`, 1º do módulo Pricing — reuso interno
+  de UMA tela só, 6 pontos dentro de `ProductMarketplacePricingView.vue`,
+  não promovido pra `shared/` de propósito, critério de promoção só
+  sobe com um SEGUNDO módulo precisando). O NÚMERO em si é o gatilho —
+  `<button>` nativo resetado pra parecer texto comum (`font`/`color:
+  inherit`, sem borda/fundo), envolvido num `Tooltip.vue`
+  ("Clique para copiar"). Exibe `formatMoney` (com "R$", igual a
+  qualquer preço da tela), copia `formatDecimal` (sem "R$") — o texto
+  visível e o valor copiado são deliberadamente diferentes.
+- **Escopo**: só preço SUGERIDO e "preço a anunciar" (campanha) viram
+  clicáveis — nunca o preço PRATICADO (é dado do próprio vendedor,
+  editável via lápis, não "algo a copiar pra colar em outro lugar").
+  No preço PRINCIPAL da barra (`active.price`), só vira `CopyablePrice`
+  quando `!active.isPracticed` (ou seja, quando esse número JÁ é o
+  sugerido) — quando é o praticado, o sugerido continua copiável
+  separadamente na dica "Sugerido: ..." logo abaixo.
+- **Achado real de narrowing, TypeScript**: `hasCampaignMarkup()` é um
+  type predicate (`campaignPrice is string`) — funciona pra estreitar
+  `string | null` → `string` dentro do MESMO elemento/bloco de
+  conteúdo onde o `v-if` está (funcionou sem cast pra `<CopyablePrice
+  :value="active.campaignPrice" />`, filho do MESMO `<p v-if=...>`),
+  mas NÃO estreita através de uma closure de EVENT HANDLER
+  (`@click="fn(row.practicedCampaignPrice)"` num elemento SEPARADO,
+  ainda que com o mesmo `v-if` repetido) — TypeScript não confia em
+  narrowing de `obj.prop` através de um callback que só executa depois
+  (`obj` teoricamente poderia mudar até lá). Achado descartado nesta
+  versão (o botão separado que exigia isso foi removido), registrado
+  aqui só como conhecimento válido pra qualquer padrão parecido no
+  futuro — a solução, quando necessário, é um `as string` pontual no
+  ponto de uso dentro do handler, nunca tentar forçar a narrowing a
+  atravessar a closure.
+- Chaves i18n mortas removidas (`copyPriceButton`/`copyCampaignPriceButton`,
+  namespace real — o da `pricingDashboardMockup`, mockup separado, não
+  foi tocado), nova `copyPriceTooltip` ("Clique para copiar").
+- Verificado (typecheck/lint/suíte completa — 383 testes, sem
+  regressão — e build de produção). Confirmação visual/funcional do
+  clique-pra-copiar (tooltip aparecendo no hover, valor certo indo pro
+  clipboard sem "R$") fica pendente do usuário, mesma limitação de
+  navegador real desta sessão.
+
+**6º ajuste, mesmo dia — alinhamento à direita das colunas numéricas,
+reportado pelo usuário com screenshot**: as células de preço/parcela da
+visão em tabela ficavam alinhadas à esquerda (default), dificultando
+comparar valores entre linhas (dígitos menos significativos em posições
+verticais diferentes).
+
+- **`DataTableColumn` ganhou `align?: 'left' | 'right'`** (`shared/components/ui/types/dataTable.type.ts`)
+  — opcional, default `'left'` (nenhum outro consumidor do `DataTable.vue`
+  em nenhuma outra tela muda de comportamento). `DataTable.vue` aplica a
+  classe condicional tanto no `<th>` quanto no `<td>` — capacidade
+  GENÉRICA do bloco compartilhado, não um remendo de CSS só nesta tela
+  (`DataTable` é usado por praticamente todo CRUD do projeto, a
+  necessidade de coluna numérica alinhada à direita não é exclusiva
+  desta tela, só a primeira a pedir).
+- **`ProductMarketplacePricingView.vue`**: as 10 colunas de parcela do
+  breakdown + `practicedPrice`/`suggestedPrice` ganharam
+  `align: 'right'` — só `productName` continua à esquerda (texto, não
+  número).
+- **Achado real de CSS**: `text-align: right` no `<td>` sozinho não
+  reposiciona um filho `display: flex` (`.product-marketplace-pricing-view__table-price`,
+  já usada pelas células de preço) — `text-align` só afeta conteúdo
+  inline/texto direto, não a distribuição de itens flex. Precisou de
+  `justify-content: flex-end` explícito nessa classe também; as células
+  de PARCELA (`cell-${key}`, só texto solto + `<span>` inline, sem
+  wrapper flex) já respeitavam o `text-align` do `<td>` sem ajuste
+  extra.
+- Verificado (typecheck/lint/suíte completa — 383 testes, sem
+  regressão — e build de produção). Confirmação visual do alinhamento
+  real nas 12 colunas numéricas fica pendente do usuário, mesma
+  limitação de navegador real desta sessão.
+
 ### ProductMarketplacesView (`modules/pricing/views/ProductMarketplacesView.vue`)
 
 Rota própria (`/products/:id/marketplaces`), não uma aba — decisão de

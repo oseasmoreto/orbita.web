@@ -125,7 +125,10 @@ function toggleAll(): void {
             :key="column.key"
             :class="[
               'ui-data-table__header-cell',
-              { 'ui-data-table__header-cell--sortable': column.sortable },
+              {
+                'ui-data-table__header-cell--sortable': column.sortable,
+                'ui-data-table__header-cell--align-right': column.align === 'right',
+              },
             ]"
             @click="handleSort(column)"
           >
@@ -151,7 +154,14 @@ function toggleAll(): void {
           <td v-if="selectable" class="ui-data-table__select-cell">
             <Checkbox :model-value="isSelected(row)" @update:model-value="toggleRow(row)" />
           </td>
-          <td v-for="column in columns" :key="column.key" class="ui-data-table__cell">
+          <td
+            v-for="column in columns"
+            :key="column.key"
+            :class="[
+              'ui-data-table__cell',
+              { 'ui-data-table__cell--align-right': column.align === 'right' },
+            ]"
+          >
             <slot :name="`cell-${column.key}`" :row="row" :value="getCellValue(row, column.key)">
               {{ getCellValue(row, column.key) }}
             </slot>
@@ -220,6 +230,13 @@ function toggleAll(): void {
   user-select: none;
 }
 
+// `text-align` no `<th>` também empurra `.ui-data-table__header-content`
+// (inline-flex) pra direita — o ícone de ordenação continua colado no
+// texto, só o par inteiro migra de lado.
+.ui-data-table__header-cell--align-right {
+  text-align: right;
+}
+
 .ui-data-table__cell {
   padding: $spacing-8 $spacing-16;
   color: $color-ink;
@@ -227,6 +244,10 @@ function toggleAll(): void {
   // imperceptível do Figma ("Black/5%"), mesmo critério já usado no
   // Badge/Search pra valor fora da escala sólida.
   border-bottom: 1px solid $color-ink-4;
+}
+
+.ui-data-table__cell--align-right {
+  text-align: right;
 }
 
 .ui-data-table__empty {

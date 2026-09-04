@@ -1278,7 +1278,7 @@ export default {
       campaignPriceLabel: 'Preço a anunciar',
       campaignPriceTooltip:
         'Preço que compensa o desconto de campanha configurado nesta conexão.\n\nNão é o preço já com desconto aplicado — é o valor MAIOR que você precisa colocar no anúncio pra, depois do desconto, ainda receber o preço sugerido/praticado de verdade.',
-      copyPriceButton: 'Copiar preço sugerido',
+      copyPriceTooltip: 'Clique para copiar',
       editConnectionButton: 'Editar vínculo do marketplace',
       editModal: {
         errors: {
