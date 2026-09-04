@@ -32,13 +32,15 @@
  * - Abas usam as CONEXÕES ATIVAS de verdade do usuário
  *   (`useMarketplaceConnections`), não 3 marketplaces fake fixos — pode
  *   ser 1, pode ser 5, depende de quantos o usuário conectou.
- * - 9 segmentos reais (`SEGMENT_KEYS`, `pricingBreakdown.ts`) — sem
+ * - 10 segmentos reais (`SEGMENT_KEYS`, `pricingBreakdown.ts`) — sem
  *   "Comissão campanha" do mockup (8 segmentos especulados):
  *   `USER_MARKETPLACE.campaignDiscountPercentage` não entra na fórmula
  *   real (confirmado com o backend), nunca existiu de verdade aqui.
  *   `coupon` (`USER_MARKETPLACE.couponValue`, valor FIXO em R$, não
- *   percentual, 2026-09-04) entrou como 8ª parcela de dedução —
- *   confirmado no schema OpenAPI que o backend já soma no breakdown.
+ *   percentual, 2026-09-04) entrou como 8ª parcela de dedução;
+ *   `individualFixedFee` (`MARKETPLACE.individualFixedFee`, "taxa fixa
+ *   pra PF", mesmo dia, tarefa 90) entrou como 9ª — só diferente de 0
+ *   quando a conexão é PF (`storeDocumentType: 'individual'`).
  * - Cada produto tem DOIS preços agora (praticado E sugerido, não um
  *   `salePrice` só) — `resolveActivePricing()` decide qual vira a barra
  *   principal (praticado quando existe, senão sugerido), com um Badge
@@ -915,10 +917,11 @@ const tableColumns = computed<DataTableColumn[]>(() => [
   pointer-events: none;
 }
 
-// Mesma rampa sequencial de `PricingDashboardMockupView.vue` — 9
-// parcelas (afiliado entrou em 2026-09-03, cupom em 2026-09-04, mesma
-// planilha/pedido real), ainda sem "Comissão campanha": o desconto de
-// campanha não entra nessa soma, só define o preço de anúncio maior
+// Mesma rampa sequencial de `PricingDashboardMockupView.vue` — 10
+// parcelas (afiliado entrou em 2026-09-03, cupom e individualFixedFee
+// em 2026-09-04, mesma planilha/pedido real), ainda sem "Comissão
+// campanha": o desconto de campanha não entra nessa soma, só define o
+// preço de anúncio maior
 // (ver `campaignPrice` no `<script>`).
 .product-marketplace-pricing-view__segment--costPrice {
   background-color: color-mix(in srgb, $color-accent-orange 30%, $color-bg-2);
@@ -950,6 +953,10 @@ const tableColumns = computed<DataTableColumn[]>(() => [
 
 .product-marketplace-pricing-view__segment--coupon {
   background-color: color-mix(in srgb, $color-accent-red 8%, $color-ink);
+}
+
+.product-marketplace-pricing-view__segment--individualFixedFee {
+  background-color: color-mix(in srgb, $color-accent-red 3%, $color-ink);
 }
 
 .product-marketplace-pricing-view__segment--profit {
@@ -986,6 +993,10 @@ const tableColumns = computed<DataTableColumn[]>(() => [
 
 .product-marketplace-pricing-view__legend-swatch--coupon {
   @extend .product-marketplace-pricing-view__segment--coupon;
+}
+
+.product-marketplace-pricing-view__legend-swatch--individualFixedFee {
+  @extend .product-marketplace-pricing-view__segment--individualFixedFee;
 }
 
 .product-marketplace-pricing-view__legend-swatch--profit {

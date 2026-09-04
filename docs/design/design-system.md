@@ -4498,6 +4498,42 @@ verdade.
   (os que misturam com `$color-ink`, o caso mais arriscado de contraste
   descrito acima).
 
+**Adendo `individual_fixed_fee`, 2026-09-04 (tarefa 90, aviso cross-
+session da sessão de backend `shopee-pricing-calculator`)** —
+`MARKETPLACE.individualFixedFee` ("taxa fixa para PF", já armazenado
+desde o addendum de PF/PJ em `AdminMarketplaceForm`/`ConnectMarketplaceModal`,
+seções acima) passou a entrar de fato no cálculo: 10ª parcela do
+breakdown, `individualFixedFee`, entre `coupon` e `profit` — mesmo
+critério de "cada dedução nova nasce logo antes do lucro" já usado pras
+9 anteriores. **Regra de negócio real, não capricho de UI**: o backend
+só devolve esse valor diferente de `"0.00"` quando a CONEXÃO
+(`UserMarketplace.storeDocumentType`) é `'individual'` (PF) — PJ ou sem
+tipo definido sempre mostra `"0.00"` aqui, mesmo que o marketplace tenha
+a taxa cadastrada. Efeito colateral avisado pelo backend e documentado
+aqui pra não ser confundido com bug numa verificação futura: lucro/
+margem sugeridos e praticados de uma mesma conexão podem mudar só por
+trocar `storeDocumentType` entre PF/PJ via `PATCH /user-marketplaces/{id}`
+— comportamento esperado do motor, não um erro de arredondamento.
+
+- Cor: próximo degrau da rampa sequencial depois de `coupon` (`8%` red),
+  `color-mix(in srgb, $color-accent-red 3%, $color-ink)` — o mais
+  próximo de `$color-ink` puro antes do verde de `profit`.
+- Chave nova `pricing.productMarketplacePricing.segments.individualFixedFee`
+  ("Taxa PF") no catálogo.
+- Mesma mecânica de propagação automática das duas rodadas anteriores
+  (`coupon`, `percentage_of_total`) — `SEGMENT_KEYS` iterado
+  dinamicamente pelo template, uma chave nova no array bastou pra
+  propagar pra barra/legenda/tabela sem tocar markup.
+- Teste novo (`pricingBreakdown.test.ts`) exercitando um valor real de
+  `individualFixedFee` (conexão PF) como prova de que o frontend só
+  EXIBE o valor vindo do backend, nunca decide sozinho se a taxa se
+  aplica — essa decisão é 100% do motor de precificação.
+- Verificado (typecheck/lint/suíte completa — 371 testes, sem regressão
+  — e build de produção), mesma limitação de navegador real já
+  registrada. Confirmação visual do décimo segmento na barra (incluindo
+  o cenário real de alternar `storeDocumentType` PF↔PJ numa mesma
+  conexão e ver o lucro recalcular) fica pendente do usuário.
+
 ### ProductMarketplacesView (`modules/pricing/views/ProductMarketplacesView.vue`)
 
 Rota própria (`/products/:id/marketplaces`), não uma aba — decisão de

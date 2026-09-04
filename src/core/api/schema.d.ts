@@ -1719,6 +1719,13 @@ export interface components {
                     ads: string;
                     affiliate: string;
                     coupon: string;
+                    /**
+                     * @description "Taxa fixa para PF" (MARKETPLACE.individual_fixed_fee, pedido
+                     *     direto do usuário, 2026-09-04) — só diferente de "0.00" quando
+                     *     a conexão é store_document_type=individual (PF); PJ ou sem
+                     *     tipo definido sempre mostra "0.00" aqui.
+                     */
+                    individual_fixed_fee: string;
                     profit: string;
                     /**
                      * @description % que cada parcela acima vale sobre o preço de venda total
@@ -1734,6 +1741,7 @@ export interface components {
                         ads: string;
                         affiliate: string;
                         coupon: string;
+                        individual_fixed_fee: string;
                         profit: string;
                     };
                 };
@@ -1746,6 +1754,7 @@ export interface components {
                     ads: string;
                     affiliate: string;
                     coupon: string;
+                    individual_fixed_fee: string;
                     profit: string;
                     /**
                      * @description % que cada parcela acima vale sobre o preço de venda total
@@ -1761,6 +1770,7 @@ export interface components {
                         ads: string;
                         affiliate: string;
                         coupon: string;
+                        individual_fixed_fee: string;
                         profit: string;
                     };
                 } | null;

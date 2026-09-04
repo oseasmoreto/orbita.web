@@ -17,6 +17,7 @@ const breakdown: PricingBreakdown = {
   costPrice: '20.00',
   coupon: '1.00',
   fixedFee: '4.00',
+  individualFixedFee: '0.00',
   operationalCost: '3.00',
   // Aproximação de `value ÷ 69.91 × 100` pra cada parcela — não precisa
   // fechar 100% exato nem bater com precisão de casas decimais, o que
@@ -30,6 +31,7 @@ const breakdown: PricingBreakdown = {
     costPrice: '28.61',
     coupon: '1.43',
     fixedFee: '5.72',
+    individualFixedFee: '0.00',
     operationalCost: '4.29',
     profit: '12.07',
     tax: '10.00',
@@ -110,6 +112,7 @@ describe('buildPriceSegments', () => {
       'ads',
       'affiliate',
       'coupon',
+      'individualFixedFee',
       'profit',
     ])
     expect(segments[0]).toEqual({
@@ -135,6 +138,27 @@ describe('buildPriceSegments', () => {
 
     expect(couponSegment?.widthPercent).toBe(40)
     expect(couponSegment?.percent).toBe('40.00')
+  })
+
+  it('reflects a real individualFixedFee (PF connection) as its own segment', () => {
+    // `individualFixedFee` só vem diferente de "0.00" quando a conexão é
+    // PF (`storeDocumentType: 'individual'`, regra do backend) — o
+    // frontend não decide isso, só exibe o que veio no breakdown.
+    const pfBreakdown: PricingBreakdown = {
+      ...breakdown,
+      individualFixedFee: '3.00',
+      percentageOfTotal: { ...breakdown.percentageOfTotal, individualFixedFee: '4.29' },
+    }
+
+    const segments = buildPriceSegments(pfBreakdown)
+    const feeSegment = segments.find((segment) => segment.key === 'individualFixedFee')
+
+    expect(feeSegment).toEqual({
+      key: 'individualFixedFee',
+      percent: '4.29',
+      value: '3.00',
+      widthPercent: 4.29,
+    })
   })
 
   it('clamps a negative segment (prejuízo) to 0 width instead of a negative flex-basis, but keeps the real negative % for display', () => {

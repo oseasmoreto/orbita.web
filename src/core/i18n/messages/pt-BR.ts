@@ -1312,6 +1312,7 @@ export default {
         costPrice: 'Custo',
         coupon: 'Cupom',
         fixedFee: 'Fixo',
+        individualFixedFee: 'Taxa PF',
         operationalCost: 'Operacional',
         profit: 'Lucro',
         tax: 'Imposto',

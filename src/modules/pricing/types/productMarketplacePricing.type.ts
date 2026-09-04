@@ -24,13 +24,13 @@ type PricingEvaluationResource = Omit<
 }
 
 /**
- * Quebra da composição do preço em 9 parcelas (pedido ao backend,
+ * Quebra da composição do preço em 10 parcelas (pedido ao backend,
  * 2026-09-03, pra desenhar a barra empilhada do mockup —
  * `PricingDashboardMockupView.vue` — com dado real). Soma sempre bate
  * com o preço correspondente: `costPrice + operationalCost + commission
- * + fixedFee + tax + ads + affiliate + coupon + profit = price`.
- * `profit` pode vir negativo (prejuízo) se o preço praticado for baixo
- * demais.
+ * + fixedFee + tax + ads + affiliate + coupon + individualFixedFee +
+ * profit = price`. `profit` pode vir negativo (prejuízo) se o preço
+ * praticado for baixo demais.
  *
  * `affiliate` entrou em 2026-09-03 (mesma planilha real, confirmado com
  * o usuário antes de codar pelo backend) — mesmo tratamento de `ads`
@@ -46,6 +46,16 @@ type PricingEvaluationResource = Omit<
  * `coupon` entrou em 2026-09-04 — deduz `USER_MARKETPLACE.couponValue`
  * (valor FIXO em R$, não percentual, diferente de `ads`/`affiliate`)
  * direto do lucro, mesmo tratamento dos outros dois.
+ *
+ * `individualFixedFee` entrou em 2026-09-04 (tarefa 90, aviso cross-
+ * session) — deduz `MARKETPLACE.individualFixedFee` ("taxa fixa para
+ * PF"), valor FIXO em R$ como `coupon`, mas com uma regra a mais: só
+ * vem diferente de `"0.00"` quando a CONEXÃO
+ * (`UserMarketplace.storeDocumentType`) é `'individual'` (PF) — PJ ou
+ * sem tipo definido sempre mostra `"0.00"` aqui, mesmo que o
+ * marketplace tenha a taxa cadastrada. Efeito colateral esperado (não
+ * bug): lucro/margem sugeridos e praticados de uma mesma conexão podem
+ * mudar só por trocar `storeDocumentType` entre PF/PJ.
  *
  * `percentageOfTotal` (2026-09-04, pedido direto do usuário — "quantos %
  * o preço de custo vale sobre o valor final e afins") — quanto cada
@@ -65,6 +75,7 @@ export interface PricingBreakdownPercentages {
   costPrice: string
   coupon: string
   fixedFee: string
+  individualFixedFee: string
   operationalCost: string
   profit: string
   tax: string
@@ -77,6 +88,7 @@ export interface PricingBreakdown {
   costPrice: string
   coupon: string
   fixedFee: string
+  individualFixedFee: string
   operationalCost: string
   percentageOfTotal: PricingBreakdownPercentages
   profit: string
@@ -145,6 +157,7 @@ function toPricingBreakdownPercentages(
     costPrice: percentages.cost_price,
     coupon: percentages.coupon,
     fixedFee: percentages.fixed_fee,
+    individualFixedFee: percentages.individual_fixed_fee,
     operationalCost: percentages.operational_cost,
     profit: percentages.profit,
     tax: percentages.tax,
@@ -161,6 +174,7 @@ function toPricingBreakdown(
     costPrice: breakdown.cost_price,
     coupon: breakdown.coupon,
     fixedFee: breakdown.fixed_fee,
+    individualFixedFee: breakdown.individual_fixed_fee,
     operationalCost: breakdown.operational_cost,
     percentageOfTotal: toPricingBreakdownPercentages(breakdown.percentage_of_total),
     profit: breakdown.profit,

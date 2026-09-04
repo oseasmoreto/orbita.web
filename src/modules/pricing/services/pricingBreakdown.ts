@@ -23,6 +23,7 @@ export const SEGMENT_KEYS = [
   'ads',
   'affiliate',
   'coupon',
+  'individualFixedFee',
   'profit',
 ] as const
 
