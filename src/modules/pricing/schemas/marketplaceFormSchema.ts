@@ -18,14 +18,26 @@ import { z } from 'zod'
  *
  * `websiteUrl` continua sendo link EXTERNO de verdade (site do
  * marketplace, não a logo) — `url()` nele não mudou.
+ *
+ * `requiresStoreDocumentType`/`individualFixedFee` (2026-09-04, pedido
+ * direto do usuário) — o primeiro liga a exigência de PF/PJ no momento
+ * de conectar (`ConnectMarketplaceModal.vue`), o segundo ("taxa fixa
+ * para PF") é valor FIXO em R$, sem `max:100`, mesma regra de
+ * `couponValue` (`userMarketplaceFormSchema.ts`) — ainda sem uso em
+ * nenhum cálculo de precificação.
  */
 export function createMarketplaceFormSchema(t: (key: string) => string) {
   return z.object({
     active: z.boolean(),
     comingSoon: z.boolean(),
     description: z.string().nullable(),
+    individualFixedFee: z
+      .number()
+      .min(0, t('pricing.admin.marketplaces.form.errors.individualFixedFeeMin'))
+      .nullable(),
     logoBase64: z.string().nullable(),
     name: z.string().min(1, t('pricing.admin.marketplaces.form.errors.nameRequired')),
+    requiresStoreDocumentType: z.boolean(),
     tags: z.array(z.string()),
     websiteUrl: z
       .string()

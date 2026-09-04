@@ -1,6 +1,10 @@
 import { createUserMarketplaceFormSchema } from '@/modules/pricing/schemas/userMarketplaceFormSchema'
 
-const userMarketplaceFormSchema = createUserMarketplaceFormSchema((key) => key)
+let isStoreDocumentTypeRequired = false
+const userMarketplaceFormSchema = createUserMarketplaceFormSchema(
+  (key) => key,
+  () => isStoreDocumentTypeRequired,
+)
 
 const validPayload = {
   adsPercentage: null,
@@ -8,10 +12,15 @@ const validPayload = {
   campaignDiscountPercentage: null,
   couponValue: null,
   marketplaceId: 'marketplace-1',
+  storeDocumentType: '',
   storeName: 'Minha Loja',
 }
 
 describe('userMarketplaceFormSchema', () => {
+  beforeEach(() => {
+    isStoreDocumentTypeRequired = false
+  })
+
   it('accepts a valid payload with all percentage fields null', () => {
     expect(userMarketplaceFormSchema.safeParse(validPayload).success).toBe(true)
   })
@@ -66,5 +75,32 @@ describe('userMarketplaceFormSchema', () => {
     expect(userMarketplaceFormSchema.safeParse({ ...validPayload, couponValue: -1 }).success).toBe(
       false,
     )
+  })
+
+  it('accepts an empty storeDocumentType when the marketplace does not require it', () => {
+    isStoreDocumentTypeRequired = false
+    expect(userMarketplaceFormSchema.safeParse(validPayload).success).toBe(true)
+  })
+
+  it('rejects an empty storeDocumentType when the marketplace requires it, with the error on the right field', () => {
+    isStoreDocumentTypeRequired = true
+    const result = userMarketplaceFormSchema.safeParse(validPayload)
+
+    expect(result.success).toBe(false)
+    if (!result.success) {
+      expect(result.error.issues[0]?.path).toEqual(['storeDocumentType'])
+    }
+  })
+
+  it('accepts individual/company when the marketplace requires storeDocumentType', () => {
+    isStoreDocumentTypeRequired = true
+    expect(
+      userMarketplaceFormSchema.safeParse({ ...validPayload, storeDocumentType: 'individual' })
+        .success,
+    ).toBe(true)
+    expect(
+      userMarketplaceFormSchema.safeParse({ ...validPayload, storeDocumentType: 'company' })
+        .success,
+    ).toBe(true)
   })
 })

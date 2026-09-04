@@ -40,6 +40,7 @@ import IconTile from '@/shared/components/ui/IconTile.vue'
 import Input from '@/shared/components/ui/Input.vue'
 import TagsInput from '@/shared/components/ui/TagsInput.vue'
 import Toggle from '@/shared/components/ui/Toggle.vue'
+import { useNumberFieldModel } from '@/shared/composables/useNumberFieldModel'
 
 const props = defineProps<{
   marketplace: AdminMarketplace | null
@@ -67,6 +68,10 @@ const descriptionInput = computed<string>({
   set: (raw) => {
     values.description = raw === '' ? null : raw
   },
+})
+
+const individualFixedFeeInput = useNumberFieldModel(values, 'individualFixedFee', {
+  nullable: true,
 })
 
 const logoFileInput = ref<HTMLInputElement | null>(null)
@@ -161,6 +166,22 @@ async function handleSubmit(): Promise<void> {
         v-model="values.comingSoon"
         :label="$t('pricing.admin.marketplaces.form.fields.comingSoon')"
       />
+      <Toggle
+        v-model="values.requiresStoreDocumentType"
+        :label="$t('pricing.admin.marketplaces.form.fields.requiresStoreDocumentType')"
+      />
+
+      <FormGroup
+        :error="fieldError('individualFixedFee')"
+        :label="$t('pricing.admin.marketplaces.form.fields.individualFixedFee')"
+        :label-tooltip="$t('pricing.admin.marketplaces.form.tooltips.individualFixedFee')"
+      >
+        <Input
+          v-model="individualFixedFeeInput"
+          :invalid="Boolean(fieldError('individualFixedFee'))"
+          type="number"
+        />
+      </FormGroup>
     </div>
 
     <CrudFormActions

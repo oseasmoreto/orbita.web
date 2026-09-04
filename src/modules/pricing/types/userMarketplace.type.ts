@@ -23,6 +23,16 @@ type UserMarketplaceResource = components['schemas']['UserMarketplaceResource']
  * contrário dos 3 campos acima), cupom/subsídio fixo aplicado nesse
  * canal. Já entra no breakdown de precificação
  * (`PricingBreakdown.coupon`) desde que o backend adicionou o campo.
+ *
+ * `storeDocumentType` (2026-09-04) — se a LOJA do usuário nesse canal é
+ * pessoa física ou jurídica (`'individual' | 'company'`, nullable).
+ * **Obrigatório no `POST /user-marketplaces`** quando
+ * `Marketplace.requiresStoreDocumentType` é `true` pro marketplace da
+ * conexão (`422 errorMessageStoreDocumentTypeRequired` se ausente nesse
+ * caso) — regra de negócio validada no BACKEND (`CreateUserMarketplaceAction`),
+ * não no schema deste campo isoladamente; opcional quando o marketplace
+ * não exige. `ConnectMarketplaceModal.vue` só mostra o campo quando a
+ * flag do marketplace é verdadeira.
  */
 export interface UserMarketplace {
   active: UserMarketplaceResource['active']
@@ -33,6 +43,7 @@ export interface UserMarketplace {
   createdAt: UserMarketplaceResource['created_at']
   id: UserMarketplaceResource['id']
   marketplaceId: UserMarketplaceResource['marketplace_id']
+  storeDocumentType: UserMarketplaceResource['store_document_type']
   storeName: UserMarketplaceResource['store_name']
 }
 
@@ -46,6 +57,7 @@ export function toUserMarketplace(resource: UserMarketplaceResource): UserMarket
     createdAt: resource.created_at,
     id: resource.id,
     marketplaceId: resource.marketplace_id,
+    storeDocumentType: resource.store_document_type,
     storeName: resource.store_name,
   }
 }

@@ -519,6 +519,8 @@ export default {
     'Informe o CPF do responsável — obrigatório para empresas com CNPJ.',
   errorMessageSamePlan: 'Você já está nesse plano.',
   errorMessageServer: 'Ocorreu um erro no servidor. Tente novamente em instantes.',
+  errorMessageStoreDocumentTypeRequired:
+    'Esse marketplace exige informar se a loja é pessoa física ou jurídica.',
   errorMessageSubscriptionAlreadyActive: 'Você já tem uma assinatura ativa.',
   errorMessageSubscriptionNotActive: 'Sua assinatura não está ativa no momento.',
   errorMessageTargetMarginUnreachable:
@@ -1099,6 +1101,7 @@ export default {
           createTitle: 'Novo marketplace',
           editTitle: 'Editar marketplace',
           errors: {
+            individualFixedFeeMin: 'Taxa fixa para PF não pode ser negativa.',
             nameRequired: 'Nome é obrigatório.',
             websiteUrlInvalid: 'Informe uma URL válida.',
           },
@@ -1107,8 +1110,10 @@ export default {
             chooseLogo: 'Escolher arquivo',
             comingSoon: 'Em breve (bloqueia conexão de novos usuários)',
             description: 'Descrição',
+            individualFixedFee: 'Taxa fixa para PF (R$)',
             logo: 'Logo',
             name: 'Nome',
+            requiresStoreDocumentType: 'Exige informar PF/PJ ao conectar',
             tags: 'Tags',
             websiteUrl: 'Site',
           },
@@ -1121,6 +1126,10 @@ export default {
             categories: 'Categorias',
             details: 'Dados do marketplace',
             pricingRules: 'Regras de comissão',
+          },
+          tooltips: {
+            individualFixedFee:
+              'Taxa fixa cobrada de lojas pessoa física neste marketplace. Só armazenado nesta rodada, ainda sem uso no cálculo de precificação.',
           },
           updateSuccess: 'Marketplace atualizado com sucesso.',
         },
@@ -1222,6 +1231,7 @@ export default {
           couponValueMin: 'Valor do cupom não pode ser negativo.',
           percentageMax: 'Percentual não pode passar de 100%.',
           percentageMin: 'Percentual não pode ser negativo.',
+          storeDocumentTypeRequired: 'Informe se a loja é pessoa física ou jurídica.',
           storeNameRequired: 'Nome da loja é obrigatório.',
         },
         fields: {
@@ -1229,8 +1239,14 @@ export default {
           affiliatePercentage: '% pago a afiliados',
           campaignDiscountPercentage: '% de desconto em campanhas',
           couponValue: 'Valor do cupom (R$)',
+          storeDocumentType: 'Tipo de documento da loja',
           storeName: 'Nome da loja',
         },
+        storeDocumentTypeOptions: {
+          company: 'Pessoa jurídica (PJ)',
+          individual: 'Pessoa física (PF)',
+        },
+        storeDocumentTypePlaceholder: 'Selecione PF ou PJ',
         submitConnect: 'Conectar',
         submitSave: 'Salvar alterações',
         tooltips: {

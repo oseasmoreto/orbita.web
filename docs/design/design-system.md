@@ -4093,6 +4093,21 @@ logo abaixo de "Marketplace ativo" (`values.comingSoon`, default
 (`MarketplacesView.vue`), só não pode ser conectado ainda
 (`errorMessageMarketplaceComingSoon`).
 
+**PF/PJ por marketplace, 2026-09-04 — aviso cross-session da sessão de
+backend (tarefas 86-89 de `docs/api/ordem-de-implementacao.md`, repo
+`backend`)**: `MARKETPLACE` ganhou `requires_store_document_type`
+(boolean, liga a exigência de PF/PJ na hora de conectar — ver
+`ConnectMarketplaceModal`, seção abaixo) e `individual_fixed_fee`
+("taxa fixa para PF", string R$ nullable, só na visão admin, ainda sem
+uso em nenhum cálculo de precificação). 3º `Toggle` (`requiresStoreDocumentType`)
+logo abaixo de "Em breve" + `FormGroup`/`Input` numérico
+(`individualFixedFee`, `useNumberFieldModel` nullable, mesmo padrão de
+`couponValue` em `ConnectMarketplaceModal`) com `labelTooltip`
+explicando que ainda não entra no cálculo — mesma disciplina de
+transparência já usada nos outros campos "só armazenado nesta rodada"
+do design system (`ads_percentage` antes de 2026-09-03, `operational_cost`,
+etc.).
+
 ### MarketplaceLogo (`modules/pricing/components/MarketplaceLogo.vue`)
 
 **Extraído em 2026-08-31**, pedido direto do usuário ("adicione os logos
@@ -4334,6 +4349,53 @@ pro lado da precificação).
   root pra instalar) — round-trip real em UI (conectar com cupom
   preenchido → ver refletido na barra de precificação) fica pendente de
   confirmação manual do usuário.
+
+**6º campo, `storeDocumentType` (PF/PJ), 2026-09-04 — aviso cross-session
+da sessão de backend `shopee-pricing-calculator`** (tarefas 86-89 de
+`docs/api/ordem-de-implementacao.md`, repo `backend`): `MARKETPLACE`
+ganhou `requires_store_document_type` — quando `true` pro marketplace da
+conexão, `POST /user-marketplaces` passa a EXIGIR `store_document_type`
+(`'individual' | 'company'`, `422 errorMessageStoreDocumentTypeRequired`
+se ausente). Único dos 6 campos desta modal condicionalmente
+obrigatório — todos os outros (percentuais, cupom) são sempre opcionais.
+
+- **Campo só aparece quando o marketplace exige**
+  (`v-if="marketplaceRequiresStoreDocumentType"`, nova prop boolean —
+  `MarketplacesView.vue` repassa `activeCard.marketplace.requiresStoreDocumentType`)
+  — mesma disciplina de "nunca pedir informação irrelevante" já usada em
+  `ProductMarketplacesView.vue` (seletor de categoria só aparece se o
+  marketplace tem `CATEGORY_MARKETPLACE` configurado).
+- **`Select.vue`, não `Input.vue`** — só 2 valores reais possíveis
+  (`individual`/`company`), rotulados "Pessoa física (PF)"/"Pessoa
+  jurídica (PJ)". Mesmo padrão de string-vazia-como-"não escolhido" já
+  usado em `categoryId` (`ProductMarketplacesView.vue`) — `Select.vue`
+  não aceita `null` no `v-model`, e `''` como valor de MODELO (não de
+  OPÇÃO) já é tratado como placeholder pela própria Reka UI por baixo,
+  sem precisar de sentinel tipo `'all'` (esse sentinel só é necessário
+  quando `''` precisaria ser uma OPÇÃO de verdade na lista, o que não é
+  o caso aqui).
+- **Obrigatoriedade condicional resolvida com uma função, não um
+  boolean fixo, no schema Zod** (`createUserMarketplaceFormSchema(t,
+  isStoreDocumentTypeRequired)`, novo 2º parâmetro) — achado de design
+  real: `useUserMarketplaceForm()` (e portanto o schema que ele cria) é
+  instanciado UMA VEZ só e reaproveitado pro grid INTEIRO de cards
+  (`MarketplacesView.vue`, já documentado acima) — cada abertura do
+  modal pode ser um marketplace DIFERENTE, com exigência diferente. Um
+  boolean fixo capturado na criação do schema ficaria preso ao
+  marketplace de quando o composable foi criado (o PRIMEIRO card
+  aberto), errado pra qualquer card seguinte. A função
+  (`() => props.marketplaceRequiresStoreDocumentType`) é reavaliada
+  DENTRO do `.superRefine()` a cada `.safeParse()` — sempre lê o valor
+  mais recente da prop reativa, correto pro card ativo no momento do
+  submit.
+- `useUserMarketplaceForm()` ganhou o mesmo parâmetro
+  (`isStoreDocumentTypeRequired: () => boolean`) — repassado direto pro
+  schema, sem lógica própria adicional no composable.
+- Verificado (typecheck/lint/suíte completa — 370 testes, incluindo 3
+  testes novos exercitando as 3 combinações de obrigatoriedade — e build
+  de produção). Round-trip real em UI (conectar um marketplace PF/PJ,
+  confirmar o `422` sem o campo e o sucesso com ele) fica pendente da
+  mesma limitação de navegador real já registrada nesta sessão.
 
 ### ProductMarketplacePricingView (`modules/pricing/views/ProductMarketplacePricingView.vue`) — adendo `coupon`
 

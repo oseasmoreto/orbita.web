@@ -233,6 +233,7 @@ async function handleDisconnect(): Promise<void> {
       :connection="activeCard.connection"
       :marketplace-id="activeCard.marketplace.id"
       :marketplace-name="activeCard.marketplace.name"
+      :marketplace-requires-store-document-type="activeCard.marketplace.requiresStoreDocumentType"
       :mode="modalMode"
       @saved="handleSaved"
     />

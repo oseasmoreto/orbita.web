@@ -1,34 +1,54 @@
 <script setup lang="ts">
 /**
  * Coleta `store_name` + os 3 percentuais informativos por canal (tarefa
- * 65) + o valor fixo de cupom em R$ (`couponValue`, 2026-09-04) pra
- * conectar (create) OU editar (update) uma conexão — mesmo
- * padrão de `DocumentPromptModal.vue` (Billing): reset do form
- * disparado por um `watch(open, ...)`, não pelo `defineProps` direto (o
- * modal é reaproveitado pro grid INTEIRO de cards, `MarketplacesView.vue`
- * só troca as props antes de abrir).
+ * 65) + o valor fixo de cupom em R$ (`couponValue`, 2026-09-04) + o
+ * tipo de documento da loja (`storeDocumentType`, PF/PJ, 2026-09-04,
+ * só quando o marketplace exige) pra conectar (create) OU editar
+ * (update) uma conexão — mesmo padrão de `DocumentPromptModal.vue`
+ * (Billing): reset do form disparado por um `watch(open, ...)`, não
+ * pelo `defineProps` direto (o modal é reaproveitado pro grid INTEIRO
+ * de cards, `MarketplacesView.vue` só troca as props antes de abrir).
  */
 import { watch } from 'vue'
 import FormGroup from '@/shared/components/blocks/FormGroup.vue'
 import Button from '@/shared/components/ui/Button.vue'
 import Input from '@/shared/components/ui/Input.vue'
 import Modal from '@/shared/components/ui/Modal.vue'
+import Select from '@/shared/components/ui/Select.vue'
 import { useNumberFieldModel } from '@/shared/composables/useNumberFieldModel'
+import { useI18n } from 'vue-i18n'
 import { useUserMarketplaceForm } from '../../composables/useUserMarketplaceForm'
 import type { UserMarketplace } from '../../types/userMarketplace.type'
+import type { SelectOption } from '@/shared/components/ui/types/select.type'
 
 const props = defineProps<{
   connection: UserMarketplace | null
   marketplaceId: string
   marketplaceName: string
+  marketplaceRequiresStoreDocumentType: boolean
   mode: 'create' | 'edit'
 }>()
 
 const emit = defineEmits<{ saved: [connection: UserMarketplace] }>()
 
+const { t } = useI18n()
+
 const open = defineModel<boolean>({ default: false })
 
-const { errors, isSubmitting, reset, submit, values } = useUserMarketplaceForm()
+const { errors, isSubmitting, reset, submit, values } = useUserMarketplaceForm(
+  () => props.marketplaceRequiresStoreDocumentType,
+)
+
+const storeDocumentTypeOptions: SelectOption[] = [
+  {
+    label: t('pricing.marketplaces.connectModal.storeDocumentTypeOptions.individual'),
+    value: 'individual',
+  },
+  {
+    label: t('pricing.marketplaces.connectModal.storeDocumentTypeOptions.company'),
+    value: 'company',
+  },
+]
 
 const adsPercentageInput = useNumberFieldModel(values, 'adsPercentage', { nullable: true })
 const campaignDiscountPercentageInput = useNumberFieldModel(values, 'campaignDiscountPercentage', {
@@ -99,6 +119,19 @@ async function handleSubmit(): Promise<void> {
           v-model="values.storeName"
           :invalid="Boolean(errors.storeName)"
           @keyup.enter="handleSubmit"
+        />
+      </FormGroup>
+
+      <FormGroup
+        v-if="marketplaceRequiresStoreDocumentType"
+        :error="errors.storeDocumentType"
+        :label="$t('pricing.marketplaces.connectModal.fields.storeDocumentType')"
+      >
+        <Select
+          v-model="values.storeDocumentType"
+          :invalid="Boolean(errors.storeDocumentType)"
+          :options="storeDocumentTypeOptions"
+          :placeholder="$t('pricing.marketplaces.connectModal.storeDocumentTypePlaceholder')"
         />
       </FormGroup>
 

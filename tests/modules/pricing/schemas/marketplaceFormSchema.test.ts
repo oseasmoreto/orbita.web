@@ -6,8 +6,10 @@ const validPayload = {
   active: true,
   comingSoon: false,
   description: null,
+  individualFixedFee: null,
   logoBase64: null,
   name: 'Shopee',
+  requiresStoreDocumentType: false,
   tags: [],
   websiteUrl: null,
 }
@@ -59,5 +61,23 @@ describe('marketplaceFormSchema', () => {
   it('rejects an invalid websiteUrl', () => {
     const result = marketplaceFormSchema.safeParse({ ...validPayload, websiteUrl: 'not-a-url' })
     expect(result.success).toBe(false)
+  })
+
+  it('accepts requiresStoreDocumentType: true', () => {
+    expect(
+      marketplaceFormSchema.safeParse({ ...validPayload, requiresStoreDocumentType: true }).success,
+    ).toBe(true)
+  })
+
+  it('accepts a real individualFixedFee', () => {
+    expect(
+      marketplaceFormSchema.safeParse({ ...validPayload, individualFixedFee: 5.5 }).success,
+    ).toBe(true)
+  })
+
+  it('rejects a negative individualFixedFee', () => {
+    expect(
+      marketplaceFormSchema.safeParse({ ...validPayload, individualFixedFee: -1 }).success,
+    ).toBe(false)
   })
 })

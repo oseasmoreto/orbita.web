@@ -8,6 +8,7 @@ const shopee: Marketplace = {
   id: 'mkt-1',
   logoUrl: null,
   name: 'Shopee',
+  requiresStoreDocumentType: false,
   tags: null,
   websiteUrl: null,
 }
@@ -17,6 +18,7 @@ const amazon: Marketplace = {
   id: 'mkt-2',
   logoUrl: null,
   name: 'Amazon',
+  requiresStoreDocumentType: false,
   tags: null,
   websiteUrl: null,
 }

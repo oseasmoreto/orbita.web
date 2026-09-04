@@ -12,8 +12,10 @@ function emptyFormValues(): MarketplaceFormValues {
     active: true,
     comingSoon: false,
     description: null,
+    individualFixedFee: null,
     logoBase64: null,
     name: '',
+    requiresStoreDocumentType: false,
     tags: [],
     websiteUrl: null,
   }
@@ -31,8 +33,11 @@ function toFormValues(marketplace: AdminMarketplace): MarketplaceFormValues {
     active: marketplace.active,
     comingSoon: marketplace.comingSoon,
     description: marketplace.description,
+    individualFixedFee:
+      marketplace.individualFixedFee === null ? null : Number(marketplace.individualFixedFee),
     logoBase64: null,
     name: marketplace.name,
+    requiresStoreDocumentType: marketplace.requiresStoreDocumentType,
     tags: marketplace.tags ?? [],
     websiteUrl: marketplace.websiteUrl,
   }
@@ -50,7 +55,9 @@ function toRequestPayload(values: MarketplaceFormValues) {
     active: values.active,
     coming_soon: values.comingSoon,
     description: values.description,
+    individual_fixed_fee: values.individualFixedFee,
     name: values.name,
+    requires_store_document_type: values.requiresStoreDocumentType,
     tags: values.tags,
     website_url: values.websiteUrl,
     ...(values.logoBase64 ? { logo_base64: values.logoBase64 } : {}),
@@ -66,7 +73,8 @@ function toRequestPayload(values: MarketplaceFormValues) {
  * `logoBase64` (upload real) substituiu `logoUrl` (link externo) no
  * mesmo dia, mudança de contrato pedida pelo usuário — ver
  * `marketplaceFormSchema.ts`. `comingSoon` (tarefa 66, 2026-09-02),
- * default `false`.
+ * default `false`. `requiresStoreDocumentType`/`individualFixedFee`
+ * (2026-09-04), default `false`/`null`.
  */
 export function useAdminMarketplaceForm() {
   const { t } = useI18n()

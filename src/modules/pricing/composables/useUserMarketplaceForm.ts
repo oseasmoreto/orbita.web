@@ -14,6 +14,7 @@ function emptyFormValues(): UserMarketplaceFormValues {
     campaignDiscountPercentage: null,
     couponValue: null,
     marketplaceId: '',
+    storeDocumentType: '',
     storeName: '',
   }
 }
@@ -29,8 +30,20 @@ function toFormValues(connection: UserMarketplace): UserMarketplaceFormValues {
         : Number(connection.campaignDiscountPercentage),
     couponValue: connection.couponValue === null ? null : Number(connection.couponValue),
     marketplaceId: connection.marketplaceId,
+    storeDocumentType: connection.storeDocumentType ?? '',
     storeName: connection.storeName,
   }
+}
+
+/**
+ * `values.storeDocumentType` nunca é `null` no form (`''` = "não
+ * escolhido", `Select.vue` só trabalha com `string`) — convertido pra
+ * `'individual' | 'company' | null` só aqui, na borda do payload real da
+ * API. O cast é seguro porque `Select.vue` (`ConnectMarketplaceModal.vue`)
+ * só oferece essas 2 opções reais além de vazio.
+ */
+function toStoreDocumentTypePayload(value: string): 'company' | 'individual' | null {
+  return value === '' ? null : (value as 'company' | 'individual')
 }
 
 function toRequestPayload(values: UserMarketplaceFormValues) {
@@ -40,6 +53,7 @@ function toRequestPayload(values: UserMarketplaceFormValues) {
     campaign_discount_percentage: values.campaignDiscountPercentage,
     coupon_value: values.couponValue,
     marketplace_id: values.marketplaceId,
+    store_document_type: toStoreDocumentTypePayload(values.storeDocumentType),
     store_name: values.storeName,
   }
 }
@@ -67,8 +81,15 @@ function toRequestPayload(values: UserMarketplaceFormValues) {
  * `couponValue` (2026-09-04) — mesmo tratamento dos 3 percentuais acima
  * (editável nos dois modos, mandado no `update()`), só que é um valor
  * FIXO em R$, não percentual.
+ *
+ * `storeDocumentType` (2026-09-04) — editável nos dois modos, igual aos
+ * demais; obrigatório só quando o marketplace da conexão exige
+ * (`isStoreDocumentTypeRequired`, repassado pro schema — ver
+ * `userMarketplaceFormSchema.ts`). `ConnectMarketplaceModal.vue` passa
+ * uma função lendo a prop reativa `marketplaceRequiresStoreDocumentType`,
+ * nunca um boolean fixo — o marketplace muda a cada abertura do modal.
  */
-export function useUserMarketplaceForm() {
+export function useUserMarketplaceForm(isStoreDocumentTypeRequired: () => boolean) {
   const { t } = useI18n()
 
   return useResourceForm<
@@ -78,7 +99,7 @@ export function useUserMarketplaceForm() {
   >({
     create: createUserMarketplace,
     emptyValues: emptyFormValues,
-    schema: createUserMarketplaceFormSchema(t),
+    schema: createUserMarketplaceFormSchema(t, isStoreDocumentTypeRequired),
     successMessage: (mode) =>
       mode === 'create'
         ? t('pricing.marketplaces.connectModal.connectSuccess')
@@ -91,6 +112,7 @@ export function useUserMarketplaceForm() {
         affiliate_percentage: payload.affiliate_percentage,
         campaign_discount_percentage: payload.campaign_discount_percentage,
         coupon_value: payload.coupon_value,
+        store_document_type: payload.store_document_type,
         store_name: payload.store_name,
       }),
   })

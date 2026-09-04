@@ -1235,6 +1235,14 @@ export interface components {
             name: string;
             active: boolean;
             coming_soon: boolean;
+            requires_store_document_type: boolean;
+            /**
+             * @description "Taxa fixa para PF" (pedido direto do usuário, 2026-09-04) —
+             *     string (fundamentos-api.md §4), já vem string do cast
+             *     decimal:2. Só armazenado nesta rodada, sem uso na
+             *     precificação ainda.
+             */
+            individual_fixed_fee: string | null;
             logo_url: string | null;
             description: string | null;
             tags: unknown[] | null;
@@ -1407,6 +1415,9 @@ export interface components {
             name: string;
             active?: boolean;
             coming_soon?: boolean;
+            requires_store_document_type?: boolean;
+            /** @description "Taxa fixa para PF" — sem max:100 (não é percentual, é Money). */
+            individual_fixed_fee?: number | null;
             /**
              * @description Nunca URL externa (decisão 2026-08-31) — o admin manda a
              *     imagem em base64, nós hospedamos.
@@ -1537,6 +1548,14 @@ export interface components {
              *     sentido pra dinheiro), mesma regra de practiced_price.
              */
             coupon_value?: number | null;
+            /**
+             * @description Formato/valor válido é só o que esta camada valida — SE é
+             *     obrigatório (MARKETPLACE.requires_store_document_type) é regra
+             *     de negócio, verificada em CreateUserMarketplaceAction (mesmo
+             *     raciocínio de coming_soon: não dá pra checar aqui sem duplicar
+             *     a busca do Marketplace que a Action já faz).
+             */
+            store_document_type?: components["schemas"]["StoreDocumentType"] | null;
         };
         /** DisputeTicketRequest */
         DisputeTicketRequest: {
@@ -1572,6 +1591,7 @@ export interface components {
             id: string;
             name: string;
             coming_soon: boolean;
+            requires_store_document_type: boolean;
             logo_url: string | null;
             description: string | null;
             tags: unknown[] | null;
@@ -1851,6 +1871,12 @@ export interface components {
             /** Format: date-time */
             created_at: string | null;
         };
+        /**
+         * StoreDocumentType
+         * @description Se a loja do usuário naquele canal é pessoa física ou jurídica (pedido direto do usuário, 2026-09-04) — só relevante/obrigatório quando `MARKETPLACE.requires_store_document_type` é `true` pro marketplace da conexão (`Domain\Pricing\Exceptions\StoreDocumentTypeRequiredException`, guard em `CreateUserMarketplaceAction`).
+         * @enum {string}
+         */
+        StoreDocumentType: "individual" | "company";
         /** SubscribeToPlanRequest */
         SubscribeToPlanRequest: {
             /** Format: uuid */
@@ -1979,6 +2005,8 @@ export interface components {
             name?: string;
             active?: boolean;
             coming_soon?: boolean;
+            requires_store_document_type?: boolean;
+            individual_fixed_fee?: number | null;
             logo_base64?: string | null;
             description?: string | null;
             tags?: string[] | null;
@@ -2073,6 +2101,7 @@ export interface components {
             campaign_discount_percentage?: number | null;
             affiliate_percentage?: number | null;
             coupon_value?: number | null;
+            store_document_type?: components["schemas"]["StoreDocumentType"] | null;
         };
         /** UpdateUserProfileRequest */
         UpdateUserProfileRequest: {
@@ -2106,6 +2135,11 @@ export interface components {
              *     (fundamentos-api.md §4), já vem string do cast decimal:2.
              */
             coupon_value: string | null;
+            /**
+             * @description Enum nativo (individual/company) — serializa direto pro
+             *     ->value, mesmo padrão já usado por PlanResource.billing_cycle.
+             */
+            store_document_type: components["schemas"]["StoreDocumentType"] | null;
             /** Format: date-time */
             created_at: string | null;
         };
