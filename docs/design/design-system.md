@@ -4266,6 +4266,79 @@ um significa").
   (`20` no campo de ads) atualiza corretamente; hover no ícone de
   tooltip mostra o texto explicativo certo pros 3 campos.
 
+**4º campo, `couponValue` (valor FIXO em R$, não percentual), 2026-09-04
+— achado via consulta ao OpenAPI, não pedido de UI isolado**: o usuário
+avisou que o backend adicionou `USER_MARKETPLACE.coupon_value` e pediu
+pra (1) incluir no formulário desta modal e (2) verificar se já entra no
+motor de precificação antes de decidir se cabia também na tela de
+precificação. `npm run generate:api-types` confirmou os dois: o campo
+está em `CreateUserMarketplaceRequest`/`UpdateUserMarketplaceRequest`/
+`UserMarketplaceResource`, E um `coupon: string` novo apareceu nos dois
+breakdowns (`suggested_breakdown`/`practiced_breakdown`) de
+`ProductMarketplacePricingResource` — conferido também direto no código
+do backend (`ProductMarketplacePricingCalculator::rawProfitAt`, `git
+diff` do repo `backend`): `couponValue` é subtraído FIXO do lucro (nunca
+multiplicado pelo preço, ao contrário de `ads`/`affiliate`/`commission`
+— mesmo padrão de `fixedFee`/`costPrice`/`operationalCost`), então
+realmente precisava virar 8ª parcela do breakdown, não só um campo
+armazenado sem uso (ver `ProductMarketplacePricingView`, seção abaixo,
+pro lado da precificação).
+
+- 5º `FormGroup` no mesmo wrapper `.connect-marketplace-modal__fields`
+  (tooltip explicando que é valor fixo, deduzido do lucro — diferente
+  dos 3 percentuais). `useNumberFieldModel` reaproveitado igual aos
+  outros — o átomo já é genérico o bastante pra dinheiro, não só
+  percentual.
+- **Sem `max` no Zod** (`userMarketplaceFormSchema.ts`), só `min(0)` —
+  mesma regra de `practiced_price`
+  (`useUpdatePracticedPriceForm.ts`/`UpdatePracticedPriceModal.vue`):
+  não faz sentido limitar um valor em R$ a 100, diferente dos 3
+  percentuais que continuam com `max(100)`.
+- **Achado real, ao regenerar `schema.d.ts`**: o backend local (mesma
+  instância Docker) estava com as rotas `POST /auth/register` e
+  `GET|DELETE /auth/me/sso-accounts` temporariamente COMENTADAS em
+  `routes/api/v1/identity.php` (estado de trabalho de outra sessão,
+  confirmado via `git diff` no repo `backend`, não um bug de cache —
+  `route:clear`/`config:clear` não mudou nada) — a regeneração completa
+  teria apagado `RegisterUserRequest`/`SsoAccountResource` do schema e
+  quebrado `identityApi.ts`/`ssoAccount.type.ts` (confirmado via
+  `vue-tsc`, 3 erros `TS2339`). Corrigido revertendo `schema.d.ts` pro
+  commit e aplicando só os 5 trechos novos de `coupon_value`/`coupon` à
+  mão (conferidos contra o JSON puro do `/docs/api.json`, não
+  inventados) — nunca confiar cegamente numa regeneração completa
+  quando o backend local pode estar num estado intermediário de
+  trabalho de outra sessão; `git diff --stat` do arquivo gerado é o jeito
+  barato de notar uma regressão dessas antes de seguir em frente.
+- Verificado (typecheck/lint/testes/build, sem regressão — 363 testes)
+  contra a mesma limitação de navegador real já registrada nesta sessão
+  (Playwright sem `libnspr4.so`/`libnss3.so` no ambiente, sem acesso
+  root pra instalar) — round-trip real em UI (conectar com cupom
+  preenchido → ver refletido na barra de precificação) fica pendente de
+  confirmação manual do usuário.
+
+### ProductMarketplacePricingView (`modules/pricing/views/ProductMarketplacePricingView.vue`) — adendo `coupon`
+
+**Mesmo pedido/achado de 2026-09-04 acima** — `coupon` virou a 8ª parcela
+do breakdown (`SEGMENT_KEYS`/`PricingBreakdown`, `pricingBreakdown.ts`/
+`productMarketplacePricing.type.ts`), entre `affiliate` e `profit` na
+ordem visual (mesma posição que `affiliate` ocupou quando entrou em
+2026-09-03 — cada dedução nova nasce logo antes do lucro, nunca no meio
+das parcelas de custo/comissão). Cor da barra continua a mesma rampa
+sequencial (`color-mix` de `$color-accent-red` cada vez mais perto de
+`$color-ink`, convergindo pro verde de `profit`) — `coupon` ganhou
+`color-mix(in srgb, $color-accent-red 8%, $color-ink)`, o degrau mais
+próximo de `$color-ink` antes do `profit`. Chave nova
+`pricing.productMarketplacePricing.segments.coupon` ("Cupom") no
+catálogo, mesma disciplina i18n de sempre.
+
+Sem mudança nenhuma de estrutura da tela (barra, tabela, KPIs, abas) —
+`SEGMENT_KEYS` já era iterado dinamicamente pelo template (legenda,
+barra, colunas da tabela), então adicionar uma chave no array bastou pra
+propagar pros 3 lugares sem tocar template. `PricingDashboardMockupView.vue`
+(rascunho 100% mockado, sem API) não foi tocado — não representa mais
+dado real desde que a tela de verdade existe, documentado como tal desde
+a criação dela.
+
 ### ProductMarketplacesView (`modules/pricing/views/ProductMarketplacesView.vue`)
 
 Rota própria (`/products/:id/marketplaces`), não uma aba — decisão de

@@ -1221,6 +1221,7 @@ export default {
         connectTitle: 'Conectar {name}',
         editTitle: 'Editar conexão — {name}',
         errors: {
+          couponValueMin: 'Valor do cupom não pode ser negativo.',
           percentageMax: 'Percentual não pode passar de 100%.',
           percentageMin: 'Percentual não pode ser negativo.',
           storeNameRequired: 'Nome da loja é obrigatório.',
@@ -1229,6 +1230,7 @@ export default {
           adsPercentage: '% investido em ads',
           affiliatePercentage: '% pago a afiliados',
           campaignDiscountPercentage: '% de desconto em campanhas',
+          couponValue: 'Valor do cupom (R$)',
           storeName: 'Nome da loja',
         },
         submitConnect: 'Conectar',
@@ -1238,6 +1240,8 @@ export default {
           affiliatePercentage: 'Percentual pago a afiliados nas vendas feitas neste canal.',
           campaignDiscountPercentage:
             'Percentual de desconto que você aplica em campanhas promocionais neste canal.',
+          couponValue:
+            'Valor fixo em R$ de cupom/subsídio aplicado nesse canal — entra no cálculo de precificação, deduzido do lucro.',
         },
         updateSuccess: 'Conexão atualizada com sucesso.',
       },
@@ -1292,6 +1296,7 @@ export default {
         affiliate: 'Afiliado',
         commission: 'Comissão',
         costPrice: 'Custo',
+        coupon: 'Cupom',
         fixedFee: 'Fixo',
         operationalCost: 'Operacional',
         profit: 'Lucro',

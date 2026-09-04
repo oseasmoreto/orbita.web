@@ -12,6 +12,7 @@ function emptyFormValues(): UserMarketplaceFormValues {
     adsPercentage: null,
     affiliatePercentage: null,
     campaignDiscountPercentage: null,
+    couponValue: null,
     marketplaceId: '',
     storeName: '',
   }
@@ -26,6 +27,7 @@ function toFormValues(connection: UserMarketplace): UserMarketplaceFormValues {
       connection.campaignDiscountPercentage === null
         ? null
         : Number(connection.campaignDiscountPercentage),
+    couponValue: connection.couponValue === null ? null : Number(connection.couponValue),
     marketplaceId: connection.marketplaceId,
     storeName: connection.storeName,
   }
@@ -36,6 +38,7 @@ function toRequestPayload(values: UserMarketplaceFormValues) {
     ads_percentage: values.adsPercentage,
     affiliate_percentage: values.affiliatePercentage,
     campaign_discount_percentage: values.campaignDiscountPercentage,
+    coupon_value: values.couponValue,
     marketplace_id: values.marketplaceId,
     store_name: values.storeName,
   }
@@ -60,6 +63,10 @@ function toRequestPayload(values: UserMarketplaceFormValues) {
  * esse campo (não dá pra trocar o marketplace de uma conexão já
  * existente), só entra no payload de `toRequestPayload` porque o CREATE
  * precisa dele.
+ *
+ * `couponValue` (2026-09-04) — mesmo tratamento dos 3 percentuais acima
+ * (editável nos dois modos, mandado no `update()`), só que é um valor
+ * FIXO em R$, não percentual.
  */
 export function useUserMarketplaceForm() {
   const { t } = useI18n()
@@ -83,6 +90,7 @@ export function useUserMarketplaceForm() {
         ads_percentage: payload.ads_percentage,
         affiliate_percentage: payload.affiliate_percentage,
         campaign_discount_percentage: payload.campaign_discount_percentage,
+        coupon_value: payload.coupon_value,
         store_name: payload.store_name,
       }),
   })

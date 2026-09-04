@@ -11,6 +11,10 @@ import { z } from 'zod'
  *
  * `adsPercentage`/`campaignDiscountPercentage`/`affiliatePercentage`
  * (tarefa 65) — todos opcionais/nullable, 0-100.
+ *
+ * `couponValue` (2026-09-04) — valor FIXO em R$, não percentual: sem
+ * `max` (não faz sentido pra dinheiro, mesma regra de `practiced_price`
+ * em `useUpdatePracticedPriceForm.ts`), só `min(0)`.
  */
 export function createUserMarketplaceFormSchema(t: (key: string) => string) {
   const percentageField = () =>
@@ -24,6 +28,10 @@ export function createUserMarketplaceFormSchema(t: (key: string) => string) {
     adsPercentage: percentageField(),
     affiliatePercentage: percentageField(),
     campaignDiscountPercentage: percentageField(),
+    couponValue: z
+      .number()
+      .min(0, t('pricing.marketplaces.connectModal.errors.couponValueMin'))
+      .nullable(),
     marketplaceId: z.string(),
     storeName: z.string().min(1, t('pricing.marketplaces.connectModal.errors.storeNameRequired')),
   })

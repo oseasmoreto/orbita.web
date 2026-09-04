@@ -24,12 +24,13 @@ type PricingEvaluationResource = Omit<
 }
 
 /**
- * Quebra da composição do preço em 8 parcelas (pedido ao backend,
+ * Quebra da composição do preço em 9 parcelas (pedido ao backend,
  * 2026-09-03, pra desenhar a barra empilhada do mockup —
  * `PricingDashboardMockupView.vue` — com dado real). Soma sempre bate
  * com o preço correspondente: `costPrice + operationalCost + commission
- * + fixedFee + tax + ads + affiliate + profit = price`. `profit` pode
- * vir negativo (prejuízo) se o preço praticado for baixo demais.
+ * + fixedFee + tax + ads + affiliate + coupon + profit = price`.
+ * `profit` pode vir negativo (prejuízo) se o preço praticado for baixo
+ * demais.
  *
  * `affiliate` entrou em 2026-09-03 (mesma planilha real, confirmado com
  * o usuário antes de codar pelo backend) — mesmo tratamento de `ads`
@@ -41,12 +42,17 @@ type PricingEvaluationResource = Omit<
  * abaixo) — são conceitos diferentes: este breakdown é "de que o preço
  * de VENDA é composto", aquele é "que preço anunciar pra, depois do
  * desconto, chegar nesse preço de venda".
+ *
+ * `coupon` entrou em 2026-09-04 — deduz `USER_MARKETPLACE.couponValue`
+ * (valor FIXO em R$, não percentual, diferente de `ads`/`affiliate`)
+ * direto do lucro, mesmo tratamento dos outros dois.
  */
 export interface PricingBreakdown {
   ads: string
   affiliate: string
   commission: string
   costPrice: string
+  coupon: string
   fixedFee: string
   operationalCost: string
   profit: string
@@ -113,6 +119,7 @@ function toPricingBreakdown(
     affiliate: breakdown.affiliate,
     commission: breakdown.commission,
     costPrice: breakdown.cost_price,
+    coupon: breakdown.coupon,
     fixedFee: breakdown.fixed_fee,
     operationalCost: breakdown.operational_cost,
     profit: breakdown.profit,

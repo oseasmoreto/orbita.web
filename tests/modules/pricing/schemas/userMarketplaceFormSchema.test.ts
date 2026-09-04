@@ -6,6 +6,7 @@ const validPayload = {
   adsPercentage: null,
   affiliatePercentage: null,
   campaignDiscountPercentage: null,
+  couponValue: null,
   marketplaceId: 'marketplace-1',
   storeName: 'Minha Loja',
 }
@@ -53,5 +54,17 @@ describe('userMarketplaceFormSchema', () => {
       userMarketplaceFormSchema.safeParse({ ...validPayload, campaignDiscountPercentage: 100 })
         .success,
     ).toBe(true)
+  })
+
+  it('accepts a real (fixed R$, not percentage) coupon value, including above 100', () => {
+    expect(userMarketplaceFormSchema.safeParse({ ...validPayload, couponValue: 250 }).success).toBe(
+      true,
+    )
+  })
+
+  it('rejects a negative coupon value', () => {
+    expect(userMarketplaceFormSchema.safeParse({ ...validPayload, couponValue: -1 }).success).toBe(
+      false,
+    )
   })
 })

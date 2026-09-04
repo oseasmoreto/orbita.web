@@ -11,16 +11,25 @@ type UserMarketplaceResource = components['schemas']['UserMarketplaceResource']
  * carregada (`listMarketplaces()`).
  *
  * `adsPercentage`/`campaignDiscountPercentage`/`affiliatePercentage`
- * (tarefa 65, 2026-09-02) — todos opcionais/nullable, percentual
- * informativo por canal (investimento em ads, desconto de campanha,
- * comissão de afiliado), ainda sem uso em nenhuma regra de precificação
- * (mesmo status de `PRODUCT.operationalCost`/`COMPANY.salesTaxPercentage`).
+ * (tarefa 65, 2026-09-02) — percentuais informativos por canal
+ * (investimento em ads, desconto de campanha, comissão de afiliado);
+ * `ads`/`affiliate` entraram no cálculo de precificação em 2026-09-03,
+ * `campaignDiscountPercentage` continua só alimentando o preço de
+ * anúncio (`suggestedCampaignPrice`/`practicedCampaignPrice`), nunca a
+ * soma do lucro (ver `PricingBreakdown`,
+ * `productMarketplacePricing.type.ts`).
+ *
+ * `couponValue` (2026-09-04) — valor FIXO em R$ (não percentual, ao
+ * contrário dos 3 campos acima), cupom/subsídio fixo aplicado nesse
+ * canal. Já entra no breakdown de precificação
+ * (`PricingBreakdown.coupon`) desde que o backend adicionou o campo.
  */
 export interface UserMarketplace {
   active: UserMarketplaceResource['active']
   adsPercentage: UserMarketplaceResource['ads_percentage']
   affiliatePercentage: UserMarketplaceResource['affiliate_percentage']
   campaignDiscountPercentage: UserMarketplaceResource['campaign_discount_percentage']
+  couponValue: UserMarketplaceResource['coupon_value']
   createdAt: UserMarketplaceResource['created_at']
   id: UserMarketplaceResource['id']
   marketplaceId: UserMarketplaceResource['marketplace_id']
@@ -33,6 +42,7 @@ export function toUserMarketplace(resource: UserMarketplaceResource): UserMarket
     adsPercentage: resource.ads_percentage,
     affiliatePercentage: resource.affiliate_percentage,
     campaignDiscountPercentage: resource.campaign_discount_percentage,
+    couponValue: resource.coupon_value,
     createdAt: resource.created_at,
     id: resource.id,
     marketplaceId: resource.marketplace_id,

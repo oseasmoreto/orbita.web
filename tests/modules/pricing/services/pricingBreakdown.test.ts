@@ -15,6 +15,7 @@ const breakdown: PricingBreakdown = {
   affiliate: '2.00',
   commission: '13.98',
   costPrice: '20.00',
+  coupon: '1.00',
   fixedFee: '4.00',
   operationalCost: '3.00',
   profit: '8.44',
@@ -92,6 +93,7 @@ describe('buildPriceSegments', () => {
       'tax',
       'ads',
       'affiliate',
+      'coupon',
       'profit',
     ])
     expect(segments[0]).toEqual({

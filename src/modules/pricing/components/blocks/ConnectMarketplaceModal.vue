@@ -1,7 +1,8 @@
 <script setup lang="ts">
 /**
  * Coleta `store_name` + os 3 percentuais informativos por canal (tarefa
- * 65) pra conectar (create) OU editar (update) uma conexão — mesmo
+ * 65) + o valor fixo de cupom em R$ (`couponValue`, 2026-09-04) pra
+ * conectar (create) OU editar (update) uma conexão — mesmo
  * padrão de `DocumentPromptModal.vue` (Billing): reset do form
  * disparado por um `watch(open, ...)`, não pelo `defineProps` direto (o
  * modal é reaproveitado pro grid INTEIRO de cards, `MarketplacesView.vue`
@@ -36,6 +37,7 @@ const campaignDiscountPercentageInput = useNumberFieldModel(values, 'campaignDis
 const affiliatePercentageInput = useNumberFieldModel(values, 'affiliatePercentage', {
   nullable: true,
 })
+const couponValueInput = useNumberFieldModel(values, 'couponValue', { nullable: true })
 
 /**
  * Achado real, 2026-08-31: sem `immediate: true`, a PRIMEIRA vez que
@@ -136,6 +138,14 @@ async function handleSubmit(): Promise<void> {
           :invalid="Boolean(errors.affiliatePercentage)"
           type="number"
         />
+      </FormGroup>
+
+      <FormGroup
+        :error="errors.couponValue"
+        :label="$t('pricing.marketplaces.connectModal.fields.couponValue')"
+        :label-tooltip="$t('pricing.marketplaces.connectModal.tooltips.couponValue')"
+      >
+        <Input v-model="couponValueInput" :invalid="Boolean(errors.couponValue)" type="number" />
       </FormGroup>
     </div>
 

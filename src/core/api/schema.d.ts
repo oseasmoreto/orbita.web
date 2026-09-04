@@ -1526,6 +1526,11 @@ export interface components {
             ads_percentage?: number | null;
             campaign_discount_percentage?: number | null;
             affiliate_percentage?: number | null;
+            /**
+             * @description Valor FIXO em R$, não percentual — sem max:100 (não faz
+             *     sentido pra dinheiro), mesma regra de practiced_price.
+             */
+            coupon_value?: number | null;
         };
         /** DisputeTicketRequest */
         DisputeTicketRequest: {
@@ -1687,6 +1692,7 @@ export interface components {
                     tax: string;
                     ads: string;
                     affiliate: string;
+                    coupon: string;
                     profit: string;
                 };
                 practiced_breakdown: {
@@ -1697,6 +1703,7 @@ export interface components {
                     tax: string;
                     ads: string;
                     affiliate: string;
+                    coupon: string;
                     profit: string;
                 } | null;
                 /**
@@ -2023,6 +2030,7 @@ export interface components {
             ads_percentage?: number | null;
             campaign_discount_percentage?: number | null;
             affiliate_percentage?: number | null;
+            coupon_value?: number | null;
         };
         /** UpdateUserProfileRequest */
         UpdateUserProfileRequest: {
@@ -2051,6 +2059,11 @@ export interface components {
             ads_percentage: string | null;
             campaign_discount_percentage: string | null;
             affiliate_percentage: string | null;
+            /**
+             * @description Valor FIXO em R$ (não percentual, 2026-09-04) — string
+             *     (fundamentos-api.md §4), já vem string do cast decimal:2.
+             */
+            coupon_value: string | null;
             /** Format: date-time */
             created_at: string | null;
         };
