@@ -30,6 +30,14 @@ export type SegmentKey = (typeof SEGMENT_KEYS)[number]
 
 export interface PriceSegment {
   key: SegmentKey
+  /**
+   * String crua de `breakdown.percentageOfTotal[key]` (2026-09-04, pedido
+   * direto do usuário), ex.: `"28.60"` — SEM clamp, ao contrário de
+   * `widthPercent`: um `profit` negativo (prejuízo) mostra a % negativa de
+   * verdade no texto (`-7.20`), informação real que o usuário pediu pra
+   * ver ("quantos % o preço de custo vale sobre o valor final e afins").
+   */
+  percent: string
   value: string
   widthPercent: number
 }
@@ -44,15 +52,24 @@ export interface PriceSegment {
  * visualmente, resultado é uma barra "cheia" sem nenhum verde de lucro
  * visível, comunicação razoável de "esse preço não cobre nem os
  * custos" sem quebrar o layout.
+ *
+ * **Achado real, 2026-09-04**: até aqui `widthPercent` era recalculado no
+ * cliente (`value ÷ price × 100`) — divergia sutilmente da % que o
+ * backend agora expõe em `breakdown.percentageOfTotal` (arredondamento
+ * próprio, `bcround` de 2 casas em cima dos MESMOS valores já
+ * arredondados exibidos no breakdown). Usar a % do backend direto pra
+ * `widthPercent` elimina essa divergência — a largura visual da barra e
+ * o texto do rótulo/tooltip agora vêm sempre do mesmo número, nunca dois
+ * cálculos ligeiramente diferentes pra mesma coisa. `price` saiu da
+ * assinatura — não é mais usado (nenhuma divisão acontece aqui).
  */
-export function buildPriceSegments(breakdown: PricingBreakdown, price: string): PriceSegment[] {
-  const priceNumber = Number(price)
-
+export function buildPriceSegments(breakdown: PricingBreakdown): PriceSegment[] {
   return SEGMENT_KEYS.map((key) => {
     const value = breakdown[key]
-    const widthPercent = priceNumber === 0 ? 0 : (Number(value) / priceNumber) * 100
+    const percent = breakdown.percentageOfTotal[key]
+    const widthPercent = Math.max(Number(percent), 0)
 
-    return { key, value, widthPercent: Math.max(widthPercent, 0) }
+    return { key, percent, value, widthPercent }
   })
 }
 

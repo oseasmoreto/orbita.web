@@ -18,6 +18,22 @@ const breakdown: PricingBreakdown = {
   coupon: '1.00',
   fixedFee: '4.00',
   operationalCost: '3.00',
+  // Aproximação de `value ÷ 69.91 × 100` pra cada parcela — não precisa
+  // fechar 100% exato nem bater com precisão de casas decimais, o que
+  // este teste verifica é que `buildPriceSegments` REPASSA esses valores
+  // (nunca recalcula divisão localmente, ver comentário do fixture
+  // `lossBreakdown` abaixo pra prova disso).
+  percentageOfTotal: {
+    ads: '5.01',
+    affiliate: '2.86',
+    commission: '20.00',
+    costPrice: '28.61',
+    coupon: '1.43',
+    fixedFee: '5.72',
+    operationalCost: '4.29',
+    profit: '12.07',
+    tax: '10.00',
+  },
   profit: '8.44',
   tax: '6.99',
 }
@@ -82,8 +98,8 @@ describe('resolveActivePricing', () => {
 })
 
 describe('buildPriceSegments', () => {
-  it('computes each segment width as a percentage of the price, in visual order', () => {
-    const segments = buildPriceSegments(breakdown, '69.91')
+  it('uses the backend-provided percentage for both the width and the display percent, in visual order', () => {
+    const segments = buildPriceSegments(breakdown)
 
     expect(segments.map((segment) => segment.key)).toEqual([
       'costPrice',
@@ -98,24 +114,41 @@ describe('buildPriceSegments', () => {
     ])
     expect(segments[0]).toEqual({
       key: 'costPrice',
+      percent: '28.61',
       value: '20.00',
-      widthPercent: (20 / 69.91) * 100,
+      widthPercent: 28.61,
     })
   })
 
-  it('clamps a negative segment (prejuízo) to 0 width instead of a negative flex-basis', () => {
-    const lossBreakdown: PricingBreakdown = { ...breakdown, profit: '-5.00' }
+  it('never recomputes the percentage locally — a value/price mismatch on the fixture still trusts the backend percentage', () => {
+    // `coupon` vale 1.00 (só ~1.4% de 69.91), mas o breakdown afirma
+    // 40% — se a função ainda dividisse localmente, o teste abaixo
+    // falharia. Prova de que `buildPriceSegments` só repassa
+    // `percentageOfTotal`, nunca deriva de `value`.
+    const skewedBreakdown: PricingBreakdown = {
+      ...breakdown,
+      percentageOfTotal: { ...breakdown.percentageOfTotal, coupon: '40.00' },
+    }
 
-    const segments = buildPriceSegments(lossBreakdown, '50.00')
+    const segments = buildPriceSegments(skewedBreakdown)
+    const couponSegment = segments.find((segment) => segment.key === 'coupon')
+
+    expect(couponSegment?.widthPercent).toBe(40)
+    expect(couponSegment?.percent).toBe('40.00')
+  })
+
+  it('clamps a negative segment (prejuízo) to 0 width instead of a negative flex-basis, but keeps the real negative % for display', () => {
+    const lossBreakdown: PricingBreakdown = {
+      ...breakdown,
+      percentageOfTotal: { ...breakdown.percentageOfTotal, profit: '-10.00' },
+      profit: '-5.00',
+    }
+
+    const segments = buildPriceSegments(lossBreakdown)
     const profitSegment = segments.find((segment) => segment.key === 'profit')
 
     expect(profitSegment?.widthPercent).toBe(0)
-  })
-
-  it('returns 0 width for every segment when the price is 0 (avoids division by zero)', () => {
-    const segments = buildPriceSegments(breakdown, '0')
-
-    expect(segments.every((segment) => segment.widthPercent === 0)).toBe(true)
+    expect(profitSegment?.percent).toBe('-10.00')
   })
 })
 

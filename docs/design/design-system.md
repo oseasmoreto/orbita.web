@@ -4339,6 +4339,84 @@ propagar pros 3 lugares sem tocar template. `PricingDashboardMockupView.vue`
 dado real desde que a tela de verdade existe, documentado como tal desde
 a criação dela.
 
+**Adendo `percentage_of_total`, mesmo dia (2026-09-04)** — pedido direto
+do usuário, consultando o OpenAPI de novo: cada parcela do breakdown
+(`suggested_breakdown`/`practiced_breakdown`) ganhou um objeto irmão
+`percentage_of_total` com a mesma % que cada uma representa sobre o
+preço de venda total — o backend já calcula isso a partir dos MESMOS
+valores arredondados exibidos (`ProductMarketplacePricingCalculator::percentageOf`,
+confirmado lendo o código do repo `backend`), não uma segunda fonte de
+verdade.
+
+- **`buildPriceSegments` (`pricingBreakdown.ts`) parou de dividir
+  `value ÷ price` no cliente** — passou a usar
+  `breakdown.percentageOfTotal[key]` direto pra `widthPercent`
+  (clampado a `≥ 0`, mesmo motivo de antes: lucro negativo não pode virar
+  `flex-basis` negativo) e um novo campo `percent` (string CRUA, sem
+  clamp — mostra a % negativa de verdade quando é o caso). Único source
+  of truth agora: a largura visual da barra e o texto do rótulo vêm do
+  MESMO número, nunca dois cálculos ligeiramente diferentes pra mesma
+  coisa (achado teórico, não um bug visto — mas evitado de propósito).
+  `price` saiu da assinatura da função (não sobrava uso pra ele).
+- **Pedido inicial ("veja uma forma agradável") foi corrigido em tempo
+  real pelo usuário**: a 1ª tentativa desta sessão pôs a % só no
+  `Tooltip` de cada segmento (mesmo texto de sempre + `(X%)`) — o
+  usuário interrompeu: **"exiba a porcentagem na barra, não no
+  tooltip"**. Revertido o tooltip pro texto original (só `label: R$
+  valor`) e implementado um rótulo **dentro** do próprio segmento
+  colorido.
+- **Rótulo como pill de contraste FIXO, não texto solto**: a rampa de
+  cor dos segmentos mistura vários deles com `$color-ink` puro
+  (`tax`/`ads`/`affiliate`/`coupon`) — esse token FLIPA de preto pra
+  branco no tema escuro (ver seção Colors), então o PRÓPRIO SEGMENTO
+  troca de "quase preto" pra "quase branco" só de mudar de tema (ex.:
+  `affiliate` é 80% ink — em modo claro fica quase preto, em modo escuro
+  quase branco). Um texto de cor fixa (`$color-ink`/`$color-paper`
+  comuns, ou até uma cor calculada por segmento) ficaria ilegível contra
+  pelo menos um dos dois temas em pelo menos um desses segmentos —
+  **não verificável neste ambiente** (mesma limitação de Playwright sem
+  `libnspr4.so`/`libnss3.so`, sem navegador real disponível pra medir
+  contraste de verdade). Resolvido com uma técnica que não depende de
+  saber a cor por baixo: pill com fundo `color-mix(in srgb,
+  $color-ink-fixed 55%, transparent)` (preto translúcido, SEMPRE — não
+  flipa) + texto `$color-paper-fixed` (branco, SEMPRE) — mesmos tokens
+  "-fixed" já usados pro toast/`IconTile`/`StatCard` quando o fundo por
+  trás não acompanha o tema. Mesma ideia de rótulo sobre foto/gradiente
+  em mapas e gráficos — o pill garante o próprio contraste, não depende
+  do que está por baixo.
+- **Limite mínimo de largura pra mostrar o rótulo, revertido no mesmo
+  dia — reportado pelo usuário com screenshot real**: a 1ª versão só
+  renderizava o pill pra `widthPercent >= 6` (constante
+  `MIN_SEGMENT_PERCENT_LABEL_WIDTH`), escondendo o rótulo das parcelas
+  menores (`fixedFee`/`operationalCost`/`ads`/`affiliate`/`coupon`,
+  cada uma tipicamente 1-4% do preço nos dados reais) — exatamente o que
+  o usuário reportou como problema: "só não retornou pra fixo,
+  operacional, ads, afiliado, cupom". Removido o limite por completo —
+  **todo** segmento agora sempre renderiza o pill, sem exceção; risco
+  aceito de pills adjacentes colidirem visualmente em fatias muito
+  estreitas (não visto/medido, verificação de navegador real bloqueada
+  no ambiente desta sessão) em troca de nunca esconder informação que o
+  usuário pediu explicitamente pra ver em todo item.
+- **Visão de tabela também ganhou a %** (não pedida explicitamente pro
+  "view de barras", mas natural/sem custo — mesma resposta da API, já
+  exibida como texto simples numa célula, sem risco de contraste): cada
+  coluna de parcela virou `(percent%)` cinza (`$color-ink-40`, mesmo tom
+  de `__suggested-hint`) ao lado do valor em R$. `PricingTableRow`
+  trocou `Record<SegmentKey, string>` por `Record<SegmentKey,
+  SegmentCell>` (`{ percent, value }`) pra carregar os dois pela mesma
+  chave de coluna — nome de classe deliberadamente diferente do pill da
+  barra (`__table-segment-percent` vs. `__segment-percent`), contextos
+  visuais/réguas de contraste diferentes, mesmo nome pisaria um no
+  outro.
+- Verificado (typecheck/lint/suíte completa — 363 testes, sem regressão
+  — e build de produção) contra a mesma limitação de navegador real já
+  registrada nesta sessão. A confirmação visual do PILL sobre os 9
+  segmentos, nos dois temas, é exatamente o tipo de verificação que essa
+  limitação bloqueia — fica pendente de conferência manual do usuário,
+  com atenção especial aos segmentos `tax`/`ads`/`affiliate`/`coupon`
+  (os que misturam com `$color-ink`, o caso mais arriscado de contraste
+  descrito acima).
+
 ### ProductMarketplacesView (`modules/pricing/views/ProductMarketplacesView.vue`)
 
 Rota própria (`/products/:id/marketplaces`), não uma aba — decisão de

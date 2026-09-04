@@ -1694,6 +1694,22 @@ export interface components {
                     affiliate: string;
                     coupon: string;
                     profit: string;
+                    /**
+                     * @description % que cada parcela acima vale sobre o preço de venda total
+                     *     (pedido direto do usuário, 2026-09-04 — "quantos % o preço de
+                     *     custo vale sobre o valor final e afins").
+                     */
+                    percentage_of_total: {
+                        cost_price: string;
+                        operational_cost: string;
+                        commission: string;
+                        fixed_fee: string;
+                        tax: string;
+                        ads: string;
+                        affiliate: string;
+                        coupon: string;
+                        profit: string;
+                    };
                 };
                 practiced_breakdown: {
                     cost_price: string;
@@ -1705,6 +1721,22 @@ export interface components {
                     affiliate: string;
                     coupon: string;
                     profit: string;
+                    /**
+                     * @description % que cada parcela acima vale sobre o preço de venda total
+                     *     (pedido direto do usuário, 2026-09-04 — "quantos % o preço de
+                     *     custo vale sobre o valor final e afins").
+                     */
+                    percentage_of_total: {
+                        cost_price: string;
+                        operational_cost: string;
+                        commission: string;
+                        fixed_fee: string;
+                        tax: string;
+                        ads: string;
+                        affiliate: string;
+                        coupon: string;
+                        profit: string;
+                    };
                 } | null;
                 /**
                  * @description "VALOR DO ANÚNCIO PARA DESCONTO" da planilha (pedido direto

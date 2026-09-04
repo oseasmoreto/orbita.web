@@ -83,7 +83,7 @@ import {
   resolveActivePricing,
   SEGMENT_KEYS,
 } from '../services/pricingBreakdown'
-import type { SegmentKey } from '../services/pricingBreakdown'
+import type { PriceSegment, SegmentKey } from '../services/pricingBreakdown'
 import type { ProductMarketplacePricing } from '../types/productMarketplacePricing.type'
 import type { DataTableColumn } from '@/shared/components/ui/types/dataTable.type'
 import type { TabBarOption } from '@/shared/components/ui/types/tabBar.type'
@@ -166,7 +166,7 @@ const listErrorMessage = computed(() =>
 const displayRows = computed(() =>
   list.items.value.map((row) => {
     const active = resolveActivePricing(row)
-    return { active, row, segments: buildPriceSegments(active.breakdown, active.price) }
+    return { active, row, segments: buildPriceSegments(active.breakdown) }
   }),
 )
 
@@ -235,6 +235,15 @@ const viewMode = ref<ViewMode>('bar')
  * `practicedProfit` ficam `null` juntos quando ainda não há preço
  * praticado — os 3 sempre nascem/faltam em conjunto.
  */
+/**
+ * Cada coluna de parcela carrega valor + % (2026-09-04, pedido direto do
+ * usuário — mesma % agora exposta pelo backend, `PriceSegment.percent`,
+ * `pricingBreakdown.ts`), não mais só a string de dinheiro — a célula
+ * (`#[cell-${key}]` abaixo) mostra os dois juntos, mesmo par
+ * `money (percent%)` já usado no preço principal desta view.
+ */
+type SegmentCell = Pick<PriceSegment, 'percent' | 'value'>
+
 type PricingTableRow = {
   id: string
   isApproximated: boolean
@@ -249,13 +258,13 @@ type PricingTableRow = {
   suggestedMarginPercent: number
   suggestedPrice: string
   suggestedProfit: string
-} & Record<SegmentKey, string>
+} & Record<SegmentKey, SegmentCell>
 
 const tableRows = computed<PricingTableRow[]>(() =>
   displayRows.value.map(({ row, segments }) => {
     const segmentValues = Object.fromEntries(
-      segments.map((segment) => [segment.key, segment.value]),
-    ) as Record<SegmentKey, string>
+      segments.map((segment) => [segment.key, { percent: segment.percent, value: segment.value }]),
+    ) as Record<SegmentKey, SegmentCell>
     const { pricing } = row
     const hasPracticedPrice =
       row.practicedPrice !== null &&
@@ -507,7 +516,11 @@ const tableColumns = computed<DataTableColumn[]>(() => [
                   :class="`product-marketplace-pricing-view__segment--${segment.key}`"
                   :style="{ flexBasis: `${segment.widthPercent}%` }"
                   tabindex="0"
-                />
+                >
+                  <span class="product-marketplace-pricing-view__segment-percent">
+                    {{ formatPercent(segment.percent, 0) }}
+                  </span>
+                </span>
               </Tooltip>
             </div>
           </div>
@@ -535,7 +548,10 @@ const tableColumns = computed<DataTableColumn[]>(() => [
         </template>
 
         <template v-for="key in SEGMENT_KEYS" :key="key" #[`cell-${key}`]="{ value }">
-          {{ formatMoney(value as string) }}
+          {{ formatMoney((value as SegmentCell).value) }}
+          <span class="product-marketplace-pricing-view__table-segment-percent">
+            ({{ formatPercent((value as SegmentCell).percent, 1) }})
+          </span>
         </template>
 
         <template #cell-practicedPrice="{ row }">
@@ -860,6 +876,7 @@ const tableColumns = computed<DataTableColumn[]>(() => [
 }
 
 .product-marketplace-pricing-view__segment {
+  position: relative;
   display: block;
   flex-shrink: 0;
   height: 100%;
@@ -867,6 +884,35 @@ const tableColumns = computed<DataTableColumn[]>(() => [
   &:focus-visible {
     @include focus-ring;
   }
+}
+
+// Rótulo de % dentro do segmento (2026-09-04) — pill com fundo/texto
+// FIXOS (`$color-ink-fixed`/`$color-paper-fixed`, nunca flipam com o
+// tema), de propósito: a rampa de cor dos segmentos mistura vários deles
+// com `$color-ink` puro (`tax`/`ads`/`affiliate`/`coupon`, ver comentário
+// da rampa abaixo) — esse token FLIPA de preto pra branco no tema escuro,
+// então o segmento em si troca de "quase preto" pra "quase branco" só de
+// mudar de tema. Um texto de cor fixa (`$color-ink`/`$color-paper`
+// comuns) ficaria ilegível contra pelo menos um dos dois temas em pelo
+// menos um desses segmentos. O pill (fundo escuro translúcido + texto
+// branco, os dois com os tokens "-fixed") garante contraste sempre,
+// **independente da cor por baixo** — mesma técnica de rótulo sobre
+// fundo arbitrário/gradiente usada em mapas e gráficos, sem precisar
+// calibrar uma cor de texto por segmento (não verificável sem browser
+// real neste ambiente, ver "Known Gaps" do design system).
+.product-marketplace-pricing-view__segment-percent {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  padding: 0 $spacing-4;
+  font-size: $font-size-2xs;
+  font-weight: $font-weight-semibold;
+  color: $color-paper-fixed;
+  white-space: nowrap;
+  background-color: color-mix(in srgb, $color-ink-fixed 55%, transparent);
+  border-radius: $radius-4;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
 }
 
 // Mesma rampa sequencial de `PricingDashboardMockupView.vue` — 9
@@ -952,5 +998,17 @@ const tableColumns = computed<DataTableColumn[]>(() => [
   align-items: center;
   gap: $spacing-4;
   white-space: nowrap;
+}
+
+// % de cada parcela sobre o preço final (2026-09-04, pedido direto do
+// usuário) — texto apagado ao lado do valor em R$ na visão de tabela,
+// mesmo tom `ink-40` já usado pra informação secundária no resto da
+// tela (`__suggested-hint`). Nome de classe deliberadamente diferente
+// de `__segment-percent` (rótulo dentro da barra, acima) — são dois
+// contextos visuais distintos (célula de tabela em fundo neutro vs. pill
+// sobre um segmento colorido), cada um com sua própria régua de
+// contraste; usar o mesmo nome faria a regra de um pisar na do outro.
+.product-marketplace-pricing-view__table-segment-percent {
+  color: $color-ink-40;
 }
 </style>

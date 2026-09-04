@@ -46,7 +46,30 @@ type PricingEvaluationResource = Omit<
  * `coupon` entrou em 2026-09-04 — deduz `USER_MARKETPLACE.couponValue`
  * (valor FIXO em R$, não percentual, diferente de `ads`/`affiliate`)
  * direto do lucro, mesmo tratamento dos outros dois.
+ *
+ * `percentageOfTotal` (2026-09-04, pedido direto do usuário — "quantos %
+ * o preço de custo vale sobre o valor final e afins") — quanto cada
+ * parcela acima representa em % sobre o preço de venda TOTAL
+ * correspondente (não sobre o lucro nem sobre outra parcela). Calculado
+ * no backend a partir dos MESMOS valores já arredondados exibidos acima
+ * (`ProductMarketplacePricingCalculator::percentageOf`) — usar direto em
+ * vez de recalcular no cliente evita qualquer discrepância entre o %
+ * mostrado e a largura visual da barra (`buildPriceSegments`,
+ * `pricingBreakdown.ts`, passou a usar esse valor em vez de dividir
+ * `value ÷ price` localmente).
  */
+export interface PricingBreakdownPercentages {
+  ads: string
+  affiliate: string
+  commission: string
+  costPrice: string
+  coupon: string
+  fixedFee: string
+  operationalCost: string
+  profit: string
+  tax: string
+}
+
 export interface PricingBreakdown {
   ads: string
   affiliate: string
@@ -55,6 +78,7 @@ export interface PricingBreakdown {
   coupon: string
   fixedFee: string
   operationalCost: string
+  percentageOfTotal: PricingBreakdownPercentages
   profit: string
   tax: string
 }
@@ -111,6 +135,22 @@ export interface ProductMarketplacePricing {
   userMarketplaceId: string
 }
 
+function toPricingBreakdownPercentages(
+  percentages: ProductMarketplacePricingResource['pricing']['suggested_breakdown']['percentage_of_total'],
+): PricingBreakdownPercentages {
+  return {
+    ads: percentages.ads,
+    affiliate: percentages.affiliate,
+    commission: percentages.commission,
+    costPrice: percentages.cost_price,
+    coupon: percentages.coupon,
+    fixedFee: percentages.fixed_fee,
+    operationalCost: percentages.operational_cost,
+    profit: percentages.profit,
+    tax: percentages.tax,
+  }
+}
+
 function toPricingBreakdown(
   breakdown: ProductMarketplacePricingResource['pricing']['suggested_breakdown'],
 ): PricingBreakdown {
@@ -122,6 +162,7 @@ function toPricingBreakdown(
     coupon: breakdown.coupon,
     fixedFee: breakdown.fixed_fee,
     operationalCost: breakdown.operational_cost,
+    percentageOfTotal: toPricingBreakdownPercentages(breakdown.percentage_of_total),
     profit: breakdown.profit,
     tax: breakdown.tax,
   }
