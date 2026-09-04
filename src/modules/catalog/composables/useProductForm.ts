@@ -23,11 +23,11 @@ function emptyFormValues(): ProductFormValues {
 function toFormValues(product: Product): ProductFormValues {
   return {
     costPrice: Number(product.costPrice),
-    ean: product.ean,
+    ean: product.ean ?? '',
     height: product.height === null ? null : Number(product.height),
     length: product.length === null ? null : Number(product.length),
     name: product.name,
-    ncm: product.ncm,
+    ncm: product.ncm ?? '',
     operationalCost: product.operationalCost === null ? null : Number(product.operationalCost),
     sku: product.sku,
     targetMargin: Number(product.targetMargin),
@@ -36,15 +36,22 @@ function toFormValues(product: Product): ProductFormValues {
   }
 }
 
-/** `ProductFormValues` (camelCase, uso interno) → payload real da API (snake_case, `CreateProductRequest`/`UpdateProductRequest`). */
+/**
+ * `ProductFormValues` (camelCase, uso interno) → payload real da API
+ * (snake_case, `CreateProductRequest`/`UpdateProductRequest`).
+ * `ean`/`ncm` opcionais (2026-09-04) — `values.ean`/`values.ncm` nunca é
+ * `null` no form (`Input.vue` só trabalha com `string`), string vazia
+ * vira `null` aqui, mesmo padrão de `responsible_document`
+ * (`useCompanyForm.ts`).
+ */
 function toRequestPayload(values: ProductFormValues) {
   return {
     cost_price: values.costPrice,
-    ean: values.ean,
+    ean: values.ean || null,
     height: values.height,
     length: values.length,
     name: values.name,
-    ncm: values.ncm,
+    ncm: values.ncm || null,
     operational_cost: values.operationalCost,
     sku: values.sku,
     target_margin: values.targetMargin,

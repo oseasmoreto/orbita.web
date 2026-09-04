@@ -32,6 +32,11 @@ describe('productFormSchema', () => {
     expect(result.success).toBe(false)
   })
 
+  it('accepts an empty ean and ncm — they are optional (2026-09-04, backend contract change)', () => {
+    const result = productFormSchema.safeParse({ ...validPayload, ean: '', ncm: '' })
+    expect(result.success).toBe(true)
+  })
+
   it('rejects a cost price of zero or less', () => {
     const result = productFormSchema.safeParse({ ...validPayload, costPrice: 0 })
     expect(result.success).toBe(false)

@@ -21,15 +21,24 @@ import { z } from 'zod'
  * `useI18n()` não dá pra chamar no top-level do módulo). O consumidor
  * (`useProductForm.ts`) chama `createProductFormSchema(t)` dentro do
  * composable, onde `t` já existe.
+ *
+ * **`ean`/`ncm` viraram opcionais em 2026-09-04** (mudança de contrato do
+ * backend, pedido direto do usuário — "nem todo vendedor tem os dois em
+ * mãos no momento do cadastro") — `min(1)` removido, sem virar
+ * `.nullable()` (o model de `values` continua `string`, `Input.vue` não
+ * tem variante nullable): mesmo padrão já usado em
+ * `responsibleDocument` (`companyFormSchema.ts`) — string vazia é o
+ * "não informado" no formulário, convertida pra `null` só na borda do
+ * payload (`useProductForm.ts`, `values.ean || null`).
  */
 export function createProductFormSchema(t: (key: string) => string) {
   return z.object({
     costPrice: z.number().positive(t('catalog.products.form.errors.costPricePositive')),
-    ean: z.string().min(1, t('catalog.products.form.errors.eanRequired')),
+    ean: z.string(),
     height: z.number().positive().nullable(),
     length: z.number().positive().nullable(),
     name: z.string().min(1, t('catalog.products.form.errors.nameRequired')),
-    ncm: z.string().min(1, t('catalog.products.form.errors.ncmRequired')),
+    ncm: z.string(),
     operationalCost: z
       .number()
       .min(0, t('catalog.products.form.errors.operationalCostMin'))

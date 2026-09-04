@@ -259,9 +259,7 @@ export default {
         editTitle: 'Editar produto',
         errors: {
           costPricePositive: 'Preço de custo deve ser maior que zero.',
-          eanRequired: 'EAN é obrigatório.',
           nameRequired: 'Nome é obrigatório.',
-          ncmRequired: 'NCM é obrigatório.',
           operationalCostMin: 'Custo operacional não pode ser negativo.',
           skuRequired: 'SKU é obrigatório.',
           targetMarginMax: 'Margem não pode passar de 100%.',

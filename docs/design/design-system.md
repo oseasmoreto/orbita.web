@@ -1066,6 +1066,25 @@ focável de propósito, ver bullet acima; sem o `.stop`, clicar no ícone de
 tooltip também focaria o campo). Opcional, `undefined` por padrão — todo
 consumidor existente continua sem nenhuma mudança visual.
 
+**`ean`/`ncm` viraram opcionais, 2026-09-04** (`ProductForm.vue`,
+mudança de contrato do backend, pedido direto do usuário — "nem todo
+vendedor tem os dois em mãos no momento do cadastro") — `productFormSchema.ts`
+perdeu o `.min(1, ...)` dos dois campos (viram `z.string()` puro, sem
+`.nullable()`: o model de `values` continua `string`, `Input.vue` não
+tem variante nullable, mesmo padrão já usado em `responsibleDocument`,
+`companyFormSchema.ts`). Conversão string vazia ↔ `null` fica só na
+BORDA (`useProductForm.ts`): `toFormValues` faz `product.ean ?? ''` (a
+API agora pode devolver `null`), `toRequestPayload` faz `values.ean ||
+null`. Chaves i18n mortas removidas do catálogo
+(`catalog.products.form.errors.eanRequired`/`ncmRequired`, sem mais
+consumidor) — a validação de FORMATO quando o campo é preenchido
+continua intacta (`errors.validation.byField.ean`/`ncm`,
+`closure_validation_rule`, resolvida por `useApiMessage`), só a
+obrigatoriedade caiu. Sem mudança nenhuma de template — nenhum dos dois
+campos tinha indicador visual de obrigatório (asterisco/etc.) pra
+remover. Teste novo em `productFormSchema.test.ts` confirmando que os
+dois campos vazios agora validam com sucesso.
+
 ### CrudFormActions (`shared/components/blocks/CrudFormActions.vue`)
 
 **Sem frame próprio no Figma** (mesma categoria de `FormGroup`/`Modal` —

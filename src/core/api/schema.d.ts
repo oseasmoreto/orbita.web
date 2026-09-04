@@ -1471,8 +1471,14 @@ export interface components {
         CreateProductRequest: {
             name: string;
             sku: string;
-            ean: string;
-            ncm: string;
+            /**
+             * @description Opcionais (pedido direto do usuário, 2026-09-04) — nem todo
+             *     vendedor tem os dois em mãos no momento do cadastro. O
+             *     formato ainda é validado quando informado (nullable pula as
+             *     regras seguintes só quando o valor é null/ausente).
+             */
+            ean?: string | null;
+            ncm?: string | null;
             cost_price: number;
             target_margin: number;
             operational_cost?: number | null;
@@ -1767,8 +1773,8 @@ export interface components {
             id: string;
             name: string;
             sku: string;
-            ean: string;
-            ncm: string;
+            ean: string | null;
+            ncm: string | null;
             /**
              * @description Money como string (fundamentos-api.md §4) — nunca (float)/(int)
              *     aqui, os três já vêm como string do cast decimal:2 do Model.
@@ -2023,8 +2029,12 @@ export interface components {
         UpdateProductRequest: {
             name?: string;
             sku?: string;
-            ean?: string;
-            ncm?: string;
+            /**
+             * @description Opcionais (pedido direto do usuário, 2026-09-04), mesmo
+             *     raciocínio de CreateProductRequest.
+             */
+            ean?: string | null;
+            ncm?: string | null;
             cost_price?: number;
             target_margin?: number;
             operational_cost?: number | null;
