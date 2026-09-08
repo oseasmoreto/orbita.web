@@ -6,6 +6,7 @@ import { parseApiError } from '@/shared/services/parseApiError'
 import {
   createTicketMessage,
   disputeTicket,
+  getTicket,
   listTicketMessages,
   resolveTicket,
 } from '../services/supportApi'
@@ -56,15 +57,26 @@ export function useTicketThread(initialTicket: Ticket) {
     }
   }
 
-  async function sendMessage(body: string): Promise<boolean> {
+  async function sendMessage(body: string, attachments: string[] = []): Promise<boolean> {
     isSending.value = true
 
     try {
       if (shouldDisputeOnReply(ticket.value.status)) {
+        // DisputeTicketRequest não aceita `attachments` (backend, ver
+        // aviso cross-session 2026-09-08 — só os 3 endpoints de
+        // "responder"/"abrir" ganharam o campo, dispute ficou de fora).
         ticket.value = await disputeTicket(ticket.value.id, body)
         toast.success(t('support.tickets.thread.disputeSuccess'))
       } else {
-        await createTicketMessage(ticket.value.id, body)
+        await createTicketMessage(ticket.value.id, body, attachments)
+        // `createTicketMessage` só devolve a `TicketMessage`, nunca o
+        // `Ticket` — busca de novo pra sincronizar `status`. A resposta
+        // do PRÓPRIO usuário nunca muda o status (só a de um admin
+        // muda, `open`→`in_progress`), mas se um admin já tinha
+        // respondido enquanto esta tela estava aberta (sem
+        // websocket/polling neste projeto), a tela só teria essa
+        // informação atualizada agora, no próprio round-trip do envio.
+        ticket.value = await getTicket(ticket.value.id)
       }
 
       await refresh()

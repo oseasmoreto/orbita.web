@@ -16,9 +16,10 @@ O `CLAUDE.md` deste diretório (e os arquivos que ele importa via `@` — `docs/
 
 1. `/home/oseas/development/customers/orbita/CLAUDE.md` (raiz do monorepo — pode ter regra que o `frontend/CLAUDE.md` não repete).
 2. `docs/design/catalogo-componentes.md` inteiro — cada linha marcada `✅` afirma que um componente foi concluído com um comportamento específico.
-3. `.ai/rules/index.md` e **todos** os arquivos que ele referencia em `.ai/rules/*.md` — cada um documenta um "achado real" que precisa continuar verdadeiro no código atual.
-4. As duas cópias do ERD/contexto de negócio — a da raiz (`/home/oseas/development/customers/orbita/docs/negocio/`) e a deste repositório (`docs/negocio/`) — elas precisam ficar **byte-idênticas** no bloco do ERD, por regra explícita do próprio `CLAUDE.md`.
-5. As duas cópias de `docs/infra/convencoes-frontend-infra.md` (raiz e deste repositório) — mesma regra de sincronia manual.
+3. **`design-system.md` foi particionado em 2026-09-08** (era >6000 linhas) — o arquivo auto-carregado hoje só traz tokens/princípios fundamentais + um índice "Components". A receita real de cada componente/tela (variantes, achados, histórico de correção) mora em `docs/design/components/*.md` (átomos/blocks/shell) e `docs/design/screens/*.md` (telas por módulo) — leia o(s) arquivo(s) relevante(s) pra qualquer componente/tela em escopo da auditoria, nunca confie só no índice do arquivo auto-carregado.
+4. `.ai/rules/index.md` e **todos** os arquivos que ele referencia em `.ai/rules/*.md` — cada um documenta um "achado real" que precisa continuar verdadeiro no código atual.
+5. As duas cópias do ERD/contexto de negócio — a da raiz (`/home/oseas/development/customers/orbita/docs/negocio/`) e a deste repositório (`docs/negocio/`) — elas precisam ficar **byte-idênticas** no bloco do ERD, por regra explícita do próprio `CLAUDE.md`.
+6. As duas cópias de `docs/infra/convencoes-frontend-infra.md` (raiz e deste repositório) — mesma regra de sincronia manual.
 
 ## O que auditar
 
@@ -39,7 +40,7 @@ Trate cada item abaixo como uma categoria de verificação, não como uma tarefa
 
 **D. Design tokens**
 - Nenhum hex/px/cor hardcoded direto num `<style>` de componente — sempre via variável SCSS de `_variables.scss`. Grep por `#[0-9a-fA-F]{3,6}` e valores `rgb(`/`px` soltos fora de `_tokens.scss`/`_variables.scss`.
-- Todo componente novo em `shared/components/ui/`ou `blocks/` aparece na seção "Components" de `docs/design/design-system.md` (regra do mesmo PR).
+- Todo componente novo em `shared/components/ui/`ou `blocks/` aparece no índice "Components" de `docs/design/design-system.md` E tem a receita real documentada no arquivo particionado certo (`docs/design/components/atoms-and-forms.md`, `blocks-and-overlays.md`, `feedback-and-data-viz.md` ou `shell-and-layout.md` — ver item 3 da leitura obrigatória), regra do mesmo PR.
 
 **E. Ícones**
 - Nenhum acesso por namespace (`IconsRegular.X`, `IconsDuotone.X`, `IconsSnowUi.X`) — sempre import direto do módulo gerado. Ver `.ai/rules/icons.md`.
@@ -49,7 +50,7 @@ Trate cada item abaixo como uma categoria de verificação, não como uma tarefa
 
 **G. Documentação vs. código**
 - Toda linha `✅` em `docs/design/catalogo-componentes.md` cita um arquivo que realmente existe e realmente tem o comportamento descrito — abra pelo menos os arquivos citados, não confie no texto.
-- Qualquer "decisão AAAA-MM-DD" citada em `design-system.md`/`catalogo-componentes.md`/`convencoes-frontend-infra.md` precisa continuar verdadeira no código — não pode ter sido revertida silenciosamente por uma mudança posterior sem atualizar a doc.
+- Qualquer "decisão AAAA-MM-DD" citada em `design-system.md`/`docs/design/components/*.md`/`docs/design/screens/*.md`/`catalogo-componentes.md`/`convencoes-frontend-infra.md` precisa continuar verdadeira no código — não pode ter sido revertida silenciosamente por uma mudança posterior sem atualizar a doc.
 - Nenhum link morto na sidebar/rotas (`core/layouts/config/navigation.ts`) apontando pra uma rota que não existe em `core/router/`.
 
 **H. Idioma**

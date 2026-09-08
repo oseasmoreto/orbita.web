@@ -56,6 +56,30 @@ export async function createTicket(payload: CreateTicketRequest): Promise<Ticket
   return toTicket(data.data)
 }
 
+/**
+ * `GET /tickets/{id}` (show) — usado por `useTicketThread.ts` depois de
+ * enviar uma resposta comum, pra refletir uma mudança de `status` que o
+ * backend decide sozinho (ex.: `in_progress`, setado quando um admin
+ * responde — pedido novo em 2026-09-08, ver `ticketStatusColor`). A
+ * resposta de `createTicketMessage` só devolve a `TicketMessage`, nunca
+ * o `Ticket` — sem este `show`, o painel ficaria com o status
+ * desatualizado até um reload manual.
+ */
+export async function getTicket(id: string): Promise<Ticket> {
+  const { data } = await apiClient.get<ApiResponse<TicketResource>>(`/tickets/${id}`)
+  return toTicket(data.data)
+}
+
+/**
+ * Mesmo padrão de `logo_base64` em `AdminMarketplaceForm.vue` — o campo
+ * só entra no payload quando há pelo menos 1 anexo (`undefined`, não
+ * `[]`, quando vazio), pra nunca mandar um array vazio à toa num
+ * `POST`/`PATCH` de rotina.
+ */
+function attachmentsPayload(attachments: string[]): string[] | undefined {
+  return attachments.length > 0 ? attachments : undefined
+}
+
 export async function resolveTicket(id: string): Promise<Ticket> {
   const { data } = await apiClient.post<ApiResponse<TicketResource>>(`/tickets/${id}/resolve`)
   return toTicket(data.data)
@@ -85,8 +109,12 @@ export async function listTicketMessages(id: string): Promise<TicketMessage[]> {
   return data.data.items.map(toTicketMessage)
 }
 
-export async function createTicketMessage(id: string, body: string): Promise<TicketMessage> {
-  const payload: ReplyToTicketRequest = { body }
+export async function createTicketMessage(
+  id: string,
+  body: string,
+  attachments: string[] = [],
+): Promise<TicketMessage> {
+  const payload: ReplyToTicketRequest = { attachments: attachmentsPayload(attachments), body }
   const { data } = await apiClient.post<ApiResponse<TicketMessageResource>>(
     `/tickets/${id}/messages`,
     payload,
@@ -145,6 +173,18 @@ export async function resolveAdminTicket(id: string): Promise<AdminTicket> {
   return toAdminTicket(data.data)
 }
 
+/**
+ * `GET /admin/tickets/{id}` (show) — mesmo motivo de `getTicket()`
+ * acima, lado do admin: é a resposta do PRÓPRIO admin
+ * (`createAdminTicketMessage`) que dispara `open`→`in_progress` no
+ * backend, então é aqui que o painel mais precisa buscar o ticket de
+ * novo depois de enviar.
+ */
+export async function getAdminTicket(id: string): Promise<AdminTicket> {
+  const { data } = await apiClient.get<ApiResponse<AdminTicketResource>>(`/admin/tickets/${id}`)
+  return toAdminTicket(data.data)
+}
+
 export async function listAdminTicketMessages(id: string): Promise<TicketMessage[]> {
   const { data } = await apiClient.get<ApiResponse<Envelope<TicketMessageResource>>>(
     `/admin/tickets/${id}/messages`,
@@ -153,8 +193,12 @@ export async function listAdminTicketMessages(id: string): Promise<TicketMessage
   return data.data.items.map(toTicketMessage)
 }
 
-export async function createAdminTicketMessage(id: string, body: string): Promise<TicketMessage> {
-  const payload: ReplyToTicketRequest = { body }
+export async function createAdminTicketMessage(
+  id: string,
+  body: string,
+  attachments: string[] = [],
+): Promise<TicketMessage> {
+  const payload: ReplyToTicketRequest = { attachments: attachmentsPayload(attachments), body }
   const { data } = await apiClient.post<ApiResponse<TicketMessageResource>>(
     `/admin/tickets/${id}/messages`,
     payload,

@@ -1514,6 +1514,7 @@ export interface components {
         CreateTicketRequest: {
             subject: string;
             message: string;
+            attachments?: string[];
         };
         /** CreateUserByAdminRequest */
         CreateUserByAdminRequest: {
@@ -1834,6 +1835,7 @@ export interface components {
         /** ReplyToTicketRequest */
         ReplyToTicketRequest: {
             body: string;
+            attachments?: string[];
         };
         /** RequestPasswordResetRequest */
         RequestPasswordResetRequest: {
@@ -1945,12 +1947,20 @@ export interface components {
          * @enum {string}
          */
         SubscriptionStatus: "pending" | "active" | "canceled" | "expired" | "payment_failed";
+        /** TicketMessageAttachmentResource */
+        TicketMessageAttachmentResource: {
+            id: string;
+            url: string;
+            /** Format: date-time */
+            created_at: string | null;
+        };
         /** TicketMessageResource */
         TicketMessageResource: {
             id: string;
             user_id: string;
             user: components["schemas"]["AdminUserResource"];
             body: string;
+            attachments?: components["schemas"]["TicketMessageAttachmentResource"][];
             /** Format: date-time */
             created_at: string | null;
         };
@@ -1969,7 +1979,7 @@ export interface components {
          * TicketStatus
          * @enum {string}
          */
-        TicketStatus: "open" | "resolved";
+        TicketStatus: "open" | "in_progress" | "resolved";
         /** TransactionResource */
         TransactionResource: {
             id: string;

@@ -26,7 +26,7 @@ import { parseApiError } from '@/shared/services/parseApiError'
 import CreateTicketForm from '../components/CreateTicketForm.vue'
 import TicketThreadPanel from '../components/TicketThreadPanel.vue'
 import { useTicketList } from '../composables/useTicketList'
-import { type Ticket, ticketStatusColor } from '../types/ticket.type'
+import { type Ticket, ticketStatusColor, ticketStatusLabelKey } from '../types/ticket.type'
 import type { DataTableColumn } from '@/shared/components/ui/types/dataTable.type'
 import type { SelectOption } from '@/shared/components/ui/types/select.type'
 
@@ -39,6 +39,7 @@ onMounted(list.refresh)
 const statusFilterOptions = computed<SelectOption[]>(() => [
   { label: t('common.filters.all'), value: 'all' },
   { label: t('support.tickets.status.open'), value: 'open' },
+  { label: t('support.tickets.status.inProgress'), value: 'in_progress' },
   { label: t('support.tickets.status.resolved'), value: 'resolved' },
 ])
 
@@ -116,7 +117,7 @@ function handleUpdated(): void {
     >
       <template #cell-status="{ row }">
         <StatusDot :color="ticketStatusColor(row.status)">
-          {{ $t(`support.tickets.status.${row.status}`) }}
+          {{ $t(ticketStatusLabelKey(row.status)) }}
         </StatusDot>
       </template>
       <template #cell-createdAt="{ row }">

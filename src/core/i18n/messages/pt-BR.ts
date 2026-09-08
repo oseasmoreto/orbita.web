@@ -337,6 +337,7 @@ export default {
       add: 'Adicionar',
       back: 'Voltar',
       cancel: 'Cancelar',
+      close: 'Fechar',
       delete: 'Excluir',
       download: 'Baixar',
       edit: 'Editar',
@@ -1459,6 +1460,17 @@ export default {
       },
     },
     tickets: {
+      attachments: {
+        attachButton: 'Anexar imagem',
+        errors: {
+          invalidType: 'Formato de imagem não suportado. Use PNG, JPEG, WEBP ou SVG.',
+          tooLarge: 'Cada imagem deve ter no máximo 2MB.',
+          tooMany: 'Você pode anexar no máximo 5 imagens por mensagem.',
+        },
+        imageAlt: 'Imagem anexada',
+        removeButton: 'Remover anexo',
+        unavailableWhileReopening: 'Anexos não estão disponíveis ao reabrir um chamado.',
+      },
       columns: {
         createdAt: 'Aberto em',
         resolvedAt: 'Resolvido em',
@@ -1488,6 +1500,7 @@ export default {
         submit: 'Abrir chamado',
       },
       status: {
+        inProgress: 'Em andamento',
         open: 'Aberto',
         resolved: 'Resolvido',
       },

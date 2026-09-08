@@ -15,7 +15,9 @@ import StatusDot from '@/shared/components/ui/StatusDot.vue'
 import Textarea from '@/shared/components/ui/Textarea.vue'
 import { PaperPlaneTilt } from '@/shared/components/icons/regular.generated'
 import { useAdminTicketThread } from '../composables/useAdminTicketThread'
-import { ticketStatusColor } from '../types/ticket.type'
+import { useTicketAttachments } from '../composables/useTicketAttachments'
+import { ticketStatusColor, ticketStatusLabelKey } from '../types/ticket.type'
+import TicketAttachmentPicker from './blocks/TicketAttachmentPicker.vue'
 import TicketMessageList from './blocks/TicketMessageList.vue'
 import type { AdminTicket } from '../types/ticket.type'
 
@@ -32,16 +34,21 @@ const thread = useAdminTicketThread(props.ticket)
 onMounted(thread.refresh)
 
 const replyBody = ref('')
+const attachments = useTicketAttachments()
 
 async function handleSend(): Promise<void> {
   if (!replyBody.value.trim()) {
     return
   }
 
-  const sent = await thread.sendMessage(replyBody.value)
+  const sent = await thread.sendMessage(
+    replyBody.value,
+    attachments.drafts.value.map((draft) => draft.dataUrl),
+  )
 
   if (sent) {
     replyBody.value = ''
+    attachments.reset()
     emit('updated', thread.ticket.value)
   }
 }
@@ -63,7 +70,7 @@ const isResolved = computed(() => thread.ticket.value.status === 'resolved')
           {{ $t('support.admin.tickets.thread.openedBy', { name: thread.ticket.value.user.name }) }}
         </p>
         <StatusDot :color="ticketStatusColor(thread.ticket.value.status)">
-          {{ $t(`support.tickets.status.${thread.ticket.value.status}`) }}
+          {{ $t(ticketStatusLabelKey(thread.ticket.value.status)) }}
         </StatusDot>
       </div>
       <Button
@@ -81,6 +88,12 @@ const isResolved = computed(() => thread.ticket.value.status === 'resolved')
       :messages="thread.messages.value"
     />
 
+    <TicketAttachmentPicker
+      class="admin-ticket-thread-panel__attachments"
+      :drafts="attachments.drafts.value"
+      @add="attachments.addFiles($event)"
+      @remove="attachments.removeAttachment($event)"
+    />
     <div class="admin-ticket-thread-panel__composer-bar">
       <Textarea
         v-model="replyBody"
@@ -129,12 +142,16 @@ const isResolved = computed(() => thread.ticket.value.status === 'resolved')
   color: $color-ink-40;
 }
 
+.admin-ticket-thread-panel__attachments {
+  margin-top: $spacing-16;
+}
+
 .admin-ticket-thread-panel__composer-bar {
   display: flex;
   align-items: flex-end;
   gap: $spacing-8;
   padding: $spacing-8;
-  margin-top: $spacing-16;
+  margin-top: $spacing-8;
   background-color: $color-bg-1;
   border: 1px solid $color-ink-10;
   border-radius: $radius-16;

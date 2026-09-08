@@ -16,8 +16,10 @@ import Button from '@/shared/components/ui/Button.vue'
 import StatusDot from '@/shared/components/ui/StatusDot.vue'
 import Textarea from '@/shared/components/ui/Textarea.vue'
 import { PaperPlaneTilt } from '@/shared/components/icons/regular.generated'
+import { useTicketAttachments } from '../composables/useTicketAttachments'
 import { useTicketThread } from '../composables/useTicketThread'
-import { ticketStatusColor } from '../types/ticket.type'
+import { ticketStatusColor, ticketStatusLabelKey } from '../types/ticket.type'
+import TicketAttachmentPicker from './blocks/TicketAttachmentPicker.vue'
 import TicketMessageList from './blocks/TicketMessageList.vue'
 import type { Ticket } from '../types/ticket.type'
 
@@ -34,16 +36,27 @@ const thread = useTicketThread(props.ticket)
 onMounted(thread.refresh)
 
 const replyBody = ref('')
+const attachments = useTicketAttachments()
+
+const isResolved = computed(() => thread.ticket.value.status === 'resolved')
 
 async function handleSend(): Promise<void> {
   if (!replyBody.value.trim()) {
     return
   }
 
-  const sent = await thread.sendMessage(replyBody.value)
+  // Anexo nunca vai junto de uma contestação (`DisputeTicketRequest` não
+  // aceita `attachments`, ver `useTicketThread.ts`) — o picker já fica
+  // desabilitado no template quando `isResolved`, isto aqui é só defesa
+  // extra pra nunca mandar um array que o backend ignoraria em silêncio.
+  const sent = await thread.sendMessage(
+    replyBody.value,
+    isResolved.value ? [] : attachments.drafts.value.map((draft) => draft.dataUrl),
+  )
 
   if (sent) {
     replyBody.value = ''
+    attachments.reset()
     emit('updated', thread.ticket.value)
   }
 }
@@ -52,8 +65,6 @@ async function handleResolve(): Promise<void> {
   await thread.resolve()
   emit('updated', thread.ticket.value)
 }
-
-const isResolved = computed(() => thread.ticket.value.status === 'resolved')
 </script>
 
 <template>
@@ -62,7 +73,7 @@ const isResolved = computed(() => thread.ticket.value.status === 'resolved')
       <div>
         <h2 class="ticket-thread-panel__subject">{{ thread.ticket.value.subject }}</h2>
         <StatusDot :color="ticketStatusColor(thread.ticket.value.status)">
-          {{ $t(`support.tickets.status.${thread.ticket.value.status}`) }}
+          {{ $t(ticketStatusLabelKey(thread.ticket.value.status)) }}
         </StatusDot>
       </div>
       <Button v-if="!isResolved" :disabled="thread.isResolving.value" variant="outline" @click="handleResolve()">
@@ -78,7 +89,14 @@ const isResolved = computed(() => thread.ticket.value.status === 'resolved')
     <div class="ticket-thread-panel__composer">
       <p v-if="isResolved" class="ticket-thread-panel__reopen-notice">
         {{ $t('support.tickets.thread.reopenNotice') }}
+        {{ $t('support.tickets.attachments.unavailableWhileReopening') }}
       </p>
+      <TicketAttachmentPicker
+        v-if="!isResolved"
+        :drafts="attachments.drafts.value"
+        @add="attachments.addFiles($event)"
+        @remove="attachments.removeAttachment($event)"
+      />
       <div class="ticket-thread-panel__composer-bar">
         <Textarea
           v-model="replyBody"

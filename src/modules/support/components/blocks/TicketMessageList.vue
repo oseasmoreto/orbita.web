@@ -22,15 +22,22 @@
  * só recebe o `currentUserId` já resolvido pelo consumidor.
  */
 import dayjs from 'dayjs'
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 import { formatRelativeTime } from '@/shared/services/formatDate'
 import Avatar from '@/shared/components/ui/Avatar.vue'
+import TicketAttachmentLightbox from './TicketAttachmentLightbox.vue'
 import type { TicketMessage } from '../../types/ticketMessage.type'
 
 const props = defineProps<{
   currentUserId: string
   messages: TicketMessage[]
 }>()
+
+// Estado de UI puro (qual anexo está expandido agora, se algum) — mora
+// aqui em vez de subir pros 2 painéis consumidores (`TicketThreadPanel`/
+// `AdminTicketThreadPanel`) porque só existe 1 lightbox por lista de
+// mensagens, e é este componente que já renderiza as miniaturas.
+const expandedImageUrl = ref<string | null>(null)
 
 interface MessageGroup {
   dateLabel: string
@@ -89,7 +96,23 @@ const groups = computed<MessageGroup[]>(() => {
           <Avatar :name="message.user.name" :size="28" />
           <div class="ticket-message-list__content">
             <span class="ticket-message-list__author">{{ message.user.name }}</span>
-            <p class="ticket-message-list__bubble">{{ message.body }}</p>
+            <p v-if="message.body" class="ticket-message-list__bubble">{{ message.body }}</p>
+            <ul v-if="message.attachments.length > 0" class="ticket-message-list__attachments">
+              <li v-for="attachment in message.attachments" :key="attachment.id">
+                <button
+                  :aria-label="$t('support.tickets.attachments.imageAlt')"
+                  class="ticket-message-list__attachment-trigger"
+                  type="button"
+                  @click="expandedImageUrl = attachment.url"
+                >
+                  <img
+                    :alt="$t('support.tickets.attachments.imageAlt')"
+                    class="ticket-message-list__attachment-image"
+                    :src="attachment.url"
+                  />
+                </button>
+              </li>
+            </ul>
             <span class="ticket-message-list__timestamp">{{
               formatRelativeTime(message.createdAt)
             }}</span>
@@ -97,6 +120,8 @@ const groups = computed<MessageGroup[]>(() => {
         </li>
       </ul>
     </div>
+
+    <TicketAttachmentLightbox v-model="expandedImageUrl" />
   </div>
 </template>
 
@@ -174,6 +199,39 @@ const groups = computed<MessageGroup[]>(() => {
 .ticket-message-list__item--mine .ticket-message-list__bubble {
   color: $color-paper;
   background-color: $color-primary;
+}
+
+.ticket-message-list__attachments {
+  display: flex;
+  flex-wrap: wrap;
+  gap: $spacing-4;
+  max-width: 100%;
+}
+
+// Reset de botão nativo — o gatilho precisa parecer só a miniatura
+// (mesma técnica de "botão sem cara de botão" já usada em
+// `CopyablePrice.vue`), com cursor de clique e o próprio `focus-ring`
+// pra navegação por teclado.
+.ticket-message-list__attachment-trigger {
+  display: block;
+  padding: 0;
+  cursor: pointer;
+  background: none;
+  border: none;
+  border-radius: $radius-8;
+
+  &:focus-visible {
+    @include focus-ring;
+  }
+}
+
+.ticket-message-list__attachment-image {
+  display: block;
+  width: $size-64;
+  height: $size-64;
+  object-fit: cover;
+  border: 1px solid $color-ink-10;
+  border-radius: $radius-8;
 }
 
 .ticket-message-list__timestamp {

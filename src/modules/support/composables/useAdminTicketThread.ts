@@ -5,6 +5,7 @@ import { useToast } from '@/shared/composables/useToast'
 import { parseApiError } from '@/shared/services/parseApiError'
 import {
   createAdminTicketMessage,
+  getAdminTicket,
   listAdminTicketMessages,
   resolveAdminTicket,
 } from '../services/supportApi'
@@ -44,11 +45,17 @@ export function useAdminTicketThread(initialTicket: AdminTicket) {
     }
   }
 
-  async function sendMessage(body: string): Promise<boolean> {
+  async function sendMessage(body: string, attachments: string[] = []): Promise<boolean> {
     isSending.value = true
 
     try {
-      await createAdminTicketMessage(ticket.value.id, body)
+      await createAdminTicketMessage(ticket.value.id, body, attachments)
+      // É a resposta do PRÓPRIO admin que dispara `open`→`in_progress`
+      // no backend (`AdminReplyToTicketAction`, pedido novo em
+      // 2026-09-08) — `createAdminTicketMessage` só devolve a
+      // `TicketMessage`, busca o `Ticket` de novo pra refletir a
+      // mudança de status sem precisar de reload manual.
+      ticket.value = await getAdminTicket(ticket.value.id)
       await refresh()
       return true
     } catch (caughtError) {

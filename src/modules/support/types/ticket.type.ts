@@ -52,8 +52,39 @@ export function toAdminTicket(resource: components['schemas']['AdminTicketResour
 /**
  * Mapeamento status→cor pro `StatusDot.vue` — `open` como "aguardando
  * ação" (amarelo, mesmo critério de `Pendente` noutros status binários
- * do projeto), `resolved` como concluído (verde).
+ * do projeto), `in_progress` como "já em andamento" (`indigo`, 3º valor
+ * do enum desde 2026-09-08 — mesmo tom já usado noutros lugares do
+ * design system pra "In Progress", `ProgressBar.vue`/showcase), `resolved`
+ * como concluído (verde). `in_progress` é setado automaticamente pelo
+ * backend assim que um `admin_master` responde pela 1ª vez a um chamado
+ * `open` (`AdminReplyToTicketAction`, sem endpoint novo) — puramente
+ * informativo aqui, não muda nenhuma regra de UI (composer/"Marcar como
+ * resolvido" continuam tratando `open`/`in_progress` igual, só
+ * `resolved` é especial).
  */
-export function ticketStatusColor(status: TicketStatus): 'green' | 'yellow' {
-  return status === 'resolved' ? 'green' : 'yellow'
+export function ticketStatusColor(status: TicketStatus): 'green' | 'indigo' | 'yellow' {
+  if (status === 'resolved') {
+    return 'green'
+  }
+
+  return status === 'in_progress' ? 'indigo' : 'yellow'
+}
+
+/**
+ * Chave i18n do rótulo de status — nunca `` `support.tickets.status.${status}` ``
+ * direto no consumidor (achado real, reportado pelo usuário com print:
+ * mostrava a chave crua "support.tickets.status.in_progress" na tela).
+ * `status` vem do backend em snake_case (mesmo formato de qualquer valor
+ * de enum da API), mas o catálogo `pt-BR.ts` segue camelCase como todo o
+ * resto do arquivo (`inProgress`) — `open`/`resolved` não têm underscore
+ * então nunca expuseram esse descompasso, só `in_progress` expôs.
+ */
+const TICKET_STATUS_LABEL_KEYS: Record<TicketStatus, string> = {
+  in_progress: 'support.tickets.status.inProgress',
+  open: 'support.tickets.status.open',
+  resolved: 'support.tickets.status.resolved',
+}
+
+export function ticketStatusLabelKey(status: TicketStatus): string {
+  return TICKET_STATUS_LABEL_KEYS[status]
 }

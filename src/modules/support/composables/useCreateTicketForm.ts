@@ -48,7 +48,7 @@ export function useCreateTicketForm() {
     return false
   }
 
-  async function submit(): Promise<Ticket | null> {
+  async function submit(attachments: string[] = []): Promise<Ticket | null> {
     if (!validate()) {
       return null
     }
@@ -56,7 +56,11 @@ export function useCreateTicketForm() {
     isSubmitting.value = true
 
     try {
-      const created = await createTicket({ message: values.message, subject: values.subject })
+      const created = await createTicket({
+        attachments: attachments.length > 0 ? attachments : undefined,
+        message: values.message,
+        subject: values.subject,
+      })
       toast.success(t('support.tickets.form.createSuccess'))
       return created
     } catch (caughtError) {

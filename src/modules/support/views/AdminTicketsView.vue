@@ -25,7 +25,7 @@ import { useApiMessage } from '@/shared/composables/useApiMessage'
 import { parseApiError } from '@/shared/services/parseApiError'
 import AdminTicketThreadPanel from '../components/AdminTicketThreadPanel.vue'
 import { useAdminTicketList } from '../composables/useAdminTicketList'
-import { type AdminTicket, ticketStatusColor } from '../types/ticket.type'
+import { type AdminTicket, ticketStatusColor, ticketStatusLabelKey } from '../types/ticket.type'
 import type { DataTableColumn } from '@/shared/components/ui/types/dataTable.type'
 import type { SelectOption } from '@/shared/components/ui/types/select.type'
 
@@ -41,6 +41,7 @@ onMounted(userOptions.load)
 const statusFilterOptions = computed<SelectOption[]>(() => [
   { label: t('common.filters.all'), value: 'all' },
   { label: t('support.tickets.status.open'), value: 'open' },
+  { label: t('support.tickets.status.inProgress'), value: 'in_progress' },
   { label: t('support.tickets.status.resolved'), value: 'resolved' },
 ])
 
@@ -134,7 +135,7 @@ function handleUpdated(): void {
       </template>
       <template #cell-status="{ row }">
         <StatusDot :color="ticketStatusColor(row.status)">
-          {{ $t(`support.tickets.status.${row.status}`) }}
+          {{ $t(ticketStatusLabelKey(row.status)) }}
         </StatusDot>
       </template>
       <template #cell-createdAt="{ row }">
