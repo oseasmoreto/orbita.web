@@ -70,6 +70,7 @@ import Search from '@/shared/components/ui/Search.vue'
 import TabBar from '@/shared/components/ui/TabBar.vue'
 import Tooltip from '@/shared/components/ui/Tooltip.vue'
 import { useApiMessage } from '@/shared/composables/useApiMessage'
+import { useGoBack } from '@/shared/composables/useGoBack'
 import { formatMoney, formatPercent } from '@/shared/services/formatNumber'
 import { parseApiError } from '@/shared/services/parseApiError'
 import CopyablePrice from '../components/CopyablePrice.vue'
@@ -215,9 +216,20 @@ function handleSaved(): void {
   void list.refresh()
 }
 
-function goBackToConnections(): void {
-  void router.push({ name: 'marketplaces' })
-}
+/**
+ * Corrigido em 2026-09-08, pedido direto do usuário (repassado pela
+ * sessão de backend) — até aqui sempre navegava pra `marketplaces`
+ * fixo, mesmo quando o usuário chegou nesta tela por outro caminho (ex.:
+ * atalho "Ver precificação" a partir de `ProductsView.vue`). Trocado
+ * pro mesmo `useGoBack()` já usado no botão de voltar do `AppHeader.vue`
+ * (extraído pra `shared/composables/` neste mesmo pedido, 2º consumidor
+ * real) — volta pra ONDE o usuário realmente veio, com a mesma guarda
+ * contra escapar do app numa aba sem navegação interna. Texto do botão
+ * também deixou de citar um destino fixo ("Voltar para Marketplaces"),
+ * agora é só "Voltar" (`common.actions.back`, já existente) — nomear um
+ * destino que pode não ser mais verdade seria enganoso.
+ */
+const { goBack } = useGoBack()
 
 type ViewMode = 'bar' | 'table'
 const viewMode = ref<ViewMode>('bar')
@@ -319,17 +331,29 @@ const tableColumns = computed<DataTableColumn[]>(() => [
       class="product-marketplace-pricing-view__back"
       :icon-before="ArrowLineLeft"
       variant="ghost"
-      @click="goBackToConnections"
+      @click="goBack"
     >
-      {{ $t('pricing.productMarketplacePricing.backToConnections') }}
+      {{ $t('common.actions.back') }}
     </Button>
 
     <h1 class="product-marketplace-pricing-view__title">
       {{ $t('pricing.productMarketplacePricing.title') }}
     </h1>
 
+    <div
+      v-if="!connections.isLoading.value && connections.connectedCount.value === 0"
+      class="product-marketplace-pricing-view__empty-state"
+    >
+      <p class="product-marketplace-pricing-view__hint">
+        {{ $t('pricing.productMarketplacePricing.noConnectionsHint') }}
+      </p>
+      <Button variant="outline" @click="router.push({ name: 'marketplaces' })">
+        {{ $t('pricing.productMarketplacePricing.noConnectionsCta') }}
+      </Button>
+    </div>
+
     <p
-      v-if="connections.cards.value.length > 0 && marketplaceTabs.length === 0"
+      v-else-if="connections.connectedCount.value > 0 && marketplaceTabs.length === 0"
       class="product-marketplace-pricing-view__hint"
     >
       {{ $t('pricing.productMarketplacePricing.noActiveConnectionsHint') }}
@@ -691,6 +715,25 @@ const tableColumns = computed<DataTableColumn[]>(() => [
 .product-marketplace-pricing-view__hint {
   font-size: $font-size-sm;
   color: $color-ink-40;
+}
+
+// Alcançável agora por um item de menu genérico ("Precificação",
+// `sidebar.nav.pricing`), não só pelo botão "Ver precificação" de um
+// card já conectado (2026-09-08) — o caso "zero conexões cadastradas"
+// passa a ser bem mais comum (qualquer usuário pode clicar no menu antes
+// de conectar o 1º marketplace), então ganhou um estado vazio de
+// verdade com ação (nunca link morto — sempre uma saída clara pro
+// vendedor), não só o hint textual que já cobria "tem conexão mas
+// nenhuma ATIVA".
+.product-marketplace-pricing-view__empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: $spacing-16;
+  padding: $spacing-24;
+  text-align: left;
+  background-color: $color-bg-2;
+  border-radius: $radius-16;
 }
 
 // Estado/ação COMPARTILHADOS entre abas (busca/KPIs/toggle/botão de

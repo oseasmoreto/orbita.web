@@ -1275,7 +1275,6 @@ export default {
       usage: '{total} de {max} marketplaces conectados',
     },
     productMarketplacePricing: {
-      backToConnections: 'Voltar para Marketplaces',
       campaignPriceLabel: 'Preço a anunciar',
       campaignPriceTooltip:
         'Preço que compensa o desconto de campanha configurado nesta conexão.\n\nNão é o preço já com desconto aplicado — é o valor MAIOR que você precisa colocar no anúncio pra, depois do desconto, ainda receber o preço sugerido/praticado de verdade.',
@@ -1304,6 +1303,8 @@ export default {
       },
       noActiveConnectionsHint:
         'Nenhuma conexão ativa disponível — conecte um marketplace antes de ver a precificação.',
+      noConnectionsCta: 'Ir para Canais de venda',
+      noConnectionsHint: 'Conecte um marketplace antes de ver a precificação.',
       practicedBadge: 'Praticado',
       priceCopied: 'Preço copiado para a área de transferência.',
       priceCopyFailed: 'Não foi possível copiar o preço.',
@@ -1432,6 +1433,16 @@ export default {
       myPlan: 'Meu plano',
       myTickets: 'Meus chamados',
       operation: 'Operação',
+      // "Ver precificação" (não "Precificação" sozinho) — mesmo texto já
+      // usado nos botões de atalho existentes (`catalog.products.pricingShortcut`/
+      // `pricing.marketplaces.pricingButton`), reaproveitado aqui de
+      // propósito: achado real, testado em browser (Playwright), o
+      // breadcrumb mostrava "Precificação / Precificação" (item de menu
+      // + título da própria página de destino, `pricing.productMarketplacePricing.title`,
+      // coincidindo em texto) — mesma classe de bug já documentada como
+      // "Usuários / Usuários" (`adminUsersGroup`). Resolvido diferenciando
+      // o texto, sem inventar um 3º texto novo pro mesmo conceito.
+      pricing: 'Ver precificação',
       products: 'Produtos',
       salesChannels: 'Canais de venda',
       subscription: 'Assinatura',

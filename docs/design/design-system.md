@@ -515,6 +515,7 @@ aqui é só um mapa, não substitui o conteúdo real.
 - AppHeader (`core/layouts/AppHeader.vue`) — ver `docs/design/components/shell-and-layout.md`
 - AppFooter (`core/layouts/AppFooter.vue`) — ver `docs/design/components/shell-and-layout.md`
 - StatusDot (`shared/components/ui/StatusDot.vue`) — ver `docs/design/components/shell-and-layout.md`
+- useGoBack (`shared/composables/useGoBack.ts`) — ver `docs/design/components/shell-and-layout.md`
 
 ### Telas por módulo (`modules/*`, `shared/views/`)
 

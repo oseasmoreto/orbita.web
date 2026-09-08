@@ -958,3 +958,81 @@ edição do marketplace).
   toast "Categoria vinculada com sucesso." → conferido no banco
   (`CATEGORY_MARKETPLACE.commission_percentage: 15.00`).
 
+
+**Item de menu "Ver precificação" + botão "Voltar" contextual, 2026-09-08,
+pedido direto do usuário (repassado pela sessão de backend)** — 2
+correções reais na mesma rodada.
+
+1. **Botão "Voltar" (`goBackToConnections`) sempre navegava pra
+   `marketplaces` fixo** — mesmo quando o usuário chegou nesta tela por
+   outro caminho (ex.: o item de menu novo abaixo, vindo de "Produtos").
+   Trocado pro composable `useGoBack()` (extraído de `AppHeader.vue`
+   pra `shared/composables/`, ver seção própria em
+   `docs/design/components/shell-and-layout.md`) — volta pra ONDE o
+   usuário realmente veio, com a mesma guarda contra escapar do app numa
+   aba sem navegação interna. Texto do botão deixou de citar um destino
+   fixo ("Voltar para Marketplaces", chave `backToConnections` removida)
+   — agora é só "Voltar" (`common.actions.back`, já existente): nomear
+   um destino que pode não ser mais verdade seria enganoso.
+2. **Item de menu novo "Ver precificação"** (`sidebar.nav.pricing`,
+   grupo "Operação", ícone `ChartBar`) — até aqui a tela só era
+   alcançável com uma conexão já em mãos (card conectado em
+   `MarketplacesView.vue`), nunca pelo menu, porque a rota real
+   (`marketplace-pricing`) exige `userMarketplaceId` no path. Resolvido
+   com uma rota IRMÃ nova, `pricing` (`path: 'pricing'`, sem parâmetro),
+   apontando pro MESMO componente `ProductMarketplacePricingView.vue` —
+   zero mudança na lógica do componente: ele já tinha, desde a
+   implementação original, um fallback no `onMounted` pra "id da rota
+   não bate com nenhuma conexão ativa → usa a 1ª disponível e
+   `router.replace`" (pensado pra link salvo de uma conexão desconectada
+   depois) — chegar sem `userMarketplaceId` nenhum cai na MESMA branch
+   (`route.params.userMarketplaceId` vem `undefined`, vira `''` via
+   `?? ''`, nunca bate com nenhum id real). `relatedRouteNames` migrado
+   do item "Canais de venda" pra este item novo — é ele, não "Canais de
+   venda", que corresponde à rota de destino real depois do fallback
+   resolver o id.
+- **Achado real #1, só descoberto testando em browser real (Playwright,
+  agora disponível na sessão — libs do sistema instaladas pelo usuário)**:
+  o estado "sem nenhuma conexão" que eu tinha acabado de escrever
+  (`connections.cards.value.length === 0`) NUNCA aparecia — `cards` é
+  "um card por MARKETPLACE DO CATÁLOGO" (`useMarketplaceConnections.ts`,
+  sempre existem, cadastrados pelo admin), não "conexões do usuário".
+  Testado ao vivo contra um usuário com ZERO linhas em
+  `user_marketplaces`: a tela mostrava "Nenhuma conexão ativa
+  disponível" (o hint ERRADO, pensado pro caso "tem conexão mas nenhuma
+  ATIVA") em vez do estado vazio novo. Corrigido nos 2 lugares (o `v-if`
+  novo E a condição pré-existente do `v-else-if`, que tinha a MESMA
+  imprecisão desde sempre — só nunca tinha sido notada porque a tela só
+  era alcançável já COM uma conexão em mãos) trocando pra
+  `connections.connectedCount.value` (`connections.value.length`, já
+  existia no composable, é o dado certo).
+- **Achado real #2, mesmo teste**: breadcrumb mostrava "Operação / Ver
+  precificação / Precificação"... não — mostrava **"Operação /
+  Precificação / Precificação"** antes da correção (2 segmentos com o
+  MESMO texto): o item de menu tinha `label: 'Precificação'`, igual ao
+  `route.meta.title` da rota real (`pricing.productMarketplacePricing.title`)
+  — mesma classe de bug já documentada como "Usuários / Usuários"
+  (`adminUsersGroup`, `core/layouts/config/navigation.ts`). Resolvido
+  reaproveitando o texto "Ver precificação" já usado nos 2 botões de
+  atalho existentes (`catalog.products.pricingShortcut`/
+  `pricing.marketplaces.pricingButton`) — nenhum texto novo inventado
+  pro mesmo conceito, breadcrumb final: "Operação / Ver precificação /
+  Precificação".
+- **3 estados agora corretos no `<template>`**: zero conexões
+  (`connectedCount === 0`, estado vazio com CTA "Ir para Canais de
+  venda"), conexões existem mas nenhuma ativa (`connectedCount > 0` E
+  `marketplaceTabs.length === 0`, hint textual sem CTA — caso raro,
+  usuário desativou manualmente todas), pelo menos 1 ativa (`TabBar`
+  normal, fallback automático já cobre isso).
+- **Verificação real em browser** (Playwright, primeira vez disponível
+  nesta sessão — libs do sistema `libnss3`/`libnspr4` instaladas pelo
+  usuário): usuário de teste com empresa+assinatura mas ZERO conexões →
+  clicar "Ver precificação" no menu → estado vazio com CTA, clicar CTA →
+  cai em "Canais de venda"; conexão ativa criada (Mercado Livre
+  Clássico) → clicar "Ver precificação" de novo → fallback resolve a
+  conexão e troca a URL pra `/marketplaces/{id}/pricing` automaticamente
+  (`router.replace`, sem duplicar entrada no histórico) → aba do
+  marketplace renderiza normalmente; navegado por Produtos → Ver
+  precificação → Voltar → volta pra Produtos (não mais "Canais de
+  venda" fixo); typecheck, ESLint, os 392 testes e build de produção,
+  todos limpos.

@@ -1,6 +1,7 @@
 import { i18n } from '@/core/i18n'
 import {
   Bell,
+  ChartBar,
   ChartPieSlice,
   Clipboard,
   FolderSimple,
@@ -107,15 +108,27 @@ export const operationGroup: NavGroup = {
       icon: Storefront,
       id: 'marketplaces',
       label: t('sidebar.nav.salesChannels'),
-      // `marketplace-pricing` (tarefa 76, backend) — alcançada só pela
-      // ação de linha "Ver precificação" do card conectado
-      // (`MarketplacesView.vue`), nunca item de sidebar próprio, mesmo
-      // achado real já corrigido pra `product-marketplaces`
-      // (`catalog-products` acima): sem isso, o breadcrumb não acha a
-      // rota na árvore e cai só no título sozinho, sem "Operação / Canais
-      // de venda /" na frente.
-      relatedRouteNames: ['marketplace-pricing'],
       to: { name: 'marketplaces' },
+    },
+    {
+      icon: ChartBar,
+      id: 'pricing',
+      label: t('sidebar.nav.pricing'),
+      // Item de menu novo, 2026-09-08, pedido direto do usuário — até
+      // aqui a precificação só era alcançável pela ação de linha "Ver
+      // precificação" do card já conectado (`MarketplacesView.vue`),
+      // nunca pelo menu (a rota real, `marketplace-pricing`, exige
+      // `userMarketplaceId`). `to` aponta pra `pricing` (rota irmã, SEM
+      // o parâmetro — `routes.ts` explica o fallback pra 1ª conexão
+      // ativa, já existente na própria view). `relatedRouteNames`
+      // migrado de `marketplaces` (item acima) pra cá — é este item, não
+      // "Canais de venda", que agora corresponde à rota de destino real
+      // depois do fallback resolver o id; mesmo achado real já
+      // documentado em `catalog-products`/`marketplaces` (sem isso o
+      // breadcrumb não acha `marketplace-pricing` na árvore e cai só no
+      // título sozinho).
+      relatedRouteNames: ['marketplace-pricing'],
+      to: { name: 'pricing' },
     },
     {
       icon: Lifebuoy,

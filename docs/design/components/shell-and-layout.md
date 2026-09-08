@@ -694,3 +694,37 @@ não vistas na primeira captura. Prop nova `variant: 'dot' | 'pill'`
   (indigo/green/cyan/yellow/gray) renderizam lado a lado com a lista de
   pontos pulsantes já existente, sem nenhuma mudança na variante `dot`.
 
+
+## useGoBack (`shared/composables/useGoBack.ts`)
+
+**Extraído de `AppHeader.vue` em 2026-09-08** — 2º consumidor real
+(`ProductMarketplacePricingView.vue`, ver
+`docs/design/screens/catalog-and-pricing.md`), mesmo critério de
+promoção pra `shared/` já usado no resto do projeto: sobe quando um
+segundo consumidor precisa de verdade, nunca antecipado.
+
+- Mesma guarda de sempre: `router.back()` sozinho chama
+  `window.history.go(-1)` por baixo, que opera sobre o histórico de
+  BROWSER inteiro, não só sobre a navegação da SPA (achado real já
+  documentado — numa aba sem navegação interna, "voltar" escapava pra
+  fora do app). `window.history.state?.back` é o próprio Vue Router
+  quem escreve a cada navegação DA SPA — a guarda só chama
+  `router.back()` quando existe uma entrada de verdade dentro dela; sem
+  isso, vira um no-op.
+- **Achado real de lint, só apareceu na extração**: `window.history.state`
+  é tipado `any` pelo DOM nativo — dentro de um `.vue`, a regra
+  type-aware do ESLint (`no-unsafe-member-access`) fica desligada de
+  propósito (seção 10 de `docs/infra/convencoes-frontend-infra.md`,
+  "trava em projeto grande rodando em WSL2"), então `AppHeader.vue`
+  nunca acusou nada acessando `.back` num `any`. Extraído pra um `.ts`
+  puro, a regra passa a rodar de verdade e pegou o acesso — corrigido
+  com um cast explícito pro shape real que o Vue Router escreve
+  (`{ back?: string | null } | null`), em vez de acesso "unsafe".
+- `AppHeader.vue` passou a consumir `const { goBack } = useGoBack()` no
+  lugar da função local — zero mudança de comportamento/posição/ícone
+  do botão, só a lógica saiu do arquivo.
+- Verificado em browser real (Playwright): botão "Voltar" do
+  `AppHeader` continua funcionando após a extração; o novo consumidor
+  (`ProductMarketplacePricingView.vue`) navegando Produtos → "Ver
+  precificação" → "Voltar" volta corretamente pra Produtos, não mais
+  pra uma rota fixa.

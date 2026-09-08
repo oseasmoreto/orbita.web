@@ -53,6 +53,7 @@ import {
 import Breadcrumb from '@/shared/components/ui/Breadcrumb.vue'
 import Icon from '@/shared/components/ui/Icon.vue'
 import { useNotificationStore } from '@/core/store/useNotificationStore'
+import { useGoBack } from '@/shared/composables/useGoBack'
 import { useTheme } from '@/shared/composables/useTheme'
 import { useAppShell } from './composables/useAppShell'
 import { useBreadcrumb } from './composables/useBreadcrumb'
@@ -110,24 +111,11 @@ function toggleSidebar(): void {
   }
 }
 
-/**
- * `router.back()` chama `window.history.go(-1)` por baixo — sem guarda,
- * "voltar" com a SPA aberta numa aba nova (sem navegação interna ainda)
- * sai do próprio app pra QUALQUER entrada anterior do histórico real do
- * browser, incluindo uma origem/porta completamente diferente (achado
- * real, reportado pelo usuário: caía em `localhost:5175`, sobra de uma
- * aba que já tinha navegado por outra porta do Vite em algum momento).
- * `history.state.back` é o próprio Vue Router quem escreve (`createWebHistory`
- * grava `{ back, current, forward, ... }` a cada navegação da SPA) — só
- * chama `router.back()` quando existe uma entrada de verdade dentro da
- * navegação da SPA; sem isso, "Voltar" simplesmente não faz nada, nunca
- * escapa pra fora do app.
- */
-function goBack(): void {
-  if (window.history.state?.back) {
-    router.back()
-  }
-}
+// `goBack()` extraído pra `useGoBack.ts` em 2026-09-08 — 2º consumidor
+// real (`ProductMarketplacePricingView.vue`), ver o composable pra todo
+// o raciocínio (achado real de `router.back()` escapando pra fora do
+// app numa aba sem navegação interna).
+const { goBack } = useGoBack()
 </script>
 
 <template>

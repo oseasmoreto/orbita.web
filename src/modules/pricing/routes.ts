@@ -53,13 +53,33 @@ export const pricingRoutes: RouteRecordRaw[] = [
   {
     // Tela de precificação real (tarefa 76, backend) — alcançada a
     // partir do card CONECTADO em `MarketplacesView.vue` ("Ver
-    // precificação"), nunca item de sidebar próprio (mesmo padrão de
-    // `product-marketplaces`). `userMarketplaceId` (a conexão), não
-    // `marketplaceId` — é o que `GET /user-marketplaces/{id}/products`
-    // espera.
+    // precificação") E, desde 2026-09-08, do item de menu "Precificação"
+    // (`pricing`, abaixo, sem `userMarketplaceId` no path). `userMarketplaceId`
+    // (a conexão), não `marketplaceId` — é o que
+    // `GET /user-marketplaces/{id}/products` espera.
     component: () => import('./views/ProductMarketplacePricingView.vue'),
     meta: { title: 'pricing.productMarketplacePricing.title' },
     name: 'marketplace-pricing',
     path: 'marketplaces/:userMarketplaceId/pricing',
+  },
+  {
+    // Item de menu principal "Precificação", pedido direto do usuário em
+    // 2026-09-08 (repassado pela sessão de backend) — até aqui a tela só
+    // era alcançável com uma conexão já em mãos (card conectado ou link
+    // direto), nunca pelo menu, porque a rota real exige
+    // `userMarketplaceId`. MESMO componente de `marketplace-pricing`,
+    // sem o parâmetro — `ProductMarketplacePricingView.vue` já tinha,
+    // desde a implementação original, uma lógica de fallback pra
+    // "id da rota não bate com nenhuma conexão ativa → usa a 1ª
+    // disponível e `router.replace`" (pensada pra link salvo de uma
+    // conexão desconectada depois, mas serve igualzinho pro caso de
+    // chegar aqui sem id nenhum — `route.params.userMarketplaceId`
+    // vem `undefined`, vira `''`, cai na MESMA branch de fallback). Sem
+    // conexão ativa nenhuma, a própria view mostra um estado vazio com
+    // CTA pra "Canais de venda" — nunca link morto.
+    component: () => import('./views/ProductMarketplacePricingView.vue'),
+    meta: { title: 'pricing.productMarketplacePricing.title' },
+    name: 'pricing',
+    path: 'pricing',
   },
 ]
