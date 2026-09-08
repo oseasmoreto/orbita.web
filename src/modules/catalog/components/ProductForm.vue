@@ -95,6 +95,7 @@ async function handleSubmit(): Promise<void> {
         <FormGroup
           :error="fieldError('operationalCost')"
           :label="$t('catalog.products.form.fields.operationalCost')"
+          :label-tooltip="$t('catalog.products.form.operationalCostTooltip')"
         >
           <Input
             v-model="operationalCostInput"
