@@ -1298,9 +1298,7 @@ export default {
         'Nenhuma faixa de comissão bateu exata pra esse valor — o cálculo usa a faixa mais próxima como aproximação.',
       kpis: {
         averageMargin: 'Margem média',
-        productCount: 'Produtos',
-        totalProfit: 'Lucro total',
-        totalRevenue: 'Faturamento total',
+        averageMarginTooltip: 'Considerando uma unidade de cada produto.',
       },
       noActiveConnectionsHint:
         'Nenhuma conexão ativa disponível — conecte um marketplace antes de ver a precificação.',

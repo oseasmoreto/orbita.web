@@ -391,39 +391,15 @@ const tableColumns = computed<DataTableColumn[]>(() => [
         <div class="product-marketplace-pricing-view__kpis">
           <div class="product-marketplace-pricing-view__kpi">
             <p class="product-marketplace-pricing-view__kpi-label">
-              {{ $t('pricing.productMarketplacePricing.kpis.totalRevenue') }}
-            </p>
-            <p class="product-marketplace-pricing-view__kpi-value">
-              {{ formatMoney(list.totals.value.revenue) }}
-            </p>
-          </div>
-          <div class="product-marketplace-pricing-view__kpi">
-            <p class="product-marketplace-pricing-view__kpi-label">
-              {{ $t('pricing.productMarketplacePricing.kpis.totalProfit') }}
-            </p>
-            <p
-              :class="[
-                'product-marketplace-pricing-view__kpi-value',
-                `product-marketplace-pricing-view__kpi-value--${outcomeTone(list.totals.value.profit)}`,
-              ]"
-            >
-              {{ formatMoney(list.totals.value.profit) }}
-            </p>
-          </div>
-          <div class="product-marketplace-pricing-view__kpi">
-            <p class="product-marketplace-pricing-view__kpi-label">
               {{ $t('pricing.productMarketplacePricing.kpis.averageMargin') }}
+              <Tooltip :text="$t('pricing.productMarketplacePricing.kpis.averageMarginTooltip')">
+                <span tabindex="0">
+                  <Icon :icon="Info" :size="12" style="color: var(--color-ink-40)" />
+                </span>
+              </Tooltip>
             </p>
             <p class="product-marketplace-pricing-view__kpi-value">
               {{ formatPercent(list.totals.value.averageMargin, 1) }}
-            </p>
-          </div>
-          <div class="product-marketplace-pricing-view__kpi">
-            <p class="product-marketplace-pricing-view__kpi-label">
-              {{ $t('pricing.productMarketplacePricing.kpis.productCount') }}
-            </p>
-            <p class="product-marketplace-pricing-view__kpi-value">
-              {{ list.totals.value.productCount }}
             </p>
           </div>
         </div>
@@ -782,6 +758,18 @@ const tableColumns = computed<DataTableColumn[]>(() => [
 .product-marketplace-pricing-view__kpi-label {
   font-size: $font-size-sm;
   color: $color-ink-40;
+  white-space: nowrap;
+}
+
+// Mesmo achado real já documentado em `__suggested-hint` (mesmo
+// arquivo): um ícone de tooltip dentro de um `<span tabindex="0">` no
+// MEIO de uma linha de texto vira, sozinho, uma caixa de bloco (reset
+// global `svg { display: block }`) — bloco dentro de inline força
+// quebra ANTES dele, o ícone cairia órfão embaixo do label sem este
+// `:deep()`.
+.product-marketplace-pricing-view__kpi-label :deep(svg) {
+  display: inline-block;
+  vertical-align: middle;
 }
 
 .product-marketplace-pricing-view__kpi-value {
@@ -789,27 +777,6 @@ const tableColumns = computed<DataTableColumn[]>(() => [
   font-size: $font-size-xl;
   font-weight: $font-weight-semibold;
   color: $color-ink;
-}
-
-// Achado real, 2026-09-04, reportado pelo usuário: "Lucro total" tinha
-// UMA classe fixa (`--profit`, sempre verde) — um total negativo (soma
-// de vários produtos com prejuízo) continuava pintado de verde, o
-// oposto do que a cor deveria comunicar. Trocado pelas mesmas 3
-// variantes de `outcomeTone` já usadas por linha
-// (`__product-margin--positive/neutral/negative`), aplicadas
-// dinamicamente pelo sinal do total (`list.totals.value.profit`) —
-// sem `meetsTargetMargin` aqui, o total é uma soma de vários produtos
-// com margens-alvo DIFERENTES, não existe uma única meta pra comparar.
-.product-marketplace-pricing-view__kpi-value--positive {
-  color: $color-accent-green;
-}
-
-.product-marketplace-pricing-view__kpi-value--neutral {
-  color: $color-accent-yellow;
-}
-
-.product-marketplace-pricing-view__kpi-value--negative {
-  color: $color-accent-red;
 }
 
 .product-marketplace-pricing-view__error {

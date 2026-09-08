@@ -634,3 +634,29 @@ o schema OpenAPI real, não assumido.
   "Em andamento" funcionando nas 2 listagens, rótulo correto nos 4
   lugares depois do fix) fica pendente de confirmação manual do
   usuário.
+
+**Bug real, reportado pelo usuário com print, 2026-09-08 — avatar
+"achatado" quando a mensagem é longa** — `.ticket-message-list__item`
+(`display: flex`) não tinha `flex-shrink: 0` no `Avatar` — comportamento
+padrão do flexbox é encolher TODO item flex proporcionalmente quando o
+conteúdo junto não cabe no espaço disponível (`max-width: 80%`). O texto
+da bolha tem um "mínimo" real (a palavra mais longa sem quebrar), mas o
+`Avatar` não tem nenhum conteúdo intrínseco grande o bastante pra
+resistir — perdia a disputa por espaço e encolhia até quase 0px de
+largura MANTENDO a altura (medido em browser real reproduzindo o bug com
+uma mensagem de propósito longa: `width: 1.9px, height: 28px`, a
+distorção "oval achatada" exata do print).
+
+- **Corrigido** com `flex-shrink: 0` numa classe nova
+  (`.ticket-message-list__avatar`, passada como `class` extra pro
+  `<Avatar>` — fallthrough de atributo pro elemento raiz do componente,
+  técnica padrão do Vue pra componente de raiz única, sem precisar de
+  `:deep()`) — trava o Avatar no tamanho fixo que a prop `size` já
+  define, deixando só a bolha de texto encolher (que já tinha
+  `min-width: 0` no container pai pra isso).
+- Verificado em browser real (Playwright): reproduzido o bug ANTES do
+  fix com uma mensagem de propósito longa (medição real confirmando a
+  largura achatada), corrigido, e reconfirmado DEPOIS (`width: 28,
+  height: 28` nos dois avatares, curto e longo, círculo perfeito nos
+  dois). Typecheck, ESLint, os 397 testes e build de produção, todos
+  limpos.

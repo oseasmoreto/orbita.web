@@ -93,7 +93,7 @@ const groups = computed<MessageGroup[]>(() => {
           class="ticket-message-list__item"
           :class="{ 'ticket-message-list__item--mine': message.userId === currentUserId }"
         >
-          <Avatar :name="message.user.name" :size="28" />
+          <Avatar class="ticket-message-list__avatar" :name="message.user.name" :size="28" />
           <div class="ticket-message-list__content">
             <span class="ticket-message-list__author">{{ message.user.name }}</span>
             <p v-if="message.body" class="ticket-message-list__bubble">{{ message.body }}</p>
@@ -163,6 +163,21 @@ const groups = computed<MessageGroup[]>(() => {
   align-items: flex-start;
   gap: $spacing-8;
   max-width: 80%;
+}
+
+// Achado real, reportado pelo usuário com print (avatar "achatado" numa
+// mensagem longa) — sem `flex-shrink: 0`, o padrão do flexbox É encolher
+// TODO item flex proporcionalmente quando o conteúdo junto não cabe no
+// espaço disponível (`max-width: 80%` acima). O texto da bolha
+// (`.ticket-message-list__bubble`) tem um "mínimo" real (a palavra mais
+// longa sem quebrar), mas o Avatar não tem nenhum conteúdo intrínseco
+// grande o bastante pra resistir — ele "perde a disputa" e encolhe até
+// quase 0px de largura enquanto mantém a altura (medido em browser real:
+// `width: 1.9px, height: 28px`, exatamente a distorção "oval achatada"
+// do print). `flex-shrink: 0` trava o Avatar no tamanho fixo que a prop
+// `size` já define, deixando só a bolha de texto encolher.
+.ticket-message-list__avatar {
+  flex-shrink: 0;
 }
 
 .ticket-message-list__item--mine {

@@ -1036,3 +1036,41 @@ correções reais na mesma rodada.
   precificação → Voltar → volta pra Produtos (não mais "Canais de
   venda" fixo); typecheck, ESLint, os 392 testes e build de produção,
   todos limpos.
+
+**KPIs reduzidos a só "Margem média", 2026-09-08, pedido direto do
+usuário** — "Faturamento total"/"Lucro total"/"Produtos" removidos da
+faixa de KPIs (`.product-marketplace-pricing-view__kpi-row`), mantendo
+só "Margem média" com um tooltip novo explicando o que ela considera.
+
+- **Só do front, de propósito** (pedido explícito do usuário) — os 3
+  campos continuam vindo de `meta.totals` na resposta da API
+  (`ProductMarketplacePricingTotals`, `pricingApi.ts`) e o tipo/mapeamento
+  continuam intactos, refletindo o contrato real do backend 1:1 (mesma
+  convenção de sempre — tipo de domínio nunca diverge do schema gerado).
+  Só a EXIBIÇÃO saiu da tela; nenhuma mudança de contrato foi pedida ao
+  backend.
+- **Tooltip novo** (`kpis.averageMarginTooltip`, "Considerando uma
+  unidade de cada produto.") — mesmo padrão já usado nesta mesma view
+  pro hint de preço de campanha/aproximação (`Tooltip` + `Icon="Info"`
+  12px dentro de um `<span tabindex="0">`, cor `{colors.ink-40}` aqui —
+  diferente do amarelo usado nos outros tooltips da tela, que sinalizam
+  uma condição especial; este é só informativo, sem nada de atenção).
+  Mesmo achado real já documentado pro `__suggested-hint` (mesmo
+  arquivo) se repetiu aqui: um ícone de tooltip dentro de um `<span
+  tabindex="0">` no MEIO de uma linha de texto vira, sozinho, uma caixa
+  de bloco (reset global `svg { display: block }`) e cai órfão embaixo
+  do label sem `:deep(svg) { display: inline-block; vertical-align:
+  middle; }` — aplicado de propósito desde a primeira versão, não
+  descoberto de novo por tentativa e erro.
+- **CSS morto removido junto**: as 3 variantes
+  `.product-marketplace-pricing-view__kpi-value--positive/--neutral/--negative`
+  (achado real de 2026-09-04, cor dinâmica do "Lucro total" pelo sinal
+  do total via `outcomeTone`) só existiam pro KPI removido — `outcomeTone`
+  continua importado/usado normalmente pra cor de margem por LINHA
+  (`marginToneClass`), não removido do arquivo.
+- **Verificação**: typecheck, ESLint, os 397 testes (sem regressão) e
+  build de produção, todos limpos. Verificado em browser real
+  (Playwright): os 3 KPIs removidos não aparecem mais no DOM, "Margem
+  média" com o ícone de tooltip fica na MESMA linha do label (sem cair
+  órfão), hover no ícone abre o tooltip com o texto correto
+  ("Considerando uma unidade de cada produto.").
