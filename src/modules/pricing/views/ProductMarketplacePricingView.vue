@@ -222,7 +222,7 @@ function handleSaved(): void {
 }
 
 type ViewMode = 'bar' | 'table'
-const viewMode = ref<ViewMode>('bar')
+const viewMode = ref<ViewMode>('table')
 
 /**
  * Praticado e sugerido viram COLUNAS separadas na visão de tabela (pedido
