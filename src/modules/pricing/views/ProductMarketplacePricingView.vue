@@ -60,7 +60,6 @@ import { computed, onMounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRoute, useRouter } from 'vue-router'
 import {
-  ArrowLineLeft,
   ChartBar,
   Info,
   PencilSimpleLine,
@@ -77,7 +76,6 @@ import Search from '@/shared/components/ui/Search.vue'
 import TabBar from '@/shared/components/ui/TabBar.vue'
 import Tooltip from '@/shared/components/ui/Tooltip.vue'
 import { useApiMessage } from '@/shared/composables/useApiMessage'
-import { useGoBack } from '@/shared/composables/useGoBack'
 import { formatMoney, formatPercent } from '@/shared/services/formatNumber'
 import { parseApiError } from '@/shared/services/parseApiError'
 import CopyablePrice from '../components/CopyablePrice.vue'
@@ -223,21 +221,6 @@ function handleSaved(): void {
   void list.refresh()
 }
 
-/**
- * Corrigido em 2026-09-08, pedido direto do usuário (repassado pela
- * sessão de backend) — até aqui sempre navegava pra `marketplaces`
- * fixo, mesmo quando o usuário chegou nesta tela por outro caminho (ex.:
- * atalho "Ver precificação" a partir de `ProductsView.vue`). Trocado
- * pro mesmo `useGoBack()` já usado no botão de voltar do `AppHeader.vue`
- * (extraído pra `shared/composables/` neste mesmo pedido, 2º consumidor
- * real) — volta pra ONDE o usuário realmente veio, com a mesma guarda
- * contra escapar do app numa aba sem navegação interna. Texto do botão
- * também deixou de citar um destino fixo ("Voltar para Marketplaces"),
- * agora é só "Voltar" (`common.actions.back`, já existente) — nomear um
- * destino que pode não ser mais verdade seria enganoso.
- */
-const { goBack } = useGoBack()
-
 type ViewMode = 'bar' | 'table'
 const viewMode = ref<ViewMode>('bar')
 
@@ -334,14 +317,6 @@ const tableColumns = computed<DataTableColumn[]>(() => [
 
 <template>
   <div class="product-marketplace-pricing-view">
-    <Button
-      class="product-marketplace-pricing-view__back"
-      :icon-before="ArrowLineLeft"
-      variant="ghost"
-      @click="goBack"
-    >
-      {{ $t('common.actions.back') }}
-    </Button>
 
     <h1 class="product-marketplace-pricing-view__title">
       {{ $t('pricing.productMarketplacePricing.title') }}
