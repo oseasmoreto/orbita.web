@@ -1,5 +1,5 @@
-import { resolveBreadcrumbItems } from '@/core/layouts/composables/useBreadcrumb'
-import type { NavGroup } from '@/core/layouts/types/navigation.type'
+import { matchesRoute, resolveBreadcrumbItems } from '@/core/layouts/composables/useBreadcrumb'
+import type { NavGroup, NavItem } from '@/core/layouts/types/navigation.type'
 
 const groups: NavGroup[] = [
   {
@@ -105,5 +105,48 @@ describe('resolveBreadcrumbItems — related routes (deep link variants of the s
     const items = resolveBreadcrumbItems(groupsWithRelated, 'products', 'Produtos')
 
     expect(items).toEqual([{ label: 'Catálogo', to: { name: 'products' } }, { label: 'Produtos' }])
+  })
+})
+
+/**
+ * `matchesRoute` — 2º consumidor real desde 2026-09-08
+ * (`AppSidebarNavItem.vue`, destaque do item ativo na sidebar). Bug
+ * real reportado pelo usuário: a sidebar usava só a classe automática
+ * `router-link-exact-active` do `RouterLink` (compara `to` exato, sem
+ * `relatedRouteNames`) — o item "Ver precificação" (`to: { name:
+ * 'pricing' }`, `relatedRouteNames: ['marketplace-pricing']`) nunca
+ * ficava destacado na tela de precificação de verdade, porque a rota
+ * final é sempre `marketplace-pricing` (com id), nunca `pricing`
+ * sozinho — venha de onde vier (menu, botão em Produtos, botão em
+ * Canais de venda). O caso exato do bug reportado é o 2º teste abaixo.
+ */
+describe('matchesRoute', () => {
+  const pricingItem: NavItem = {
+    id: 'pricing',
+    label: 'Ver precificação',
+    relatedRouteNames: ['marketplace-pricing'],
+    to: { name: 'pricing' },
+  }
+
+  it('matches when the current route is exactly the item.to route', () => {
+    expect(matchesRoute(pricingItem, 'pricing')).toBe(true)
+  })
+
+  it('matches when the current route is only a relatedRouteNames entry (the bug reported by the user)', () => {
+    expect(matchesRoute(pricingItem, 'marketplace-pricing')).toBe(true)
+  })
+
+  it('does not match an unrelated route', () => {
+    expect(matchesRoute(pricingItem, 'marketplaces')).toBe(false)
+  })
+
+  it('does not match when routeName is null/undefined (no active route yet)', () => {
+    expect(matchesRoute(pricingItem, null)).toBe(false)
+    expect(matchesRoute(pricingItem, undefined)).toBe(false)
+  })
+
+  it('does not match a route by name prefix/substring — only exact equality', () => {
+    const item: NavItem = { id: 'products', label: 'Produtos', to: { name: 'products' } }
+    expect(matchesRoute(item, 'products-edit')).toBe(false)
   })
 })

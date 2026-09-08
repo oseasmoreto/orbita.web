@@ -728,3 +728,47 @@ segundo consumidor precisa de verdade, nunca antecipado.
   (`ProductMarketplacePricingView.vue`) navegando Produtos → "Ver
   precificação" → "Voltar" volta corretamente pra Produtos, não mais
   pra uma rota fixa.
+
+## AppSidebarNavItem — destaque do item ativo passou a considerar `relatedRouteNames`
+
+**Bug real, reportado pelo usuário em 2026-09-08** ("quando vou pra
+precificação pelo menu ou por produtos ou por canais, o menu na sidebar
+nao fica ativa") — o destaque do item ativo (`&.router-link-exact-active`,
+CSS) dependia só da classe AUTOMÁTICA que o próprio `RouterLink` aplica,
+comparando o `to` EXATO do item contra a rota atual — sem NENHUMA
+consciência de `relatedRouteNames` (esse campo só alimentava o
+breadcrumb até aqui, `useBreadcrumb.ts`). Qualquer rota alcançada só por
+`relatedRouteNames` (ex.: `marketplace-pricing`, related do item "Ver
+precificação" que aponta pra `pricing`, sem `userMarketplaceId`) nunca
+deixava NENHUM item destacado — venha de onde vier (menu, botão em
+Produtos, botão em Canais de venda), mesmo o breadcrumb mostrando a
+trilha certa.
+
+- **`matchesRoute`** (`useBreadcrumb.ts`) foi promovida a EXPORTADA — 2º
+  consumidor real (`AppSidebarNavItem.vue`), mesma função, mesmo
+  critério de "essa rota pertence a este item" pros 2 lugares que
+  precisam decidir isso (breadcrumb E destaque de sidebar), nunca duas
+  fontes de verdade divergentes pra mesma pergunta.
+- `AppSidebarNavItem.vue` ganhou um `computed` próprio
+  (`isActive = matchesRoute(item, route.name)`) e trocou a classe
+  automática `router-link-exact-active` por uma classe controlada
+  manualmente (`app-sidebar-nav-item__link--active`) — mesmo CSS/mesma
+  régua visual de antes (barra indigo de 3px, fundo `{colors.ink-4}`,
+  peso semibold), só a CONDIÇÃO que decide quando aplicar mudou.
+  `matchesRoute` só compara igualdade EXATA de nome de rota (não prefixo
+  de path), então a mesma pegadinha que motivou trocar `router-link-active`
+  por `-exact-active` em 2026-08-31 (item "Padrão"/Dashboard, rota `/`,
+  ancestral de path de todo o app) não se repete aqui.
+- Teste novo, direto na função promovida (`useBreadcrumb.test.ts`,
+  `describe('matchesRoute', ...)`), cobrindo o caso exato do bug
+  reportado: rota exata do item, rota só via `relatedRouteNames`, rota
+  não-relacionada, `routeName` nulo/indefinido, e "nunca por
+  prefixo/substring de nome de rota".
+- **Verificado em browser real (Playwright)** contra os 3 caminhos
+  citados pelo usuário: item "Ver precificação" pelo menu, pelo botão em
+  "Produtos", e pelo botão no card de "Canais de venda" — os 3 chegam na
+  MESMA rota final (`marketplace-pricing`, com id) e os 3 agora deixam o
+  item corretamente destacado (`getAttribute('class')` confirmando
+  `app-sidebar-nav-item__link--active` presente no DOM real, não só
+  inferido). Screenshot confere a barra indigo/fundo destacado nos 3
+  casos.

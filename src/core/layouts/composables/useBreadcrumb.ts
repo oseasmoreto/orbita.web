@@ -14,7 +14,21 @@ function routeNameOf(item: NavItem): unknown {
   return item.to && typeof item.to === 'object' && 'name' in item.to ? item.to.name : undefined
 }
 
-function matchesRoute(item: NavItem, routeName: unknown): boolean {
+/**
+ * Exportada — 2º consumidor real desde 2026-09-08
+ * (`AppSidebarNavItem.vue`, destaque do item ativo). Achado real,
+ * reportado pelo usuário: o destaque da sidebar usava só a classe
+ * automática `router-link-exact-active` do próprio `RouterLink`, que
+ * compara a rota atual contra o `to` EXATO do item, sem NENHUMA
+ * consciência de `relatedRouteNames` (isso só alimentava o breadcrumb
+ * até aqui) — qualquer rota alcançada só por `relatedRouteNames` (ex.:
+ * `marketplace-pricing`, related do item "Ver precificação" que aponta
+ * pra `pricing`) nunca deixava nenhum item destacado, venha de onde
+ * vier (menu, botão em Produtos, botão em Canais de venda). Mesma
+ * função, mesmo critério de "essa rota pertence a este item" — nunca
+ * duplicar a lógica entre os 2 consumidores.
+ */
+export function matchesRoute(item: NavItem, routeName: unknown): boolean {
   return (
     routeNameOf(item) === routeName ||
     (Boolean(routeName) && Boolean(item.relatedRouteNames?.includes(String(routeName))))
