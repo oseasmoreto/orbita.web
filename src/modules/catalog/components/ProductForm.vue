@@ -40,7 +40,7 @@ const { errors, isSubmitting, reset, submit, values } = useProductForm()
 reset(props.product ?? undefined)
 
 const costPriceInput = useNumberFieldModel(values, 'costPrice')
-const operationalCostInput = useNumberFieldModel(values, 'operationalCost', { nullable: true })
+const shippingCostInput = useNumberFieldModel(values, 'shippingCost', { nullable: true })
 const targetMarginInput = useNumberFieldModel(values, 'targetMargin')
 const weightInput = useNumberFieldModel(values, 'weight', { nullable: true })
 const heightInput = useNumberFieldModel(values, 'height', { nullable: true })
@@ -93,13 +93,13 @@ async function handleSubmit(): Promise<void> {
           />
         </FormGroup>
         <FormGroup
-          :error="fieldError('operationalCost')"
-          :label="$t('catalog.products.form.fields.operationalCost')"
-          :label-tooltip="$t('catalog.products.form.operationalCostTooltip')"
+          :error="fieldError('shippingCost')"
+          :label="$t('catalog.products.form.fields.shippingCost')"
+          :label-tooltip="$t('catalog.products.form.shippingCostTooltip')"
         >
           <Input
-            v-model="operationalCostInput"
-            :invalid="Boolean(fieldError('operationalCost'))"
+            v-model="shippingCostInput"
+            :invalid="Boolean(fieldError('shippingCost'))"
             type="number"
           />
         </FormGroup>

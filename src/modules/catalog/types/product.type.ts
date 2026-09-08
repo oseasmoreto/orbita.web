@@ -10,6 +10,20 @@ type ProductResource = components['schemas']['ProductResource']
  * a API já devolve decimal como string (`fundamentos-api.md` §4) e é
  * assim que `formatMoney`/`formatPercent`
  * (`shared/services/formatNumber.ts`) esperam receber.
+ *
+ * **`operationalCost` renomeado pra `shippingCost` em 2026-09-08**
+ * (mudança de contrato do backend, pedido direto do usuário) —
+ * `PRODUCT.operational_cost` virou `PRODUCT.shipping_cost` ("Custos de
+ * envio"), mesmo dado/comportamento, só o nome mudou. Necessário porque
+ * `USER_MARKETPLACE.operational_cost_percentage` (novo, ver
+ * `userMarketplace.type.ts`) criou um conceito DIFERENTE também chamado
+ * "custo operacional" (percentual, não fixo em R$) — o nome antigo virou
+ * colisão. **Cuidado ao ler o breakdown de precificação**
+ * (`productMarketplacePricing.type.ts`): a chave
+ * `pricing.*_breakdown.operationalCost` NÃO é mais este campo — passou a
+ * significar o NOVO valor calculado a partir da conexão. O valor deste
+ * campo (o custo fixo do PRODUTO) agora aparece em
+ * `pricing.*_breakdown.shippingCost`.
  */
 export interface Product {
   costPrice: ProductResource['cost_price']
@@ -20,7 +34,7 @@ export interface Product {
   length: ProductResource['length']
   name: ProductResource['name']
   ncm: ProductResource['ncm']
-  operationalCost: ProductResource['operational_cost']
+  shippingCost: ProductResource['shipping_cost']
   sku: ProductResource['sku']
   targetMargin: ProductResource['target_margin']
   weight: ProductResource['weight']
@@ -37,7 +51,7 @@ export function toProduct(resource: ProductResource): Product {
     length: resource.length,
     name: resource.name,
     ncm: resource.ncm,
-    operationalCost: resource.operational_cost,
+    shippingCost: resource.shipping_cost,
     sku: resource.sku,
     targetMargin: resource.target_margin,
     weight: resource.weight,

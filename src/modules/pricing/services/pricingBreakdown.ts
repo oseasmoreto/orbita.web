@@ -13,11 +13,27 @@ import type {
  * listagem.
  */
 
-/** Ordem = ordem visual da legenda e das barras, esquerda pra direita. */
+/**
+ * Ordem = ordem visual da legenda e das barras, esquerda pra direita.
+ *
+ * `shippingCost` entrou em 2026-09-08 (rename de `operationalCost` no
+ * PRODUTO — ver `productMarketplacePricing.type.ts`), na MESMA posição
+ * visual que `operationalCost` já ocupava antes do rename (logo depois
+ * de `fixedFee`) — é o mesmo valor de sempre, só o nome mudou.
+ * `operationalCost` continua no array logo em seguida: agora é o
+ * percentual NOVO da EMPRESA (`COMPANY.operational_cost_percentage` —
+ * achado real, 2026-09-08: a 1ª versão desse campo tinha ido pra
+ * `USER_MARKETPLACE`, por conexão; corrigido pelo backend no mesmo dia
+ * pra `COMPANY`, um valor só pra empresa toda), um segmento diferente,
+ * não um duplicado — os dois ficam vizinhos por serem conceitualmente
+ * relacionados ("custo de envio do produto" e "custo operacional da
+ * empresa").
+ */
 export const SEGMENT_KEYS = [
   'costPrice',
   'commission',
   'fixedFee',
+  'shippingCost',
   'operationalCost',
   'tax',
   'ads',

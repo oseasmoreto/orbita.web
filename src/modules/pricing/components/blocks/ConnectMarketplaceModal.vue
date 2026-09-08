@@ -8,6 +8,11 @@
  * (Billing): reset do form disparado por um `watch(open, ...)`, não
  * pelo `defineProps` direto (o modal é reaproveitado pro grid INTEIRO
  * de cards, `MarketplacesView.vue` só troca as props antes de abrir).
+ *
+ * **`operationalCostPercentage` NÃO mora aqui** — cogitado em
+ * 2026-09-08 como percentual por CONEXÃO, corrigido no mesmo dia pelo
+ * backend: o campo é `COMPANY.operationalCostPercentage`, editado em
+ * `CompanyForm.vue` (Identity), não nesta modal.
  */
 import { watch } from 'vue'
 import FormGroup from '@/shared/components/blocks/FormGroup.vue'

@@ -30,6 +30,13 @@ import { z } from 'zod'
  * `responsibleDocument` (`companyFormSchema.ts`) — string vazia é o
  * "não informado" no formulário, convertida pra `null` só na borda do
  * payload (`useProductForm.ts`, `values.ean || null`).
+ *
+ * **`operationalCost` renomeado pra `shippingCost` em 2026-09-08**
+ * (mudança de contrato do backend, `PRODUCT.operational_cost` →
+ * `PRODUCT.shipping_cost`) — mesmo dado, nome mais preciso ("Custos de
+ * envio"). Diferente da rodada anterior (só o label mudou, campo
+ * interno ficou igual) — desta vez o campo mudou de nome de verdade no
+ * backend, então o nome interno também muda, ponta a ponta.
  */
 export function createProductFormSchema(t: (key: string) => string) {
   return z.object({
@@ -39,10 +46,7 @@ export function createProductFormSchema(t: (key: string) => string) {
     length: z.number().positive().nullable(),
     name: z.string().min(1, t('catalog.products.form.errors.nameRequired')),
     ncm: z.string(),
-    operationalCost: z
-      .number()
-      .min(0, t('catalog.products.form.errors.operationalCostMin'))
-      .nullable(),
+    shippingCost: z.number().min(0, t('catalog.products.form.errors.shippingCostMin')).nullable(),
     sku: z.string().min(1, t('catalog.products.form.errors.skuRequired')),
     targetMargin: z
       .number()

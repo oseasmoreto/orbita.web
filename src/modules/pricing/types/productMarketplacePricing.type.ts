@@ -24,13 +24,29 @@ type PricingEvaluationResource = Omit<
 }
 
 /**
- * Quebra da composição do preço em 10 parcelas (pedido ao backend,
+ * Quebra da composição do preço em 11 parcelas (pedido ao backend,
  * 2026-09-03, pra desenhar a barra empilhada do mockup —
  * `PricingDashboardMockupView.vue` — com dado real). Soma sempre bate
- * com o preço correspondente: `costPrice + operationalCost + commission
- * + fixedFee + tax + ads + affiliate + coupon + individualFixedFee +
- * profit = price`. `profit` pode vir negativo (prejuízo) se o preço
- * praticado for baixo demais.
+ * com o preço correspondente: `costPrice + shippingCost +
+ * operationalCost + commission + fixedFee + tax + ads + affiliate +
+ * coupon + individualFixedFee + profit = price`. `profit` pode vir
+ * negativo (prejuízo) se o preço praticado for baixo demais.
+ *
+ * **Rename/colisão de nome, 2026-09-08 (pedido direto do usuário)** —
+ * `PRODUCT.operational_cost` (custo FIXO em R$ do produto) virou
+ * `PRODUCT.shipping_cost` ("Custos de envio"), porque
+ * `COMPANY.operational_cost_percentage` (novo, percentual da EMPRESA —
+ * achado real, mesmo dia: a 1ª versão desse campo tinha ido pra
+ * `USER_MARKETPLACE`, por conexão; corrigido pelo backend logo em
+ * seguida pra `COMPANY`, um valor só pra empresa toda) criou um segundo
+ * conceito com o mesmo nome antigo. Efeito aqui: `shippingCost` é o
+ * campo NOVO (mesmo valor que antes vivia em `operationalCost`);
+ * `operationalCost` continua existindo nesta interface, mas agora vem
+ * de uma fonte DIFERENTE — o percentual da EMPRESA, já convertido pro
+ * valor em R$ deduzido do lucro. **Cuidado**: qualquer leitura antiga de
+ * `breakdown.operationalCost` pra mostrar "o
+ * custo operacional do PRODUTO" está lendo o valor ERRADO desde esta
+ * mudança — o valor do produto agora mora em `breakdown.shippingCost`.
  *
  * `affiliate` entrou em 2026-09-03 (mesma planilha real, confirmado com
  * o usuário antes de codar pelo backend) — mesmo tratamento de `ads`
@@ -78,6 +94,7 @@ export interface PricingBreakdownPercentages {
   individualFixedFee: string
   operationalCost: string
   profit: string
+  shippingCost: string
   tax: string
 }
 
@@ -92,6 +109,7 @@ export interface PricingBreakdown {
   operationalCost: string
   percentageOfTotal: PricingBreakdownPercentages
   profit: string
+  shippingCost: string
   tax: string
 }
 
@@ -160,6 +178,7 @@ function toPricingBreakdownPercentages(
     individualFixedFee: percentages.individual_fixed_fee,
     operationalCost: percentages.operational_cost,
     profit: percentages.profit,
+    shippingCost: percentages.shipping_cost,
     tax: percentages.tax,
   }
 }
@@ -178,6 +197,7 @@ function toPricingBreakdown(
     operationalCost: breakdown.operational_cost,
     percentageOfTotal: toPricingBreakdownPercentages(breakdown.percentage_of_total),
     profit: breakdown.profit,
+    shippingCost: breakdown.shipping_cost,
     tax: breakdown.tax,
   }
 }

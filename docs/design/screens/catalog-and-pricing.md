@@ -1,6 +1,6 @@
 # Telas — Catalog e Pricing (marketplaces)
 
-ProductLaunchList, atalho "Ver precificação" em ProductsView, AdminMarketplacesView/AdminMarketplaceForm, MarketplaceLogo, MarketplacesView, ConnectMarketplaceModal, adendo `coupon`/`percentage_of_total`/`individual_fixed_fee` de ProductMarketplacePricingView, ProductMarketplacesView, AdminProductCategoriesView, AdminCategoryMarketplaceList.
+ProductLaunchList, ProductForm (rename `operationalCost`→`shippingCost`), atalho "Ver precificação" em ProductsView, AdminMarketplacesView/AdminMarketplaceForm, MarketplaceLogo, MarketplacesView, ConnectMarketplaceModal, adendo `coupon`/`percentage_of_total`/`individual_fixed_fee`/`shippingCost`+`operationalCost` (da EMPRESA, ver `COMPANY.operationalCostPercentage` em `billing-and-identity.md`) de ProductMarketplacePricingView, ProductMarketplacesView, AdminProductCategoriesView, AdminCategoryMarketplaceList.
 
 > Faz parte do design system do Orbita — tokens e princípios gerais ficam em
 > `docs/design/design-system.md`, este arquivo é a continuação dele.
@@ -73,6 +73,41 @@ produto.
   honesto → criar lançamento (incluindo escolher "Hoje" no `DatePicker`
   dentro do `Modal`, confirmando o fix de z-index) → editar → excluir,
   ciclo completo funcionando ponta a ponta contra a API real.
+
+## ProductForm (`modules/catalog/components/ProductForm.vue`) — rename `operationalCost` → `shippingCost`
+
+**Mudança de contrato do backend, 2026-09-08, aviso cross-session da
+sessão de backend `ticket-message-image-attachments`** —
+`PRODUCT.operational_cost` foi renomeado pra `PRODUCT.shipping_cost`
+("Custos de envio"), mesmo valor/comportamento, só o nome mudou.
+Necessário porque `USER_MARKETPLACE.operational_cost_percentage` (novo,
+ver `ConnectMarketplaceModal` abaixo) criou um SEGUNDO conceito também
+chamado "custo operacional" (percentual da conexão, não fixo em R$ do
+produto) — colisão de nome resolvida no lado do backend renomeando o
+campo mais antigo.
+
+- **Diferente da rodada anterior (2026-09-04, só o LABEL mudou pra
+  "Custos de envio", campo interno `operationalCost` ficou intacto por
+  pedido explícito do usuário)** — desta vez é um rename real de
+  contrato, então o campo interno muda ponta a ponta: `product.type.ts`
+  (`Product.shippingCost`), `productFormSchema.ts`
+  (`ProductFormValues.shippingCost`), `useProductForm.ts`
+  (`toFormValues`/`toRequestPayload`), `ProductForm.vue`
+  (`shippingCostInput`, `fieldError('shippingCost')`). Chaves i18n
+  correspondentes renomeadas (`fields.shippingCost`,
+  `shippingCostTooltip`, `errors.shippingCostMin`) — o TEXTO visível
+  ("Custos de envio", mesmo tooltip de embalagem/etiqueta/combustível)
+  não muda, só a chave interna.
+- **Efeito colateral no breakdown de precificação** (ver adendo na
+  seção `ProductMarketplacePricingView` abaixo) — a chave
+  `pricing.*_breakdown.operationalCost` (que antes carregava o valor
+  deste campo) passou a significar OUTRA coisa (o percentual novo da
+  conexão). O valor deste campo agora mora em
+  `pricing.*_breakdown.shippingCost`.
+- Verificado em browser real contra o backend local: label "Custos de
+  envio" + tooltip inalterados no formulário de criação, `POST
+  /products` manda `shipping_cost` (não mais `operational_cost`),
+  resposta grava e devolve `shipping_cost: "4.75"` corretamente.
 
 ## ProductsView (`modules/catalog/views/ProductsView.vue`) — atalho "Ver precificação"
 
@@ -493,6 +528,29 @@ obrigatório — todos os outros (percentuais, cupom) são sempre opcionais.
   confirmar o `422` sem o campo e o sucesso com ele) fica pendente da
   mesma limitação de navegador real já registrada nesta sessão.
 
+**`operationalCostPercentage` — NÃO entrou nesta modal, 2026-09-08.**
+Primeira versão do dia (aviso cross-session da sessão de backend
+`ticket-message-image-attachments`) tentava um 7º campo aqui
+(`USER_MARKETPLACE.operational_cost_percentage`, percentual POR
+CONEXÃO) — implementado, verificado, e só então descoberto (testando em
+browser real) que o backend quebrava com `500`
+(`SQLSTATE[42703]: Undefined column "operational_cost_percentage" of
+relation "user_marketplaces"`). Reportado à sessão de backend via
+mensagem cross-session; a resposta corrigiu a premissa por completo — o
+usuário já tinha corrigido o backend direto: o campo sempre devia ter
+sido **`COMPANY.operationalCostPercentage`** (um valor só pra empresa
+INTEIRA, mesmo tratamento de `sales_tax_percentage`, não varia por
+canal/conexão), não `USER_MARKETPLACE`. A 1ª mensagem cross-session
+estava errada; pegamos o timing exato da correção acontecendo do lado
+de lá. Revertido por completo desta modal (`ConnectMarketplaceModal.vue`,
+`useUserMarketplaceForm.ts`, `userMarketplaceFormSchema.ts`,
+`userMarketplace.type.ts`, `schema.d.ts`) — implementado do jeito certo
+em `CompanyForm.vue`, ver `billing-and-identity.md`. No breakdown de
+precificação, a chave `pricing.*_breakdown.operational_cost` continua
+existindo normalmente (ver adendo logo abaixo) — só a FONTE do dado
+mudou (`COMPANY`, não `USER_MARKETPLACE`), o contrato de resposta do
+breakdown em si nunca mudou.
+
 ## ProductMarketplacePricingView (`modules/pricing/views/ProductMarketplacePricingView.vue`) — adendo `coupon`
 
 **Mesmo pedido/achado de 2026-09-04 acima** — `coupon` virou a 8ª parcela
@@ -859,6 +917,80 @@ verticais diferentes).
   regressão — e build de produção). Confirmação visual do alinhamento
   real nas 12 colunas numéricas fica pendente do usuário, mesma
   limitação de navegador real desta sessão.
+
+**Adendo `shippingCost` (10ª parcela, rename) + `operationalCost`
+(11ª, novo significado), 2026-09-08 — aviso cross-session da sessão de
+backend `ticket-message-image-attachments`, corrigido no mesmo dia** —
+2 mudanças de contrato relacionadas:
+
+1. `PRODUCT.operational_cost` renomeado pra `PRODUCT.shipping_cost` (ver
+   seção `ProductForm` acima) — a chave do breakdown que carregava esse
+   valor também mudou: `pricing.*_breakdown.shipping_cost`
+   (`shippingCost` no domínio). **Mesma posição visual que
+   `operationalCost` já ocupava** na barra/legenda/tabela (logo depois
+   de `fixedFee`) — é o mesmo valor de sempre, só o nome mudou, tanto no
+   backend quanto no `SEGMENT_KEYS`
+   (`pricingBreakdown.ts`)/`product-marketplace-pricing-view__segment--*`
+   (cor idêntica à que `operationalCost` tinha antes: `color-mix(in
+   srgb, $color-accent-orange 50%, $color-accent-red)`).
+2. `COMPANY.operational_cost_percentage` (novo, ver `CompanyForm` em
+   `billing-and-identity.md` — **não** `ConnectMarketplaceModal`, ver
+   correção logo acima) passou a alimentar a chave
+   `pricing.*_breakdown.operational_cost` — MESMO NOME de chave que
+   antes pertencia ao produto, mas agora com um valor/fonte
+   COMPLETAMENTE diferente (percentual da EMPRESA INTEIRA, deduzido do
+   lucro igual a `ads`/`affiliate`, mas um valor só, não varia por
+   conexão). Posicionado como 11ª parcela, logo depois do `shippingCost`
+   (mesmo agrupamento visual "custos operacionais"), com cor nova
+   (`color-mix(in srgb, $color-accent-orange 25%, $color-accent-red)` —
+   próximo degrau da mesma rampa quente, distinto do `shippingCost` ao
+   lado).
+- **Achado real, mesmo dia — a 1ª versão desta mudança tinha o item 2
+  errado**: implementamos `operational_cost_percentage` em
+  `USER_MARKETPLACE` (por conexão) a partir do primeiro aviso
+  cross-session, verificamos em browser real e encontramos um `500`
+  (`SQLSTATE[42703]: Undefined column "operational_cost_percentage" of
+  relation "user_marketplaces"`) — reportamos à sessão de backend, que
+  respondeu que o usuário já tinha corrigido a premissa direto com eles:
+  o campo sempre devia ter sido `COMPANY`, um valor só pra empresa
+  inteira, não por conexão. Revertido por completo do lado de
+  `USER_MARKETPLACE`/`ConnectMarketplaceModal.vue`, implementado do
+  jeito certo em `CompanyForm.vue`. A chave do BREAKDOWN
+  (`pricing.*_breakdown.operational_cost`) nunca mudou nos dois cenários
+  — só a fonte do dado.
+- **Cuidado explícito, documentado no código (`productMarketplacePricing.type.ts`,
+  `pricingBreakdown.ts`)**: qualquer leitura futura de
+  `breakdown.operationalCost` pra "mostrar o custo operacional do
+  PRODUTO" está lendo o valor ERRADO desde esta mudança — esse dado
+  agora mora em `breakdown.shippingCost`.
+- 11 segmentos reais agora (era 10) — `SEGMENT_KEYS` cresceu de
+  `['costPrice', 'commission', 'fixedFee', 'operationalCost', 'tax',
+  'ads', 'affiliate', 'coupon', 'individualFixedFee', 'profit']` pra
+  `['costPrice', 'commission', 'fixedFee', 'shippingCost',
+  'operationalCost', 'tax', 'ads', 'affiliate', 'coupon',
+  'individualFixedFee', 'profit']` — propagação automática pra
+  barra/legenda/tabela via o mesmo `v-for` dinâmico de sempre, sem
+  mudança de template.
+- Chave i18n nova `pricing.productMarketplacePricing.segments.shippingCost`
+  ("Envio") — `operationalCost` mantém o label existente ("Operacional"),
+  agora com significado real (antes era um placeholder pro valor do
+  produto, hoje é o percentual de verdade da empresa).
+- **Round-trip visual do NOVO segmento `operationalCost` verificado em
+  browser real, do jeito certo (via `CompanyForm.vue`, não
+  `ConnectMarketplaceModal.vue`)**: `PATCH /company` com
+  `operational_cost_percentage: 12.5` gravou e devolveu
+  `"operational_cost_percentage":"12.50"` corretamente.
+  `shippingCost` (rename puro do produto) também verificado ponta a
+  ponta: criar produto com `shipping_cost` preenchido e consultar `GET
+  /user-marketplaces/{id}/products` mostra o valor correto na chave
+  nova. O reflexo do valor da empresa dentro do BREAKDOWN em si
+  (`pricing.*_breakdown.operational_cost` calculado a partir de um
+  `operational_cost_percentage` real da empresa) não foi testado
+  isoladamente nesta rodada — depende do motor de precificação já
+  aplicar o valor certo, fora do escopo desta verificação de UI.
+- Verificado (typecheck/lint/suíte completa — 403 testes, incluindo um
+  teste novo confirmando `shippingCost`/`operationalCost` como 2
+  segmentos distintos com valores próprios — e build de produção).
 
 ## ProductMarketplacesView (`modules/pricing/views/ProductMarketplacesView.vue`)
 

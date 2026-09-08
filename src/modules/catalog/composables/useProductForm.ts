@@ -12,7 +12,7 @@ function emptyFormValues(): ProductFormValues {
     length: null,
     name: '',
     ncm: '',
-    operationalCost: null,
+    shippingCost: null,
     sku: '',
     targetMargin: 0,
     weight: null,
@@ -28,7 +28,7 @@ function toFormValues(product: Product): ProductFormValues {
     length: product.length === null ? null : Number(product.length),
     name: product.name,
     ncm: product.ncm ?? '',
-    operationalCost: product.operationalCost === null ? null : Number(product.operationalCost),
+    shippingCost: product.shippingCost === null ? null : Number(product.shippingCost),
     sku: product.sku,
     targetMargin: Number(product.targetMargin),
     weight: product.weight === null ? null : Number(product.weight),
@@ -42,7 +42,8 @@ function toFormValues(product: Product): ProductFormValues {
  * `ean`/`ncm` opcionais (2026-09-04) — `values.ean`/`values.ncm` nunca é
  * `null` no form (`Input.vue` só trabalha com `string`), string vazia
  * vira `null` aqui, mesmo padrão de `responsible_document`
- * (`useCompanyForm.ts`).
+ * (`useCompanyForm.ts`). `shipping_cost` (2026-09-08, era
+ * `operational_cost`) segue o mesmo tratamento de sempre.
  */
 function toRequestPayload(values: ProductFormValues) {
   return {
@@ -52,7 +53,7 @@ function toRequestPayload(values: ProductFormValues) {
     length: values.length,
     name: values.name,
     ncm: values.ncm || null,
-    operational_cost: values.operationalCost,
+    shipping_cost: values.shippingCost,
     sku: values.sku,
     target_margin: values.targetMargin,
     weight: values.weight,

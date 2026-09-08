@@ -18,7 +18,11 @@ const breakdown: PricingBreakdown = {
   coupon: '1.00',
   fixedFee: '4.00',
   individualFixedFee: '0.00',
-  operationalCost: '3.00',
+  // `operationalCost` (2026-09-08) — NOVO conceito, percentual da
+  // EMPRESA (`COMPANY.operational_cost_percentage`). Diferente do valor
+  // que antes vivia aqui (custo fixo do PRODUTO, renomeado pra
+  // `shippingCost` abaixo).
+  operationalCost: '2.00',
   // Aproximação de `value ÷ 69.91 × 100` pra cada parcela — não precisa
   // fechar 100% exato nem bater com precisão de casas decimais, o que
   // este teste verifica é que `buildPriceSegments` REPASSA esses valores
@@ -32,11 +36,16 @@ const breakdown: PricingBreakdown = {
     coupon: '1.43',
     fixedFee: '5.72',
     individualFixedFee: '0.00',
-    operationalCost: '4.29',
+    operationalCost: '2.86',
     profit: '12.07',
+    shippingCost: '4.29',
     tax: '10.00',
   },
   profit: '8.44',
+  // `shippingCost` (2026-09-08) — rename de `PRODUCT.operational_cost`,
+  // mesmo valor/posição visual que `operationalCost` tinha antes do
+  // rename.
+  shippingCost: '3.00',
   tax: '6.99',
 }
 
@@ -131,6 +140,7 @@ describe('buildPriceSegments', () => {
       'costPrice',
       'commission',
       'fixedFee',
+      'shippingCost',
       'operationalCost',
       'tax',
       'ads',
@@ -182,6 +192,25 @@ describe('buildPriceSegments', () => {
       percent: '4.29',
       value: '3.00',
       widthPercent: 4.29,
+    })
+  })
+
+  it('keeps shippingCost (renamed from operationalCost, the product fixed cost) and operationalCost (new, the connection percentage) as 2 distinct segments', () => {
+    const segments = buildPriceSegments(breakdown)
+    const shippingCostSegment = segments.find((segment) => segment.key === 'shippingCost')
+    const operationalCostSegment = segments.find((segment) => segment.key === 'operationalCost')
+
+    expect(shippingCostSegment).toEqual({
+      key: 'shippingCost',
+      percent: '4.29',
+      value: '3.00',
+      widthPercent: 4.29,
+    })
+    expect(operationalCostSegment).toEqual({
+      key: 'operationalCost',
+      percent: '2.86',
+      value: '2.00',
+      widthPercent: 2.86,
     })
   })
 

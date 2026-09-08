@@ -1224,8 +1224,14 @@ export interface components {
             user: components["schemas"]["AdminUserResource"];
             name: string;
             document: string;
+            /**
+             * @description Puramente informativo (decisão 2026-09-08, pedido direto do
+             *     usuário) — nullable, sem nenhuma regra de bloqueio no backend.
+             */
+            tax_regime: components["schemas"]["TaxRegime"] | null;
             responsible_document: string | null;
             sales_tax_percentage: string;
+            operational_cost_percentage: string | null;
             /** Format: date-time */
             created_at: string | null;
         };
@@ -1388,12 +1394,18 @@ export interface components {
             id: string;
             name: string;
             document: string;
+            /**
+             * @description Puramente informativo (decisão 2026-09-08, pedido direto do
+             *     usuário) — nullable, sem nenhuma regra de bloqueio no backend.
+             */
+            tax_regime: components["schemas"]["TaxRegime"] | null;
             responsible_document: string | null;
             /**
              * @description Percentual como string (fundamentos-api.md §4) — já vem string
              *     do cast decimal:2 do Model.
              */
             sales_tax_percentage: string;
+            operational_cost_percentage: string | null;
             /** Format: date-time */
             created_at: string | null;
         };
@@ -1409,6 +1421,17 @@ export interface components {
             document: string;
             responsible_document?: string | null;
             sales_tax_percentage: number;
+            /**
+             * @description Puramente informativo (decisão 2026-09-08, pedido direto do
+             *     usuário) — nullable, aceita qualquer um dos 3 valores.
+             */
+            tax_regime?: components["schemas"]["TaxRegime"] | null;
+            /**
+             * @description Percentual do custo operacional do vendedor (decisão
+             *     2026-09-08, pedido direto do usuário) — mora aqui, não por
+             *     conexão de marketplace.
+             */
+            operational_cost_percentage?: number | null;
         };
         /** CreateMarketplaceRequest */
         CreateMarketplaceRequest: {
@@ -1492,7 +1515,7 @@ export interface components {
             ncm?: string | null;
             cost_price: number;
             target_margin: number;
-            operational_cost?: number | null;
+            shipping_cost?: number | null;
             weight?: number | null;
             height?: number | null;
             width?: number | null;
@@ -1713,6 +1736,17 @@ export interface components {
                  */
                 suggested_breakdown: {
                     cost_price: string;
+                    /**
+                     * @description Renomeado de "operational_cost" (decisão 2026-09-08, pedido
+                     *     direto do usuário) — era PRODUCT.operational_cost, valor
+                     *     FIXO em R$, agora PRODUCT.shipping_cost.
+                     */
+                    shipping_cost: string;
+                    /**
+                     * @description NOVO (decisão 2026-09-08) — USER_MARKETPLACE.operational_cost_percentage,
+                     *     percentual do preço de venda (diferente de shipping_cost
+                     *     acima), já convertido pro valor em R$ deduzido do lucro.
+                     */
                     operational_cost: string;
                     commission: string;
                     fixed_fee: string;
@@ -1735,6 +1769,7 @@ export interface components {
                      */
                     percentage_of_total: {
                         cost_price: string;
+                        shipping_cost: string;
                         operational_cost: string;
                         commission: string;
                         fixed_fee: string;
@@ -1748,6 +1783,17 @@ export interface components {
                 };
                 practiced_breakdown: {
                     cost_price: string;
+                    /**
+                     * @description Renomeado de "operational_cost" (decisão 2026-09-08, pedido
+                     *     direto do usuário) — era PRODUCT.operational_cost, valor
+                     *     FIXO em R$, agora PRODUCT.shipping_cost.
+                     */
+                    shipping_cost: string;
+                    /**
+                     * @description NOVO (decisão 2026-09-08) — USER_MARKETPLACE.operational_cost_percentage,
+                     *     percentual do preço de venda (diferente de shipping_cost
+                     *     acima), já convertido pro valor em R$ deduzido do lucro.
+                     */
                     operational_cost: string;
                     commission: string;
                     fixed_fee: string;
@@ -1764,6 +1810,7 @@ export interface components {
                      */
                     percentage_of_total: {
                         cost_price: string;
+                        shipping_cost: string;
                         operational_cost: string;
                         commission: string;
                         fixed_fee: string;
@@ -1811,7 +1858,7 @@ export interface components {
              *     aqui, os três já vêm como string do cast decimal:2 do Model.
              */
             cost_price: string;
-            operational_cost: string | null;
+            shipping_cost: string | null;
             target_margin: string;
             /**
              * @description weight em kg, height/width/length em cm — nullable (opcionais
@@ -1947,6 +1994,13 @@ export interface components {
          * @enum {string}
          */
         SubscriptionStatus: "pending" | "active" | "canceled" | "expired" | "payment_failed";
+        /**
+         * TaxRegime
+         * @description Regime tributário da empresa do vendedor (decisão 2026-09-08, pedido direto do usuário) — puramente informativo: o frontend mostra um aviso acima do campo avisando que porte maior que os 3 listados aqui não é contemplado pela plataforma, mas o backend não bloqueia nada (nullable, qualquer um dos 3 valores é aceito normalmente em CreateCompanyAction/ UpdateCompanyAction).
+         *
+         * @enum {string}
+         */
+        TaxRegime: "individual" | "mei" | "simples_nacional";
         /** TicketMessageAttachmentResource */
         TicketMessageAttachmentResource: {
             id: string;
@@ -2019,6 +2073,8 @@ export interface components {
             document?: string;
             responsible_document?: string | null;
             sales_tax_percentage?: number;
+            tax_regime?: components["schemas"]["TaxRegime"] | null;
+            operational_cost_percentage?: number | null;
         };
         /** UpdateMarketplaceRequest */
         UpdateMarketplaceRequest: {
@@ -2085,7 +2141,7 @@ export interface components {
             ncm?: string | null;
             cost_price?: number;
             target_margin?: number;
-            operational_cost?: number | null;
+            shipping_cost?: number | null;
             weight?: number | null;
             height?: number | null;
             width?: number | null;

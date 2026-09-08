@@ -9,7 +9,7 @@ const validPayload = {
   length: null,
   name: 'Camiseta azul',
   ncm: '61091000',
-  operationalCost: null,
+  shippingCost: null,
   sku: 'SKU-001',
   targetMargin: 20,
   weight: null,
@@ -42,16 +42,14 @@ describe('productFormSchema', () => {
     expect(result.success).toBe(false)
   })
 
-  it('rejects a negative operational cost', () => {
-    const result = productFormSchema.safeParse({ ...validPayload, operationalCost: -1 })
+  it('rejects a negative shipping cost', () => {
+    const result = productFormSchema.safeParse({ ...validPayload, shippingCost: -1 })
     expect(result.success).toBe(false)
   })
 
-  it('accepts a null or zero operational cost — it is optional', () => {
-    expect(productFormSchema.safeParse({ ...validPayload, operationalCost: null }).success).toBe(
-      true,
-    )
-    expect(productFormSchema.safeParse({ ...validPayload, operationalCost: 0 }).success).toBe(true)
+  it('accepts a null or zero shipping cost — it is optional', () => {
+    expect(productFormSchema.safeParse({ ...validPayload, shippingCost: null }).success).toBe(true)
+    expect(productFormSchema.safeParse({ ...validPayload, shippingCost: 0 }).success).toBe(true)
   })
 
   it('rejects a target margin above 100', () => {

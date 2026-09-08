@@ -32,7 +32,7 @@
  * - Abas usam as CONEXÕES ATIVAS de verdade do usuário
  *   (`useMarketplaceConnections`), não 3 marketplaces fake fixos — pode
  *   ser 1, pode ser 5, depende de quantos o usuário conectou.
- * - 10 segmentos reais (`SEGMENT_KEYS`, `pricingBreakdown.ts`) — sem
+ * - 11 segmentos reais (`SEGMENT_KEYS`, `pricingBreakdown.ts`) — sem
  *   "Comissão campanha" do mockup (8 segmentos especulados):
  *   `USER_MARKETPLACE.campaignDiscountPercentage` não entra na fórmula
  *   real (confirmado com o backend), nunca existiu de verdade aqui.
@@ -41,6 +41,13 @@
  *   `individualFixedFee` (`MARKETPLACE.individualFixedFee`, "taxa fixa
  *   pra PF", mesmo dia, tarefa 90) entrou como 9ª — só diferente de 0
  *   quando a conexão é PF (`storeDocumentType: 'individual'`).
+ *   `operationalCost` (2026-09-08, `COMPANY.operational_cost_percentage`
+ *   — achado real, mesmo dia: 1ª versão tinha ido pra `USER_MARKETPLACE`,
+ *   corrigida pelo backend pra `COMPANY`, valor só pra empresa toda)
+ *   entrou como 11ª — junto com o rename de `PRODUCT.operational_cost`
+ *   pra `shipping_cost` (10ª), que resolveu a colisão de nome entre os
+ *   dois conceitos (um é custo FIXO do produto, o outro é percentual da
+ *   empresa).
  * - Cada produto tem DOIS preços agora (praticado E sugerido, não um
  *   `salePrice` só) — `resolveActivePricing()` decide qual vira a barra
  *   principal (praticado quando existe, senão sugerido), com um Badge
@@ -962,8 +969,20 @@ const tableColumns = computed<DataTableColumn[]>(() => [
   background-color: $color-accent-orange;
 }
 
+// `shippingCost` (2026-09-08, rename de `operationalCost` no PRODUTO —
+// ver `pricingBreakdown.ts`) herda a MESMA cor que `operationalCost` já
+// tinha antes do rename — é o mesmo valor de sempre, só o nome mudou.
+.product-marketplace-pricing-view__segment--shippingCost {
+  background-color: color-mix(in srgb, $color-accent-orange 70%, $color-accent-red);
+}
+
+// `operationalCost` (NOVO, 2026-09-08) — percentual da EMPRESA
+// (`COMPANY.operational_cost_percentage` — achado real, mesmo dia: 1ª
+// versão tinha ido pra `USER_MARKETPLACE`, corrigida pelo backend pra
+// `COMPANY`), conceito diferente de `shippingCost` acima. Próximo
+// degrau da mesma rampa quente, mais perto do vermelho.
 .product-marketplace-pricing-view__segment--operationalCost {
-  background-color: color-mix(in srgb, $color-accent-orange 50%, $color-accent-red);
+  background-color: color-mix(in srgb, $color-accent-orange 10%, $color-accent-red);
 }
 
 // Achado real, 2026-09-04, reportado pelo usuário DUAS vezes ("mesma
@@ -1016,6 +1035,10 @@ const tableColumns = computed<DataTableColumn[]>(() => [
 
 .product-marketplace-pricing-view__legend-swatch--fixedFee {
   @extend .product-marketplace-pricing-view__segment--fixedFee;
+}
+
+.product-marketplace-pricing-view__legend-swatch--shippingCost {
+  @extend .product-marketplace-pricing-view__segment--shippingCost;
 }
 
 .product-marketplace-pricing-view__legend-swatch--operationalCost {

@@ -15,15 +15,27 @@
  * decide navegação/refresh, o form só sabe validar e submeter).
  */
 import { computed, onMounted } from 'vue'
+import { useI18n } from 'vue-i18n'
 import FormGroup from '@/shared/components/blocks/FormGroup.vue'
 import Button from '@/shared/components/ui/Button.vue'
+import Icon from '@/shared/components/ui/Icon.vue'
 import Input from '@/shared/components/ui/Input.vue'
+import Select from '@/shared/components/ui/Select.vue'
 import Spinner from '@/shared/components/ui/Spinner.vue'
+import { Warning } from '@/shared/components/icons/regular.generated'
 import { useNumberFieldModel } from '@/shared/composables/useNumberFieldModel'
 import { useCompanyForm } from '../composables/useCompanyForm'
-import { isCnpjDocument } from '../schemas/companyFormSchema'
+import { isCnpjDocument, TAX_REGIME_OPTIONS } from '../schemas/companyFormSchema'
 import type { CompanyFormValues } from '../schemas/companyFormSchema'
 import type { Company } from '../types/company.type'
+import type { SelectOption } from '@/shared/components/ui/types/select.type'
+
+const { t } = useI18n()
+
+const taxRegimeOptions: SelectOption[] = TAX_REGIME_OPTIONS.map((value) => ({
+  label: t(`identity.companyRegistration.taxRegimeOptions.${value}`),
+  value,
+}))
 
 const emit = defineEmits<{ saved: [company: Company] }>()
 
@@ -31,6 +43,9 @@ const { errors, existingCompany, hasLoadError, isLoading, isSubmitting, load, su
   useCompanyForm()
 
 const salesTaxPercentageInput = useNumberFieldModel(values, 'salesTaxPercentage')
+const operationalCostPercentageInput = useNumberFieldModel(values, 'operationalCostPercentage', {
+  nullable: true,
+})
 
 onMounted(load)
 
@@ -99,6 +114,35 @@ async function handleSubmit(): Promise<void> {
       />
     </FormGroup>
 
+    <FormGroup
+      :error="fieldError('operationalCostPercentage')"
+      :label="$t('identity.companyRegistration.fields.operationalCostPercentage')"
+      :label-tooltip="$t('identity.companyRegistration.operationalCostPercentageTooltip')"
+    >
+      <Input
+        v-model="operationalCostPercentageInput"
+        :invalid="Boolean(fieldError('operationalCostPercentage'))"
+        type="number"
+      />
+    </FormGroup>
+
+    <p class="company-form__notice">
+      <Icon :icon="Warning" :size="16" />
+      {{ $t('identity.companyRegistration.taxRegimeWarning') }}
+    </p>
+
+    <FormGroup
+      :error="fieldError('taxRegime')"
+      :label="$t('identity.companyRegistration.fields.taxRegime')"
+    >
+      <Select
+        v-model="values.taxRegime"
+        :invalid="Boolean(fieldError('taxRegime'))"
+        :options="taxRegimeOptions"
+        :placeholder="$t('identity.companyRegistration.taxRegimePlaceholder')"
+      />
+    </FormGroup>
+
     <Button :disabled="isSubmitting" class="company-form__submit" type="submit">
       {{
         existingCompany
@@ -128,5 +172,19 @@ async function handleSubmit(): Promise<void> {
 
 .company-form__submit {
   margin-top: $spacing-8;
+}
+
+// Mesmo padrão de `.my-subscription-view__notice` (Billing) —
+// puramente informativo, nunca bloqueia o submit: o backend não valida
+// nada sobre `tax_regime` (2026-09-08, pedido direto do usuário).
+.company-form__notice {
+  display: flex;
+  align-items: center;
+  gap: $spacing-8;
+  padding: $spacing-12 $spacing-16;
+  font-size: $font-size-sm;
+  color: $color-accent-yellow;
+  background-color: color-mix(in srgb, $color-accent-yellow 12%, transparent);
+  border-radius: $radius-8;
 }
 </style>

@@ -8,15 +8,19 @@ const companyFormSchema = createCompanyFormSchema((key) => key)
 const validCpfPayload = {
   document: '11144477735',
   name: 'Loja da Maria',
+  operationalCostPercentage: null,
   responsibleDocument: '',
   salesTaxPercentage: 6,
+  taxRegime: '',
 }
 
 const validCnpjPayload = {
   document: '11222333000181',
   name: 'Comércio LTDA',
+  operationalCostPercentage: null,
   responsibleDocument: '11144477735',
   salesTaxPercentage: 6,
+  taxRegime: '',
 }
 
 describe('isCnpjDocument', () => {
@@ -81,5 +85,39 @@ describe('companyFormSchema', () => {
 
   it('does not require a responsible document when the company document is already a CPF', () => {
     expect(companyFormSchema.safeParse(validCpfPayload).success).toBe(true)
+  })
+
+  it('accepts each of the 3 real tax regime values, purely informational', () => {
+    expect(
+      companyFormSchema.safeParse({ ...validCpfPayload, taxRegime: 'individual' }).success,
+    ).toBe(true)
+    expect(companyFormSchema.safeParse({ ...validCpfPayload, taxRegime: 'mei' }).success).toBe(true)
+    expect(
+      companyFormSchema.safeParse({ ...validCpfPayload, taxRegime: 'simples_nacional' }).success,
+    ).toBe(true)
+  })
+
+  it('rejects a tax regime value outside the 3 real options', () => {
+    expect(
+      companyFormSchema.safeParse({ ...validCpfPayload, taxRegime: 'lucro_real' }).success,
+    ).toBe(false)
+  })
+
+  it('accepts a real operational cost percentage — belongs to the whole company, not a marketplace connection (bug real, 2026-09-08, corrected same day)', () => {
+    expect(
+      companyFormSchema.safeParse({ ...validCpfPayload, operationalCostPercentage: 7.5 }).success,
+    ).toBe(true)
+  })
+
+  it('rejects a negative operational cost percentage', () => {
+    expect(
+      companyFormSchema.safeParse({ ...validCpfPayload, operationalCostPercentage: -1 }).success,
+    ).toBe(false)
+  })
+
+  it('rejects an operational cost percentage above 100', () => {
+    expect(
+      companyFormSchema.safeParse({ ...validCpfPayload, operationalCostPercentage: 101 }).success,
+    ).toBe(false)
   })
 })

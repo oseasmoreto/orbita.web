@@ -24,6 +24,15 @@ type UserMarketplaceResource = components['schemas']['UserMarketplaceResource']
  * canal. Já entra no breakdown de precificação
  * (`PricingBreakdown.coupon`) desde que o backend adicionou o campo.
  *
+ * **`operationalCostPercentage` NÃO mora aqui** — cogitado em 2026-09-08
+ * (percentual por CONEXÃO), corrigido no mesmo dia pelo backend: o campo
+ * é `COMPANY.operationalCostPercentage` (um valor só pra empresa toda,
+ * mesmo tratamento de `sales_tax_percentage`), não por
+ * `USER_MARKETPLACE`. Ver `company.type.ts`. O breakdown de
+ * precificação continua expondo `pricing.*_breakdown.operationalCost`
+ * normalmente (`productMarketplacePricing.type.ts`) — só a FONTE do
+ * dado mudou, o contrato de resposta do breakdown em si não muda.
+ *
  * `storeDocumentType` (2026-09-04) — se a LOJA do usuário nesse canal é
  * pessoa física ou jurídica (`'individual' | 'company'`, nullable).
  * **Obrigatório no `POST /user-marketplaces`** quando

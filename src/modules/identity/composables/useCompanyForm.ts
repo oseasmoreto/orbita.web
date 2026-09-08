@@ -9,25 +9,44 @@ import { createCompany, getOwnCompany, updateCompany } from '../services/identit
 import type { Company } from '../types/company.type'
 
 function emptyFormValues(): CompanyFormValues {
-  return { document: '', name: '', responsibleDocument: '', salesTaxPercentage: 0 }
+  return {
+    document: '',
+    name: '',
+    operationalCostPercentage: null,
+    responsibleDocument: '',
+    salesTaxPercentage: 0,
+    taxRegime: '',
+  }
 }
 
 function toFormValues(company: Company): CompanyFormValues {
   return {
     document: company.document,
     name: company.name,
+    operationalCostPercentage:
+      company.operationalCostPercentage === null ? null : Number(company.operationalCostPercentage),
     responsibleDocument: company.responsibleDocument ?? '',
     salesTaxPercentage: Number(company.salesTaxPercentage),
+    taxRegime: company.taxRegime ?? '',
   }
 }
 
-/** `CompanyFormValues` (camelCase) → payload real da API (`CreateCompanyRequest`/`UpdateCompanyRequest`, os dois compartilham o mesmo shape — mesmo raciocínio do backend, ver `company.type.ts`). */
+/**
+ * `CompanyFormValues` (camelCase) → payload real da API
+ * (`CreateCompanyRequest`/`UpdateCompanyRequest`, os dois compartilham o
+ * mesmo shape — mesmo raciocínio do backend, ver `company.type.ts`).
+ * `taxRegime` nunca é `null` no MODEL do form (`Select.vue` só trabalha
+ * com `string`) — `''` (não escolhido) vira `null` só aqui, mesmo padrão
+ * de `storeDocumentType` (`useUserMarketplaceForm.ts`).
+ */
 function toRequestPayload(values: CompanyFormValues) {
   return {
     document: values.document,
     name: values.name,
+    operational_cost_percentage: values.operationalCostPercentage,
     responsible_document: values.responsibleDocument || null,
     sales_tax_percentage: values.salesTaxPercentage,
+    tax_regime: values.taxRegime === '' ? null : values.taxRegime,
   }
 }
 

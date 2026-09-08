@@ -22,6 +22,13 @@ export function isCnpjDocument(document: string): boolean {
 }
 
 /**
+ * `''` = "não escolhido" no `Select` (mesmo padrão de `storeDocumentType`,
+ * `userMarketplaceFormSchema.ts`) — convertido pra `null` só na borda do
+ * payload (`useCompanyForm.ts`).
+ */
+export const TAX_REGIME_OPTIONS = ['individual', 'mei', 'simples_nacional'] as const
+
+/**
  * Espelha `CreateCompanyAction`/`UpdateCompanyAction` (backend, tarefa
  * 63) — `responsibleDocument` só é obrigatório quando `document` é CNPJ
  * (empresa PJ precisa de um CPF de responsável); se `document` já é CPF,
@@ -29,6 +36,17 @@ export function isCnpjDocument(document: string): boolean {
  * via `.superRefine()` no schema inteiro, marcada no campo
  * `responsibleDocument` — mesmo padrão de regra cruzada já usado (e
  * removido) em `productFormSchema.ts` antes do rename de `cost_price`.
+ *
+ * `taxRegime` (2026-09-08) — sempre opcional, sem regra de negócio
+ * nenhuma (nem no backend, nem aqui) — é puramente informativo, o único
+ * "controle" é o aviso de texto que `CompanyForm.vue` mostra acima do
+ * campo.
+ *
+ * `operationalCostPercentage` (2026-09-08) — nullable, `0-100` (mesma
+ * regra dos percentuais de conexão em `userMarketplaceFormSchema.ts`) —
+ * **valor único pra empresa toda**, achado real do mesmo dia: a 1ª
+ * versão morava em `USER_MARKETPLACE` (por conexão), corrigida pelo
+ * backend logo em seguida.
  */
 export function createCompanyFormSchema(t: (key: string) => string) {
   return z
@@ -52,10 +70,16 @@ export function createCompanyFormSchema(t: (key: string) => string) {
         }
       }),
       name: z.string().min(1, t('identity.companyRegistration.errors.nameRequired')),
+      operationalCostPercentage: z
+        .number()
+        .min(0, t('identity.companyRegistration.errors.operationalCostPercentageMin'))
+        .max(100, t('identity.companyRegistration.errors.operationalCostPercentageMax'))
+        .nullable(),
       responsibleDocument: z.string(),
       salesTaxPercentage: z
         .number()
         .min(0, t('identity.companyRegistration.errors.salesTaxPercentageMin')),
+      taxRegime: z.enum(['', ...TAX_REGIME_OPTIONS]),
     })
     .superRefine((data, ctx) => {
       if (

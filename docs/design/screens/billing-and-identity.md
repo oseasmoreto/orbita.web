@@ -1,6 +1,6 @@
 # Telas — Billing e Identity
 
-PlanCard, DocumentPromptModal (removido), CompanyForm/CompanyRegistrationView, BillingCheckoutResultView, MySubscriptionView, TransactionsView, AdminSubscriptionsView/OverrideSubscriptionModal, AdminTransactionsView, AccountView, DeleteAccountModal, PWA install prompt.
+PlanCard, DocumentPromptModal (removido), CompanyForm/CompanyRegistrationView (adendo `taxRegime`/`operationalCostPercentage`), BillingCheckoutResultView, MySubscriptionView, TransactionsView, AdminSubscriptionsView/OverrideSubscriptionModal, AdminTransactionsView, AccountView, DeleteAccountModal, PWA install prompt.
 
 > Faz parte do design system do Orbita — tokens e princípios gerais ficam em
 > `docs/design/design-system.md`, este arquivo é a continuação dele.
@@ -295,6 +295,66 @@ nada depois de uma edição pontual.
   `document`/`sales_tax_percentage` corretos no banco
   (`responsible_document: null` pro caso CPF); login seguinte pula
   direto pra `/choose-plan`, sem re-redirecionar pra cá.
+
+**Campo `taxRegime`, 2026-09-08, pedido direto do usuário** — `COMPANY`
+ganhou `tax_regime` (nullable, `'individual' | 'mei' | 'simples_nacional'`),
+aceito em `POST`/`PATCH /company` e `PATCH /admin/companies/{id}`.
+**Puramente informativo, sem NENHUMA regra de bloqueio no backend** —
+pedido explícito do usuário foi um aviso de UI, não uma validação real.
+
+- Novo `Select` (`taxRegimeOptions`, gerado a partir de
+  `TAX_REGIME_OPTIONS` exportado de `companyFormSchema.ts` — mesma
+  fonte usada pelo Zod, sem duplicar a lista de valores) logo abaixo do
+  campo "Imposto sobre venda", mesmo padrão A/B do resto do form.
+- **Banner de aviso ACIMA do campo** (`.company-form__notice`, ícone
+  `Warning` 16px + texto, mesmos tokens de
+  `.my-subscription-view__notice` — `{colors.accent-yellow}` + fundo
+  `color-mix(in srgb, {colors.accent-yellow} 12%, transparent)`,
+  `{radius.8}`) avisando que porte de empresa maior que os 3 listados
+  (ex.: Lucro Presumido, Lucro Real) ainda não é suportado pela
+  plataforma — exatamente o pedido do usuário, texto de UI puro, nunca
+  reflete uma regra real de negócio (o backend aceita os 3 valores sem
+  nenhuma checagem de elegibilidade).
+- `''` (não escolhido) ↔ `null` na borda do payload
+  (`useCompanyForm.ts`, `toRequestPayload`/`toFormValues`) — mesmo
+  padrão de `storeDocumentType` (`useUserMarketplaceForm.ts`).
+- Verificado em browser real contra o backend local: banner de aviso
+  visível acima do campo, selecionar "MEI" e salvar dispara `PATCH
+  /company` com `"tax_regime":"mei"`, resposta `200` confirma a
+  gravação (`"tax_regime":"mei"` na resource devolvida) e o valor
+  persiste no banco.
+
+**Campo `operationalCostPercentage`, 2026-09-08, mesmo dia — achado real
+de premissa errada, corrigida na hora** — a implementação original deste
+campo (aviso cross-session da sessão de backend
+`ticket-message-image-attachments`) foi tentada em
+`USER_MARKETPLACE.operational_cost_percentage` (percentual por CONEXÃO,
+ver `ConnectMarketplaceModal` em `catalog-and-pricing.md`), implementada
+e verificada — quebrou com `500` real no backend
+(`SQLSTATE[42703]: Undefined column "operational_cost_percentage"`).
+Reportado à sessão de backend, que respondeu que o usuário já tinha
+corrigido a premissa direto com eles: o campo sempre devia ter sido
+`COMPANY.operational_cost_percentage` (nullable, `0-100`) — **um valor
+só pra empresa INTEIRA**, mesmo tratamento de `sales_tax_percentage`,
+não varia por canal/conexão. Aceito em `POST`/`PATCH /company` e
+`PATCH /admin/companies/{id}`, devolvido em
+`CompanyResource`/`AdminCompanyResource`. Entra no cálculo de
+precificação deduzido do lucro, exposto no breakdown como
+`pricing.*_breakdown.operational_cost` (mesma chave que já existia —
+ver adendo em `ProductMarketplacePricingView`, `catalog-and-pricing.md`
+— só a FONTE do dado mudou).
+
+- Revertido por completo do lado de `USER_MARKETPLACE` (tipo, schema,
+  composable, `ConnectMarketplaceModal.vue`, `schema.d.ts`) — implementado
+  do jeito certo aqui: `FormGroup`+`Input`+`labelTooltip`
+  (`useNumberFieldModel` nullable), logo abaixo do campo "Imposto sobre
+  venda" — mesmo grupamento visual dos 2 percentuais da empresa.
+  `min(0)`/`max(100)` no schema Zod (`companyFormSchema.ts`).
+- Verificado em browser real contra o backend local: preencher `12.5` e
+  salvar dispara `PATCH /company` com
+  `"operational_cost_percentage":12.5`, resposta `200` confirma a
+  gravação (`"operational_cost_percentage":"12.50"` na resource
+  devolvida) e o valor persiste no banco.
 
 ## BillingCheckoutResultView (`modules/billing/views/BillingCheckoutResultView.vue`)
 
