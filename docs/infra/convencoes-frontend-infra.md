@@ -350,7 +350,7 @@ Decisões fechadas sobre linguagem/ferramentas. Lib nova fora dessa lista passa 
 | Geração de tipos de API | `openapi-typescript` | Consome o OpenAPI (Scramble) do backend — seção 6.1. Dev dependency, roda via script `generate:api-types`. |
 | Validação de formulário | Zod | Schema por recurso, `z.infer` pro tipo — nunca redigitado numa interface separada. Papel diferente do OpenAPI gerado, ver seção 6.2. |
 | Composables genéricos | `@vueuse/core` | Usar antes de escrever um composable genérico próprio — seção 4. |
-| Datas | `dayjs` | Formatação/manipulação de data (ex: `end_date` de assinatura, `date` de `PRODUCT_LAUNCH`). |
+| Datas | `dayjs` | Formatação/manipulação de data (ex: `end_date` de assinatura, `created_at` de qualquer recurso). |
 | Números/moeda | `Intl.NumberFormat` nativo, envolvido em util de `shared/` | Sem lib externa pra isso especificamente (mesmo espírito do VO `Money` do backend) — `dayjs` cobre data, não substitui formatação de moeda/percentual. |
 | Sanitização de HTML | `dompurify` | Só na exceção rara de `v-html` — seção 8. |
 | Cookies | `js-cookie` | Leitura do cookie `XSRF-TOKEN` no interceptor do `core/api/client.ts` — seção 8. |

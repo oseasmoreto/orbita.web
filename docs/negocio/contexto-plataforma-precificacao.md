@@ -31,7 +31,7 @@ usuário se cadastra → assina um plano → paga → acessa o sistema → cadas
 ### 2.3 Produtos
 
 - **`PRODUCT`** — cadastro do produto: `name`, `sku`, `ean`, `ncm`, `cost_price`, `target_margin` (percentual de lucro mínimo aceitável definido pelo próprio vendedor — é contra esse valor que o sistema compara o `suggested_price` para decidir se dispara notificação de ajuste). `operational_cost` (nullable) soma o custo operacional do produto (combustível, embalagem, etiqueta, mão de obra) — opcional, informativo, ainda sem uso em nenhuma regra de precificação. `weight` (kg) e `height`/`width`/`length` (cm) são opcionais (nullable) — mesma convenção de unidade usada por Correios/Shopee/Mercado Livre pra cálculo de frete; hoje só armazenados, ainda sem uso em nenhuma regra de precificação/frete. **`full_sale_price` ("preço de venda") removido do cadastro em 2026-09-02** (pedido direto do usuário) — nunca teve regra de negócio conectada (`PricingCalculator`, existente e testado isoladamente, nunca ligado a rota nenhuma); `purchase_price` ("preço de compra") foi renomeado pra `cost_price` ("preço de custo") no mesmo dia, mesmo dado, nome mais preciso pro que o vendedor de fato preenche.
-- **`PRODUCT_LAUNCH`** — histórico de lançamentos/compras do produto: `purchase_price`, `quantity`, `date`.
+**`PRODUCT_LAUNCH` removido do app inteiro em 2026-09-10** (pedido direto do usuário — "não fazia sentido pra proposta e só confundia") — tabela, rotas e todo o front (aba "Lançamentos" no Drawer de edição de produto) deletados por completo. Registro histórico, não reabrir sem novo motivo de negócio.
 
 ### 2.4 Marketplaces e precificação
 
@@ -59,7 +59,6 @@ erDiagram
     USER ||--o{ USER_MARKETPLACE : connects
     MARKETPLACE ||--o{ USER_MARKETPLACE : is_connected_by
     MARKETPLACE ||--o{ PRICING_RULE : has
-    PRODUCT ||--o{ PRODUCT_LAUNCH : has
     PRODUCT ||--o{ PRODUCT_MARKETPLACE : links
     USER_MARKETPLACE ||--o{ PRODUCT_MARKETPLACE : receives
     USER ||--o{ USER_NOTIFICATION : receives
@@ -167,16 +166,6 @@ erDiagram
     %% sem uso em nenhuma regra de precificação. weight (kg) e
     %% height/width/length (cm) são nullable — opcionais no cadastro,
     %% ainda sem uso em nenhuma regra de precificação/frete
-
-    PRODUCT_LAUNCH {
-        uuid id PK
-        uuid product_id FK
-        decimal purchase_price
-        int quantity
-        date date
-        timestamp created_at
-        timestamp updated_at
-    }
 
     MARKETPLACE {
         uuid id PK

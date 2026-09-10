@@ -17,7 +17,7 @@
  * completa, sem 2 refs pra manter sincronizados.
  *
  * `z-index: 100/101`, mesmo valor de `Modal.vue`/`Drawer.vue` — testado
- * com precedente real (`ProductLaunchForm.vue` já abre um `Modal` dentro
+ * com precedente real (outro form do projeto já abre um `Modal` dentro
  * de um `Drawer` com esses mesmos valores e funciona: portal recém-
  * montado entra depois no DOM, pinta por cima mesmo com z-index igual).
  * `TicketMessageList.vue` é sempre renderizado dentro de um `Drawer`

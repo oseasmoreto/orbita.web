@@ -6,7 +6,6 @@ erDiagram
     USER ||--o{ USER_MARKETPLACE : connects
     MARKETPLACE ||--o{ USER_MARKETPLACE : is_connected_by
     MARKETPLACE ||--o{ PRICING_RULE : has
-    PRODUCT ||--o{ PRODUCT_LAUNCH : has
     PRODUCT ||--o{ PRODUCT_MARKETPLACE : links
     USER_MARKETPLACE ||--o{ PRODUCT_MARKETPLACE : receives
     USER ||--o{ USER_NOTIFICATION : receives
@@ -114,16 +113,6 @@ erDiagram
     %% sem uso em nenhuma regra de precificação. weight (kg) e
     %% height/width/length (cm) são nullable — opcionais no cadastro,
     %% ainda sem uso em nenhuma regra de precificação/frete
-
-    PRODUCT_LAUNCH {
-        uuid id PK
-        uuid product_id FK
-        decimal purchase_price
-        int quantity
-        date date
-        timestamp created_at
-        timestamp updated_at
-    }
 
     MARKETPLACE {
         uuid id PK

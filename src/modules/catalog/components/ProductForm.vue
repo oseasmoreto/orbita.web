@@ -10,9 +10,9 @@
  * Campos numéricos (`Input.vue` só expõe `v-model` de `string`, é um
  * átomo genérico — não vale mudar o contrato dele só pra este form) usam
  * `useNumberFieldModel` (`shared/composables/`, extraído em 2026-08-31 —
- * o mesmo par `get`/`set` estava duplicado à mão aqui e em
- * `ProductLaunchForm.vue`), convertendo string↔number na borda deste
- * componente, sem vazar essa conversão pro composable.
+ * o mesmo par `get`/`set` estava duplicado à mão aqui e no form de outro
+ * CRUD que já existia na época), convertendo string↔number na borda
+ * deste componente, sem vazar essa conversão pro composable.
  *
  * Ícone "Marketplaces" no rodapé (slot `leading` de `CrudFormActions`,
  * 2026-09-10) — substitui o antigo botão "Marketplaces" da linha de

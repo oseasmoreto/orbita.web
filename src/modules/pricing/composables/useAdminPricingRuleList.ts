@@ -32,8 +32,9 @@ export function buildPricingRuleSortParam(
 
 /**
  * Wrapper de `useResourceList` pra `PricingRule` de UM marketplace —
- * `marketplaceId` fixo pra uma instância (mesmo padrão de
- * `useProductLaunchList.ts`). Leitura via endpoint COMPARTILHADO
+ * `marketplaceId` fixo pra uma instância (mesmo padrão já usado por
+ * outros composables de listagem aninhada do projeto). Leitura via
+ * endpoint COMPARTILHADO
  * (`listPricingRules`, `auth:sanctum` só) — funciona pro admin igual
  * pra qualquer usuário, só a escrita (`useAdminPricingRuleForm.ts`) é
  * exclusiva do admin.

@@ -37,6 +37,18 @@
  * tem vínculo com aquele marketplace específico (caso raro, gap que o
  * auto-vínculo não cobriu).
  *
+ * **"Lançamentos" (`PRODUCT_LAUNCH`) removido do app inteiro, 2026-09-10**
+ * — pedido direto do usuário ("não fazia sentido pra proposta e só
+ * confundia"), backend removeu a tabela/rotas por completo. O Drawer de
+ * edição tinha uma aba própria pra isso (`TabBar`/`TabsContent`,
+ * `ProductLaunchList.vue`); com só "Dados" restando, a aba única virou
+ * ruído — `ProductForm` volta a ser renderizado direto, sem `TabBar` em
+ * volta, mesmo em modo `edit`. `useProductLaunchForm.ts`/
+ * `useProductLaunchList.ts`/`ProductLaunchForm.vue`/`ProductLaunchList.vue`/
+ * `productLaunch.type.ts`/`productLaunchFormSchema.ts` deletados por
+ * inteiro — nenhum resquício, endpoint não existe mais
+ * (`405`/`404` em `GET/POST/PATCH/DELETE /products/{id}/launches...`).
+ *
  * **Drawer sincronizado com a URL, 2026-08-31** — pedido direto do
  * usuário ("acessar direto e abrir os modais"): `/products/new`/
  * `/products/:id/edit` (`routes.ts`) apontam pro MESMO componente, a
@@ -60,8 +72,7 @@
  */
 import { ChartBar, PencilSimpleLine, Trash } from '@/shared/components/icons/regular.generated'
 import dayjs from 'dayjs'
-import { computed, ref, watch } from 'vue'
-import { TabsContent } from 'reka-ui'
+import { computed, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRoute, useRouter } from 'vue-router'
 import { useFirstActiveMarketplaceConnection } from '@/core/composables/useFirstActiveMarketplaceConnection'
@@ -79,10 +90,8 @@ import Button from '@/shared/components/ui/Button.vue'
 import Drawer from '@/shared/components/ui/Drawer.vue'
 import MarketplaceLogo from '@/shared/components/ui/MarketplaceLogo.vue'
 import StatusDot from '@/shared/components/ui/StatusDot.vue'
-import TabBar from '@/shared/components/ui/TabBar.vue'
 import Tooltip from '@/shared/components/ui/Tooltip.vue'
 import ProductForm from '../components/ProductForm.vue'
-import ProductLaunchList from '../components/blocks/ProductLaunchList.vue'
 import { deleteProduct, getProduct } from '../services/catalogApi'
 import { buildProductMarketplaceColumns, useProductList } from '../composables/useProductList'
 import { usePlanLimit } from '../composables/usePlanLimit'
@@ -92,7 +101,6 @@ import {
 } from '../types/product.type'
 import type { Product } from '../types/product.type'
 import type { DataTableColumn } from '@/shared/components/ui/types/dataTable.type'
-import type { TabBarOption } from '@/shared/components/ui/types/tabBar.type'
 
 const { t } = useI18n()
 const route = useRoute()
@@ -143,25 +151,7 @@ const deleteConfirmation = useConfirmAction<Product>()
  */
 const planLimit = usePlanLimit(() => list.total.value)
 
-/**
- * "Lançamentos" (`PRODUCT_LAUNCH`) é sempre uma aba dentro do detalhe de
- * UM produto (`core/layouts/config/navigation.ts` já documenta essa
- * decisão) — só faz sentido em modo `edit` (produto precisa existir pra
- * ter lançamentos). `activeProductTab` reseta pra "Dados" toda vez que
- * um edit novo é aberto — `drawer.close()` não reseta `mode`/`editingRecord`
- * de propósito (`useCrudDrawer.ts`, evita flicker na animação de saída),
- * então sem esse reset explícito reabrir o Drawer pra um produto
- * DIFERENTE poderia herdar a aba "Lançamentos" ainda ativa da edição
- * anterior.
- */
-const activeProductTab = ref('details')
-const productDrawerTabs = computed<TabBarOption[]>(() => [
-  { key: 'details', label: t('catalog.products.form.tabs.details') },
-  { key: 'launches', label: t('catalog.products.form.tabs.launches') },
-])
-
 function openEdit(product: Product): void {
-  activeProductTab.value = 'details'
   drawer.openEdit(product)
 }
 
@@ -195,7 +185,6 @@ watch(
   () => [route.name, route.params.id] as const,
   ([name, id]) => {
     if (name === 'products-new') {
-      activeProductTab.value = 'details'
       drawer.openCreate()
       return
     }
@@ -388,23 +377,7 @@ function handleSaved(): void {
           : $t('catalog.products.form.editTitle')
       "
     >
-      <template v-if="drawer.mode.value === 'edit' && drawer.editingRecord.value">
-        <TabBar v-model="activeProductTab" :tabs="productDrawerTabs">
-          <TabsContent value="details">
-            <ProductForm
-              :mode="drawer.mode.value"
-              :product="drawer.editingRecord.value"
-              @cancel="drawer.close()"
-              @saved="handleSaved"
-            />
-          </TabsContent>
-          <TabsContent value="launches">
-            <ProductLaunchList :product-id="drawer.editingRecord.value.id" />
-          </TabsContent>
-        </TabBar>
-      </template>
       <ProductForm
-        v-else
         :mode="drawer.mode.value"
         :product="drawer.editingRecord.value"
         @cancel="drawer.close()"
@@ -431,12 +404,6 @@ function handleSaved(): void {
   flex-direction: column;
   gap: $spacing-16;
   padding: $spacing-24;
-}
-
-// `TabBar.vue` não tem espaçamento próprio abaixo do trigger — o slot
-// (`TabsContent`) encosta direto nele sem esse respiro.
-.products-view :deep(.ui-tab-bar) {
-  margin-bottom: $spacing-16;
 }
 
 .products-view__header {

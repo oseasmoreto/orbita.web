@@ -4,8 +4,8 @@
  * do usuário ("precisamos editar os dados ou pelo menos visualizar os
  * dados da empresa no account") — segundo consumidor real
  * (`AccountView.vue`) do mesmo formulário singleton, mesmo critério de
- * promoção já usado no resto do projeto (`ProductLaunchList.vue`,
- * `IconTile.vue`...). Só os CAMPOS + estados de loading/erro — sem
+ * promoção já usado no resto do projeto (`IconTile.vue`...). Só os
+ * CAMPOS + estados de loading/erro — sem
  * cabeçalho/card, cada consumidor decide a própria moldura (`CompanyRegistrationView.vue`
  * é um card centralizado fora do `AppLayout`; `AccountView.vue` é mais um
  * `<section>` dentro da grade de perfil já existente).

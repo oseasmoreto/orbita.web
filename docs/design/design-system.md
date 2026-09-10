@@ -531,7 +531,7 @@ aqui é só um mapa, não substitui o conteúdo real.
 - AccountView (`modules/identity/views/AccountView.vue`) — ver `docs/design/screens/billing-and-identity.md`
 - DeleteAccountModal (`modules/identity/components/DeleteAccountModal.vue`) — ver `docs/design/screens/billing-and-identity.md`
 - Instalar aplicativo / PWA install prompt (`core/pwa/composables/useInstallPrompt.ts`, seção em `AccountView.vue`) — ver `docs/design/screens/billing-and-identity.md`
-- ProductLaunchList (`modules/catalog/components/blocks/ProductLaunchList.vue`) — ver `docs/design/screens/catalog-and-pricing.md`
+- "Lançamentos" de produto (ProductLaunchList/ProductLaunchForm) — removido em 2026-09-10 — ver `docs/design/screens/catalog-and-pricing.md`
 - ProductsView (`modules/catalog/views/ProductsView.vue`) — atalho "Ver precificação" — ver `docs/design/screens/catalog-and-pricing.md`
 - AdminMarketplacesView (`modules/pricing/views/AdminMarketplacesView.vue`) — ver `docs/design/screens/catalog-and-pricing.md`
 - AdminMarketplaceForm (`modules/pricing/components/AdminMarketplaceForm.vue`) — ver `docs/design/screens/catalog-and-pricing.md`

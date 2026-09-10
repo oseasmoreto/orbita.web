@@ -62,8 +62,8 @@ function toRequestPayload(values: UserMarketplaceFormValues) {
  * Formulário único pra conectar (create) E editar (update) uma conexão —
  * em cima de `useResourceForm`, mesmo padrão dos demais
  * `use<Recurso>Form.ts`. `marketplaceId` é PARTE dos valores do form (não
- * fixo via parâmetro do composable, diferente de `useProductLaunchForm`)
- * porque uma única instância deste composable é reaproveitada pro grid
+ * fixo via parâmetro do composable, diferente de outros `use<Recurso>Form.ts`
+ * do projeto) porque uma única instância deste composable é reaproveitada pro grid
  * INTEIRO de cards (`MarketplacesView.vue`) — cada card referencia um
  * marketplace diferente, então o alvo do CREATE muda a cada abertura do
  * modal (`ConnectMarketplaceModal.vue` seta `values.marketplaceId` antes

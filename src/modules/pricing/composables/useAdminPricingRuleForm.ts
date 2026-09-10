@@ -33,7 +33,8 @@ function toRequestPayload(values: PricingRuleFormValues) {
 
 /**
  * Formulário único pra criar E editar regra de comissão — mesmo padrão
- * de `useProductLaunchForm.ts`, em cima de `useResourceForm`.
+ * de outros `use<Recurso>Form.ts` de CRUD-filho do projeto, em cima de
+ * `useResourceForm`.
  * `marketplaceId` é fixo (recebido na criação do composable), cada
  * instância vive dentro do contexto de UM marketplace.
  */

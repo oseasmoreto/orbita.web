@@ -101,9 +101,6 @@ export const operationGroup: NavGroup = {
       relatedRouteNames: ['products-new', 'products-edit', 'product-marketplaces'],
       to: { name: 'products' },
     },
-    // Lançamentos (PRODUCT_LAUNCH) não é item de topo — é sempre uma aba
-    // dentro do detalhe de UM produto (`products/{id}/launches`, backend
-    // já pronto), não uma listagem própria que mereça entrada na sidebar.
     {
       icon: Storefront,
       id: 'marketplaces',

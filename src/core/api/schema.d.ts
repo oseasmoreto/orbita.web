@@ -754,38 +754,6 @@ export interface paths {
         patch: operations["product.update"];
         trace?: never;
     };
-    "/products/{product}/launches": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get: operations["productLaunch.index"];
-        put?: never;
-        post: operations["productLaunch.store"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/products/{product}/launches/{launch}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get: operations["productLaunch.show"];
-        put?: never;
-        post?: never;
-        delete: operations["productLaunch.destroy"];
-        options?: never;
-        head?: never;
-        patch: operations["productLaunch.update"];
-        trace?: never;
-    };
     "/products/{product}/marketplaces": {
         parameters: {
             query?: never;
@@ -1487,13 +1455,6 @@ export interface components {
             title: string;
             active?: boolean;
         };
-        /** CreateProductLaunchRequest */
-        CreateProductLaunchRequest: {
-            purchase_price: number;
-            quantity: number;
-            /** Format: date-time */
-            date: string;
-        };
         /** CreateProductMarketplaceRequest */
         CreateProductMarketplaceRequest: {
             /** Format: uuid */
@@ -1698,18 +1659,6 @@ export interface components {
             id: string;
             title: string;
             active: boolean;
-            /** Format: date-time */
-            created_at: string | null;
-        };
-        /** ProductLaunchResource */
-        ProductLaunchResource: {
-            id: string;
-            product_id: string;
-            /** @description Money como string (fundamentos-api.md §4). */
-            purchase_price: string;
-            quantity: number;
-            /** Format: date-time */
-            date: string;
             /** Format: date-time */
             created_at: string | null;
         };
@@ -2139,13 +2088,6 @@ export interface components {
         UpdateProductCategoryRequest: {
             title?: string;
             active?: boolean;
-        };
-        /** UpdateProductLaunchRequest */
-        UpdateProductLaunchRequest: {
-            purchase_price?: number;
-            quantity?: number;
-            /** Format: date-time */
-            date?: string;
         };
         /**
          * UpdateProductMarketplaceRequest
@@ -4757,172 +4699,6 @@ export interface operations {
                         success: boolean;
                         message: string;
                         data: components["schemas"]["ProductResource"];
-                        errors: null;
-                    };
-                };
-            };
-            401: components["responses"]["AuthenticationException"];
-            422: components["responses"]["ValidationException"];
-        };
-    };
-    "productLaunch.index": {
-        parameters: {
-            query?: {
-                /**
-                 * @description Campos separados por vírgula. Prefixo "-" inverte pra desc. Permitidos: date, quantity, purchase_price, created_at.
-                 * @example -date
-                 */
-                sort?: string;
-                /**
-                 * @description Tamanho de página, teto em 100.
-                 * @example 15
-                 */
-                per_page?: number;
-            };
-            header?: never;
-            path: {
-                product: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": {
-                        success: boolean;
-                        message: string;
-                        data: {
-                            items: components["schemas"]["ProductLaunchResource"][];
-                            meta: {
-                                current_page: number;
-                                per_page: number;
-                                total: number;
-                            };
-                        };
-                        errors: null;
-                    };
-                };
-            };
-            401: components["responses"]["AuthenticationException"];
-        };
-    };
-    "productLaunch.store": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                product: string;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["CreateProductLaunchRequest"];
-            };
-        };
-        responses: {
-            201: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": {
-                        success: boolean;
-                        message: string;
-                        data: components["schemas"]["ProductLaunchResource"];
-                        errors: null;
-                    };
-                };
-            };
-            401: components["responses"]["AuthenticationException"];
-            422: components["responses"]["ValidationException"];
-        };
-    };
-    "productLaunch.show": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                product: string;
-                launch: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": {
-                        success: boolean;
-                        message: string;
-                        data: components["schemas"]["ProductLaunchResource"];
-                        errors: null;
-                    };
-                };
-            };
-            401: components["responses"]["AuthenticationException"];
-        };
-    };
-    "productLaunch.destroy": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                product: string;
-                launch: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": {
-                        success: boolean;
-                        message: string;
-                        data: null;
-                        errors: null;
-                    };
-                };
-            };
-            401: components["responses"]["AuthenticationException"];
-        };
-    };
-    "productLaunch.update": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                product: string;
-                launch: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: {
-            content: {
-                "application/json": components["schemas"]["UpdateProductLaunchRequest"];
-            };
-        };
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": {
-                        success: boolean;
-                        message: string;
-                        data: components["schemas"]["ProductLaunchResource"];
                         errors: null;
                     };
                 };

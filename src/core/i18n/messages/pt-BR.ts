@@ -280,44 +280,7 @@ export default {
         shippingCostTooltip: 'Embalagem, etiqueta, plástico de proteção, combustível, brindes.',
         submitCreate: 'Criar produto',
         submitEdit: 'Salvar alterações',
-        tabs: {
-          details: 'Dados do produto',
-          launches: 'Lançamentos',
-        },
         updateSuccess: 'Produto atualizado com sucesso.',
-      },
-      launches: {
-        columns: {
-          date: 'Data',
-          purchasePrice: 'Preço de compra',
-          quantity: 'Quantidade',
-        },
-        createButton: 'Novo lançamento',
-        deleteConfirm: {
-          description: 'Essa ação não pode ser desfeita.',
-          title: 'Excluir lançamento?',
-        },
-        deleteSuccess: 'Lançamento excluído com sucesso.',
-        empty: 'Nenhum lançamento cadastrado ainda.',
-        form: {
-          createSuccess: 'Lançamento criado com sucesso.',
-          createTitle: 'Novo lançamento',
-          editTitle: 'Editar lançamento',
-          errors: {
-            dateRequired: 'Data é obrigatória.',
-            purchasePriceMin: 'Preço de compra não pode ser negativo.',
-            quantityInteger: 'Quantidade deve ser um número inteiro.',
-            quantityMin: 'Quantidade deve ser pelo menos 1.',
-          },
-          fields: {
-            date: 'Data',
-            purchasePrice: 'Preço de compra',
-            quantity: 'Quantidade',
-          },
-          submitCreate: 'Criar lançamento',
-          submitEdit: 'Salvar alterações',
-          updateSuccess: 'Lançamento atualizado com sucesso.',
-        },
       },
       marketplacesButton: 'Marketplaces',
       planLimit: {

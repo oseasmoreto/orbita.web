@@ -22,8 +22,9 @@ export interface UseResourceFormOptions<
  * Motor genérico de "formulário único cria/edita 1 recurso" — mesma
  * família de `useResourceList`/`useCrudDrawer`/`useConfirmAction`
  * (`.ai/rules/crud-pattern.md`), pedido direto do usuário em 2026-08-31
- * depois de notar que `useProductForm.ts`/`useProductLaunchForm.ts` eram
- * praticamente idênticos (mesmo `reset`/`validate`/`submit`, só mudando
+ * depois de notar que `useProductForm.ts` e o composable de outro CRUD
+ * (`PRODUCT_LAUNCH`, removido do app em 2026-09-10) eram praticamente
+ * idênticos (mesmo `reset`/`validate`/`submit`, só mudando
  * schema/payload/service). Não sabe nada de domínio nem de `services/` —
  * recebe as poucas peças que realmente variam por entidade (schema,
  * conversão de/pra valores de formulário, payload de request, as 2

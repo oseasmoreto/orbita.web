@@ -91,7 +91,7 @@ Não vale a pena montar essa subdivisão adiantado, pra um contexto que ainda n�
 |---|---|
 | `Identity` | User, SsoAccount, PasswordReset |
 | `Billing` | Plan, Subscription, Transaction |
-| `Catalog` | Product, ProductLaunch |
+| `Catalog` | Product |
 | `Pricing` | Marketplace, PricingRule, UserMarketplace, ProductMarketplace |
 | `Platform` | Notification, AuditLog, Settings |
 

@@ -4,8 +4,9 @@ import { computed, type WritableComputedRef } from 'vue'
  * Ponte string↔number pro `v-model` de `Input.vue` (átomo genérico, só
  * expõe `string`, `shared/components/ui/Input.vue`) — mesmo `get`/`set`
  * repetido à mão em todo form de CRUD com campo numérico (`ProductForm.vue`
- * tinha 2 factories locais quase idênticas pra isso; `ProductLaunchForm.vue`
- * reimplementava o mesmo par `get`/`set` de novo, sem reaproveitar nada).
+ * tinha 2 factories locais quase idênticas pra isso; o form de outro CRUD
+ * que já existia na época reimplementava o mesmo par `get`/`set` de novo,
+ * sem reaproveitar nada).
  * `nullable: true` cobre campo opcional (ex.: `PRODUCT.weight`) — string
  * vazia vira `null` (não informado), não `0` (que seria um peso real).
  *

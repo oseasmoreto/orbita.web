@@ -127,7 +127,7 @@ export async function deleteAdminMarketplace(id: string): Promise<void> {
 // middleware `admin` — transparência de faixa/taxa pra qualquer usuário
 // decidir conectar, `pricing.php`), escrita só pelo admin
 // (`/admin/marketplaces/{id}/pricing-rules`). Sempre aninhada a UM
-// marketplace, nunca listagem própria — mesmo padrão de `PRODUCT_LAUNCH`.
+// marketplace, nunca listagem própria.
 // ---------------------------------------------------------------------------
 
 export interface ListPricingRulesParams {

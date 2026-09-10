@@ -1,7 +1,7 @@
 <script setup lang="ts">
 /**
  * Formulário único de criação E edição de regra de comissão — mesmo
- * padrão de `ProductLaunchForm.vue` (Catalog), renderizado dentro de um
+ * padrão de outro form de CRUD-filho do projeto, renderizado dentro de um
  * `Modal.vue` por `AdminPricingRuleList.vue` (não um `Drawer.vue` — já
  * estamos dentro do Drawer de edição do marketplace). Todos os campos
  * são numéricos — `useNumberFieldModel` (`shared/composables/`) pros 5.

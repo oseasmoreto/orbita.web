@@ -67,8 +67,9 @@ function toRequestPayload(values: ProductFormValues) {
  * todo o "encanamento" (`values`/`errors`/`isSubmitting`, `reset`,
  * `validate`, fluxo de `submit`) mora em `useResourceForm`
  * (`shared/composables/`, pedido do usuário em 2026-08-31 depois de notar
- * que este arquivo e `useProductLaunchForm.ts` eram praticamente
- * idênticos) — aqui só ficam as peças que realmente variam por entidade:
+ * que este arquivo e o composable de outro CRUD (`PRODUCT_LAUNCH`,
+ * removido do app em 2026-09-10) eram praticamente idênticos) — aqui só
+ * ficam as peças que realmente variam por entidade:
  * schema, conversão de/pra valores de formulário, payload de request, as
  * 2 chamadas de API.
  */

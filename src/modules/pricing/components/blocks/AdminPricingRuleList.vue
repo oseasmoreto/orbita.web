@@ -2,7 +2,7 @@
 /**
  * "Regras de comissão" — sempre aninhada a UM marketplace, nunca uma
  * listagem própria (`docs/negocio/contexto-plataforma-precificacao.md`
- * seção 2.4). Mesmo padrão exato de `ProductLaunchList.vue` (Catalog):
+ * seção 2.4). Mesmo padrão de CRUD aninhado já estabelecido no projeto:
  * `useResourceList`/`useCrudDrawer`/`useConfirmAction`, `Modal.vue` (já
  * dentro do Drawer de edição do marketplace) em vez de `Drawer.vue`.
  * Sem toolbar de busca — a API não tem filtro de texto pra regra.

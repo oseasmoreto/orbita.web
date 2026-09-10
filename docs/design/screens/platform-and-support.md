@@ -537,9 +537,9 @@ pedido.
   vez, então um único valor nulável já é a fonte de verdade completa.
   `z-index: 100/101`, mesmo valor de `Modal.vue`/`Drawer.vue` — seguro
   mesmo aninhado dentro de um `Drawer` (`TicketMessageList.vue` sempre
-  vive dentro de um), mesmo precedente real já provado por
-  `ProductLaunchForm.vue` (`Modal` dentro de `Drawer`, z-index igual,
-  portal montado depois pinta por cima). Estado de "qual imagem está
+  vive dentro de um), mesmo precedente real já provado noutro lugar do
+  projeto (`Modal` dentro de `Drawer`, z-index igual, portal montado
+  depois pinta por cima). Estado de "qual imagem está
   expandida" mora dentro do próprio `TicketMessageList.vue` (`ref`
   local, estado de UI puro) — não sobe pros 2 painéis consumidores
   (`TicketThreadPanel.vue`/`AdminTicketThreadPanel.vue`), já que só

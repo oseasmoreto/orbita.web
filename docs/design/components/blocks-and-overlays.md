@@ -65,11 +65,11 @@ dois campos vazios agora validam com sucesso.
 **Sem frame próprio no Figma** (mesma categoria de `FormGroup`/`Modal` —
 composição nossa, não do design source) — extraído em 2026-08-31, pedido
 direto do usuário ("composables e componentes abstraídos pra evitar
-duplicidade"), depois de notar que `ProductForm.vue`/
-`ProductLaunchForm.vue` (`.product-form__actions`/
-`.product-launch-form__actions`) tinham exatamente a mesma marcação+CSS:
-rodapé com 2 `Button` (Cancelar `outline`, Submit `primary`), alinhados
-à direita, `gap: {spacing.8}`, `padding-top: {spacing.16}`.
+duplicidade"), depois de notar que `ProductForm.vue` e o form de outro
+CRUD que já existia na época (`.product-form__actions`/`.<recurso>-form__actions`)
+tinham exatamente a mesma marcação+CSS: rodapé com 2 `Button` (Cancelar
+`outline`, Submit `primary`), alinhados à direita, `gap: {spacing.8}`,
+`padding-top: {spacing.16}`.
 
 - Props: `cancelLabel`/`submitLabel` (textos já traduzidos pelo
   consumidor — bloco nunca decide texto de UI) + `isSubmitting?`
@@ -150,10 +150,10 @@ largura total, não alinhado à direita.
 **Anel de foco cortado — mesmo bug real de `Drawer.vue`, corrigido
 junto, 2026-08-31**: `.ui-modal-body` (`overflow-y: auto`) também não
 tinha padding nenhum, cortando o `focus-ring` de qualquer campo
-encostado na borda (ex.: `ProductLaunchForm.vue` dentro do `Modal` de
-lançamento). Mesma correção: `padding: $spacing-4` + `margin` negativo
-compensando — ver seção Drawer acima pro relato completo (raciocínio,
-técnica de compensação e verificação são idênticos nos dois).
+encostado na borda de um `Modal`. Mesma correção: `padding: $spacing-4` +
+`margin` negativo compensando — ver seção Drawer acima pro relato
+completo (raciocínio, técnica de compensação e verificação são
+idênticos nos dois).
 
 ## ConfirmDialog (`shared/components/blocks/ConfirmDialog.vue`)
 

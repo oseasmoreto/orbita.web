@@ -1,78 +1,45 @@
 # Telas — Catalog e Pricing (marketplaces)
 
-ProductLaunchList, ProductForm (rename `operationalCost`→`shippingCost`; ícone discreto "Marketplaces" no rodapé do Drawer, 2026-09-10), atalho "Ver precificação" em ProductsView (2026-09-10: margem alvo saiu da listagem, ações da linha viraram ícone-só, 1 coluna por marketplace vinculado com StatusDot — DataTable ganhou slot `#header-<key>`), AdminMarketplacesView/AdminMarketplaceForm, MarketplaceLogo, MarketplacesView, ConnectMarketplaceModal, adendo `coupon`/`percentage_of_total`/`individual_fixed_fee`/`shippingCost`+`operationalCost` (da EMPRESA, ver `COMPANY.operationalCostPercentage` em `billing-and-identity.md`) de ProductMarketplacePricingView, ProductMarketplacesView (2026-09-10: vínculo produto↔marketplace virou automático, modal de "vincular" E "Desvincular"/DELETE removidos, category_id virou mutável via PATCH, status manual novo — StatusDot em ProductMarketplacesView E ProductMarketplacePricingView), AdminProductCategoriesView, AdminCategoryMarketplaceList.
+ProductForm (rename `operationalCost`→`shippingCost`; ícone discreto "Marketplaces" no rodapé do Drawer, 2026-09-10), atalho "Ver precificação" em ProductsView (2026-09-10: margem alvo saiu da listagem, ações da linha viraram ícone-só, 1 coluna por marketplace vinculado com StatusDot — DataTable ganhou slot `#header-<key>`), AdminMarketplacesView/AdminMarketplaceForm, MarketplaceLogo, MarketplacesView, ConnectMarketplaceModal, adendo `coupon`/`percentage_of_total`/`individual_fixed_fee`/`shippingCost`+`operationalCost` (da EMPRESA, ver `COMPANY.operationalCostPercentage` em `billing-and-identity.md`) de ProductMarketplacePricingView, ProductMarketplacesView (2026-09-10: vínculo produto↔marketplace virou automático, modal de "vincular" E "Desvincular"/DELETE removidos, category_id virou mutável via PATCH, status manual novo — StatusDot em ProductMarketplacesView E ProductMarketplacePricingView), AdminProductCategoriesView, AdminCategoryMarketplaceList.
 
 > Faz parte do design system do Orbita — tokens e princípios gerais ficam em
 > `docs/design/design-system.md`, este arquivo é a continuação dele.
 
-## ProductLaunchList (`modules/catalog/components/blocks/ProductLaunchList.vue`)
+## "Lançamentos" de produto — removido em 2026-09-10
 
-"Lançamentos" (`PRODUCT_LAUNCH`) — pedido direto do usuário em 2026-08-31
-("vamos seguir com o catálogo... implementar produtos e lançamentos de
-produtos"), fechando a única pendência funcional real da Fase 3.
-`docs/negocio/contexto-plataforma-precificacao.md` (seção 2.3) e
-`core/layouts/config/navigation.ts` já documentavam a decisão: nunca uma
-listagem própria/item de sidebar, sempre uma ABA dentro do detalhe de UM
-produto.
+`ProductLaunchList.vue`/`ProductLaunchForm.vue` (`modules/catalog/`) e o
+`PRODUCT_LAUNCH` (backend) por trás deles — pedido direto do usuário
+("não fazia sentido pra proposta e só confundia o usuário"). Aba
+"Lançamentos" saiu do `Drawer` de edição de `ProductsView.vue` (agora só
+"Dados do produto", sem `TabBar` nenhuma em volta — `activeProductTab`/
+`productDrawerTabs` também removidos, não sobrou uso pra tabs de 1 aba
+só); rotas removidas do backend (`405`/`404` em
+`GET/POST/PATCH/DELETE /products/{id}/launches...`). Nenhum resquício de
+código — tipo/schema/composables/componentes deletados por inteiro.
 
-- **Primeiro componente do módulo Catalog a justificar `components/blocks/`**
-  — `ProductForm.vue` (form simples) continua solto em `components/`;
-  `ProductLaunchList.vue` é composição de verdade (`DataTable`+toolbar+
-  `Modal`+`ConfirmDialog`), mesmo critério de promoção de subpasta já
-  usado noutros módulos (seção 3.3 de `docs/infra/convencoes-frontend-infra.md`).
-  Mesmo motor genérico de `ProductsView.vue`
-  (`useResourceList`/`useCrudDrawer`/`useConfirmAction`) — `useCrudDrawer`
-  reaproveitado apesar do nome sugerir `Drawer.vue`: a lógica não conhece
-  qual componente de UI a consome.
-- **`ProductLaunchForm.vue` (`components/ProductLaunchForm.vue`) dentro
-  de um `Modal`, não um segundo `Drawer`** — já se está dentro do Drawer
-  de edição do produto quando essa tela abre; um painel lateral
-  empilhado dentro de outro ficaria estranho, `Modal` sobrepõe em vez de
-  deslizar. Mesmo padrão de form único create+edit de `ProductForm.vue`.
-- **`TabBar` no `Drawer` de edição de `ProductsView.vue`** ("Dados do
-  produto"/"Lançamentos") — só existe em modo `edit` (produto precisa
-  existir pra ter lançamentos); `activeProductTab` reseta pra "Dados"
-  toda vez que um edit novo abre, porque `useCrudDrawer.close()` não
-  reseta `mode`/`editingRecord` de propósito (evita flicker na animação
-  de saída) — sem esse reset explícito, reabrir pra um produto DIFERENTE
-  poderia herdar a aba "Lançamentos" ainda ativa da edição anterior. O
-  `Drawer` cresce de `size="md"` pra `"lg"` só no modo `edit`, pra caber
-  a tabela de lançamentos.
-- **Achado real, sistêmico — `Select`/`Tooltip`/`DropdownMenu`/`DatePicker`/
-  `DateRangePicker` nunca funcionavam de verdade dentro de um
-  `Modal`/`Drawer`**: os 5 portais floating do design system usavam
-  `z-index: 50`, sempre MENOR que `Modal.vue`/`Drawer.vue` (`100`/`101`)
-  — qualquer um deles usado aninhado renderizava atrás do modal/drawer,
-  interceptando clique. Só apareceu agora porque `ProductLaunchForm.vue`
-  (`DatePicker` dentro de um `Modal`, que por sua vez está dentro do
-  `Drawer` de edição do produto) foi o primeiro caso real de componente
-  flutuante aninhado num desses dois. Confirmado com Playwright: clicar
-  no atalho "Hoje" do `DatePicker` travava com "element intercepts
-  pointer events", o elemento por cima sendo o próprio conteúdo do
-  `Modal`. Corrigido nos 5 componentes pra `z-index: 200`.
-- **Achado real, sistêmico, encontrado no mesmo processo — erro de campo
-  do backend nunca aparecia sob o input pra qualquer campo com nome
-  composto** (`full_sale_price`, `purchase_price`, `target_margin`,
-  `password_confirmation`...): `parseApiError.ts` devolvia `fieldErrors`
-  chaveado como o Laravel manda (snake_case, nome do REQUEST), mas todo
-  `useXForm.ts` indexa `errors.value` pela chave CAMELCASE de
-  `XFormValues` — sem conversão, `errors.value['full_sale_price']` nunca
-  é lido por `fieldError('fullSalePrice')`. 3 forms de Identity
-  (`useRegisterForm`/`useUpdateProfileForm`/`useResetPasswordForm`) já
-  tinham percebido isso pro único campo composto que cada um tem
-  (`password_confirmation`) e remendado com um ternário ad-hoc repetido 3
-  vezes; `useProductForm.ts` (3 campos compostos) nunca tinha sido
-  corrigido — só ficou visível agora ao escrever `useProductLaunchForm.ts`
-  (`purchase_price`) e revisar o padrão de perto. Corrigido de forma
-  centralizada em `parseApiError.ts` (`toCamelCaseKey`, testado em
-  `tests/shared/services/parseApiError.test.ts`) — os 3 ternários ad-hoc
-  removidos, todo formulário (existente e futuro) funciona sem precisar
-  de nenhum remendo próprio por campo.
-- Verificado em browser real contra o backend local: criar produto →
-  editar → aba "Lançamentos" com as 2 tabs corretas → estado vazio
-  honesto → criar lançamento (incluindo escolher "Hoje" no `DatePicker`
-  dentro do `Modal`, confirmando o fix de z-index) → editar → excluir,
-  ciclo completo funcionando ponta a ponta contra a API real.
+2 achados sistêmicos descobertos construindo essa feature (2026-08-31)
+continuam válidos e ativos no design system, mesmo com o feature em si
+removido:
+
+- **`Select`/`Tooltip`/`DropdownMenu`/`DatePicker`/`DateRangePicker`
+  usam `z-index: 200`** — os 5 portais floating do design system
+  usavam `z-index: 50`, sempre MENOR que `Modal.vue`/`Drawer.vue`
+  (`100`/`101`): qualquer um deles usado aninhado dentro de um
+  `Modal`/`Drawer` renderizava atrás, interceptando clique. Achado real
+  via Playwright (clicar "Hoje" num `DatePicker` dentro de um `Modal`
+  dentro de um `Drawer` travava com "element intercepts pointer
+  events") — corrigido nos 5 componentes, continua valendo pra qualquer
+  uso futuro de componente flutuante aninhado em overlay.
+- **`parseApiError.ts` converte `fieldErrors` pra camelCase**
+  (`toCamelCaseKey`, testado em `tests/shared/services/parseApiError.test.ts`)
+  — achado real: erro de campo do backend nunca aparecia sob o input
+  pra qualquer campo com nome composto (`full_sale_price`,
+  `password_confirmation`...), porque o Laravel manda `fieldErrors`
+  chaveado em snake_case mas todo `useXForm.ts` indexa `errors.value`
+  pela chave camelCase de `XFormValues`. 3 ternários ad-hoc espalhados
+  em formulários de Identity foram removidos em favor dessa conversão
+  centralizada — todo formulário (existente e futuro) funciona sem
+  remendo próprio por campo.
 
 ## ProductForm (`modules/catalog/components/ProductForm.vue`) — rename `operationalCost` → `shippingCost`
 
@@ -1059,11 +1026,10 @@ backend `ticket-message-image-attachments`, corrigido no mesmo dia** —
 Rota própria (`/products/:id/marketplaces`), não uma aba — decisão de
 arquitetura, não de design visual (fronteira de módulo, ver
 `docs/planejamento/plano-implementacao.md` Fase 4). Visualmente é o
-mesmo esqueleto de lista simples já usado em `ProductLaunchList.vue`
-(header + botão de ação + `DataTable` + `Modal` pro formulário), só que
-o "formulário" aqui é um único `Select` (nunca mais de 1 campo, não
-precisou de `FormGroup`/`useResourceForm` — não há o que validar além de
-"algo foi selecionado"). Link "Voltar para Produtos" no cabeçalho é
+mesmo esqueleto de lista simples (header + `DataTable`) já usado noutras
+telas de listagem aninhada do projeto — desde 2026-09-10 sem modal de
+"vincular" nenhum (vínculo virou automático, ver adendo próprio abaixo).
+Link "Voltar para Produtos" no cabeçalho é
 `Button` `variant="ghost"` com `icon-before` (`ArrowLineLeft`), não um
 `<a>`/`<button>` cru — nunca reinventar estilo de botão fora do design
 system, mesmo pra um link de navegação simples.
