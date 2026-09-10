@@ -332,6 +332,37 @@ no título sozinho (mesmo achado real já documentado pra
   (`not_sent`/`pending`/`sent`). Ver adendo completo em
   `docs/design/screens/catalog-and-pricing.md`, seção
   `ProductMarketplacesView`.
+- **Preview de lucro/margem antes de aplicar, 2026-09-11** (pedido
+  direto do usuário — "testar um preço praticado hipotético, ex.
+  campanha do canal pedindo um preço menor, sem correr o risco de
+  esquecer de reverter"): digitar no campo "Preço praticado" chama
+  `GET .../simulate` (novo endpoint, READ-ONLY, nunca persiste) debounced
+  300ms (`usePracticedPriceSimulation.ts`, `@vueuse/core` `refDebounced`
+  — mesma convenção de debounce morar em quem consome, seção 4 de
+  `docs/infra/convencoes-frontend-infra.md`) e mostra lucro/margem
+  calculados num painel abaixo do campo, sem tocar no valor salvo — só o
+  botão "Salvar" persiste de verdade (`PATCH` de sempre). Fechar o modal
+  sem salvar não muda nada no servidor, mesmo tendo digitado vários
+  preços de teste no meio.
+  - `toPricingEvaluation` extraído de `toProductMarketplacePricing`
+    (`productMarketplacePricing.type.ts`) — o resource do `simulate`
+    (`SimulateProductMarketplacePricingResource`) tem o MESMO shape de
+    `pricing` de sempre, reaproveitado sem redigitar o mapper.
+  - Mesma trava de `latestRequestId` já usada em `useResourceList.ts`
+    (achado real de 2026-09-10, resposta fora de ordem) protege o
+    preview também — digitar rápido não deixa uma resposta antiga
+    "ressuscitar" por cima de uma mais nova.
+  - **Achado colateral do backend, mesmo dia**: `PATCH .../marketplaces/{id}`
+    passou a rejeitar `practiced_price: 0` (`422`, `min:0.01` em vez de
+    `min:0`) — um preço exatamente zero dividia por zero no cálculo de
+    margem assim que uma faixa de comissão do marketplace começa em
+    `range_min=0`. Espelhado em `updatePracticedPriceFormSchema.ts`
+    (`.min(0.01)`) — verificado em browser real que `0` já é barrado
+    client-side, sem round-trip pro 422 acontecer na prática.
+  - Cor do preview (`update-practiced-price-modal__preview-margin--*`)
+    é a MESMA paleta de `ProductMarketplacePricingView.vue`
+    (`outcomeTone`, `pricingBreakdown.ts`) — verde/amarelo/vermelho,
+    classe CSS local ao modal, função de decisão compartilhada.
 - **Bug real do backend, encontrado testando em browser real, reportado
   cross-session e corrigido no mesmo dia**: `PATCH .../marketplaces/{id}`
   com `{"practiced_price": 99.9}` (exatamente o tipo `number | null` que

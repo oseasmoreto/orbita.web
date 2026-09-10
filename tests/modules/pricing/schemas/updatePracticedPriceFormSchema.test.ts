@@ -23,11 +23,21 @@ describe('updatePracticedPriceFormSchema', () => {
     ).toBe(true)
   })
 
-  it('accepts zero', () => {
+  it('rejects zero (min:0.01, achado real 2026-09-11 — divisão por zero no cálculo de margem)', () => {
     expect(
       updatePracticedPriceFormSchema.safeParse({
         categoryId: null,
         practicedPrice: 0,
+        status: 'not_sent',
+      }).success,
+    ).toBe(false)
+  })
+
+  it('accepts the smallest valid price (0.01)', () => {
+    expect(
+      updatePracticedPriceFormSchema.safeParse({
+        categoryId: null,
+        practicedPrice: 0.01,
         status: 'not_sent',
       }).success,
     ).toBe(true)

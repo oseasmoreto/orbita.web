@@ -786,6 +786,22 @@ export interface paths {
         patch: operations["productMarketplace.update"];
         trace?: never;
     };
+    "/products/{product}/marketplaces/{productMarketplace}/simulate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["productMarketplace.simulate"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/user-marketplaces/{userMarketplace}/products": {
         parameters: {
             query?: never;
@@ -1899,6 +1915,129 @@ export interface components {
          * @enum {string}
          */
         SettingType: "int" | "string" | "enum" | "text" | "json" | "bool" | "float";
+        /** SimulateProductMarketplacePricingResource */
+        SimulateProductMarketplacePricingResource: {
+            practiced_profit: string | null;
+            practiced_margin_percentage: string | null;
+            meets_target_margin: boolean | null;
+            suggested_price: string;
+            suggested_profit: string;
+            is_approximated: boolean;
+            /**
+             * @description Quebra por parcela (pedido do frontend, 2026-09-03) — pra
+             *     desenhar a barra empilhada de composição de preço.
+             *     suggested_breakdown sempre existe, practiced_breakdown só
+             *     quando há practiced_price (mesma regra dos campos acima).
+             */
+            suggested_breakdown: {
+                cost_price: string;
+                /**
+                 * @description Renomeado de "operational_cost" (decisão 2026-09-08, pedido
+                 *     direto do usuário) — era PRODUCT.operational_cost, valor
+                 *     FIXO em R$, agora PRODUCT.shipping_cost.
+                 */
+                shipping_cost: string;
+                /**
+                 * @description NOVO (decisão 2026-09-08) — USER_MARKETPLACE.operational_cost_percentage,
+                 *     percentual do preço de venda (diferente de shipping_cost
+                 *     acima), já convertido pro valor em R$ deduzido do lucro.
+                 */
+                operational_cost: string;
+                commission: string;
+                fixed_fee: string;
+                tax: string;
+                ads: string;
+                affiliate: string;
+                coupon: string;
+                /**
+                 * @description "Taxa fixa para PF" (MARKETPLACE.individual_fixed_fee, pedido
+                 *     direto do usuário, 2026-09-04) — só diferente de "0.00" quando
+                 *     a conexão é store_document_type=individual (PF); PJ ou sem
+                 *     tipo definido sempre mostra "0.00" aqui.
+                 */
+                individual_fixed_fee: string;
+                profit: string;
+                /**
+                 * @description % que cada parcela acima vale sobre o preço de venda total
+                 *     (pedido direto do usuário, 2026-09-04 — "quantos % o preço de
+                 *     custo vale sobre o valor final e afins").
+                 */
+                percentage_of_total: {
+                    cost_price: string;
+                    shipping_cost: string;
+                    operational_cost: string;
+                    commission: string;
+                    fixed_fee: string;
+                    tax: string;
+                    ads: string;
+                    affiliate: string;
+                    coupon: string;
+                    individual_fixed_fee: string;
+                    profit: string;
+                };
+            };
+            practiced_breakdown: {
+                cost_price: string;
+                /**
+                 * @description Renomeado de "operational_cost" (decisão 2026-09-08, pedido
+                 *     direto do usuário) — era PRODUCT.operational_cost, valor
+                 *     FIXO em R$, agora PRODUCT.shipping_cost.
+                 */
+                shipping_cost: string;
+                /**
+                 * @description NOVO (decisão 2026-09-08) — USER_MARKETPLACE.operational_cost_percentage,
+                 *     percentual do preço de venda (diferente de shipping_cost
+                 *     acima), já convertido pro valor em R$ deduzido do lucro.
+                 */
+                operational_cost: string;
+                commission: string;
+                fixed_fee: string;
+                tax: string;
+                ads: string;
+                affiliate: string;
+                coupon: string;
+                /**
+                 * @description "Taxa fixa para PF" (MARKETPLACE.individual_fixed_fee, pedido
+                 *     direto do usuário, 2026-09-04) — só diferente de "0.00" quando
+                 *     a conexão é store_document_type=individual (PF); PJ ou sem
+                 *     tipo definido sempre mostra "0.00" aqui.
+                 */
+                individual_fixed_fee: string;
+                profit: string;
+                /**
+                 * @description % que cada parcela acima vale sobre o preço de venda total
+                 *     (pedido direto do usuário, 2026-09-04 — "quantos % o preço de
+                 *     custo vale sobre o valor final e afins").
+                 */
+                percentage_of_total: {
+                    cost_price: string;
+                    shipping_cost: string;
+                    operational_cost: string;
+                    commission: string;
+                    fixed_fee: string;
+                    tax: string;
+                    ads: string;
+                    affiliate: string;
+                    coupon: string;
+                    individual_fixed_fee: string;
+                    profit: string;
+                };
+            } | null;
+            /**
+             * @description "VALOR DO ANÚNCIO PARA DESCONTO" da planilha (pedido direto
+             *     do usuário, 2026-09-03) — preço a listar pra, depois do
+             *     desconto de campanha (USER_MARKETPLACE.campaign_discount_percentage),
+             *     ainda render o preço sugerido/praticado correspondente.
+             *     suggested_campaign_price sempre existe. practiced_campaign_price
+             *     vem null quando não há practiced_price OU quando o
+             *     practiced_price não bate a margem alvo (meets_target_margin
+             *     false, pedido direto do usuário, 2026-09-04 — não faz
+             *     sentido sugerir markup de campanha em cima de um preço que
+             *     nem bate a margem cadastrada).
+             */
+            suggested_campaign_price: string;
+            practiced_campaign_price: string | null;
+        };
         /** SsoAccountResource */
         SsoAccountResource: {
             id: string;
@@ -2102,6 +2241,14 @@ export interface components {
          *     negócio conectada, só validação de enum.
          */
         UpdateProductMarketplaceRequest: {
+            /**
+             * @description min:0.01 (não min:0), achado real, 2026-09-11: um preço
+             *     praticado exatamente 0 faz ProductMarketplacePricingCalculator::evaluate()
+             *     dividir por zero ao calcular a margem (Margem% = Lucro ÷
+             *     Venda) assim que uma faixa de comissão do marketplace começar
+             *     em range_min=0 — a mesma trava já aplicada em
+             *     SimulateProductMarketplacePricingRequest.
+             */
             practiced_price: number | null;
             /** Format: uuid */
             category_id?: string | null;
@@ -4842,6 +4989,41 @@ export interface operations {
                         success: boolean;
                         message: string;
                         data: components["schemas"]["ProductMarketplaceResource"];
+                        errors: null;
+                    };
+                };
+            };
+            401: components["responses"]["AuthenticationException"];
+            422: components["responses"]["ValidationException"];
+        };
+    };
+    "productMarketplace.simulate": {
+        parameters: {
+            query: {
+                /**
+                 * @description Format: number
+                 * @example 49.9
+                 */
+                practiced_price: number;
+            };
+            header?: never;
+            path: {
+                product: string;
+                productMarketplace: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        success: boolean;
+                        message: string;
+                        data: components["schemas"]["SimulateProductMarketplacePricingResource"];
                         errors: null;
                     };
                 };

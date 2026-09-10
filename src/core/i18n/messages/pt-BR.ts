@@ -1260,7 +1260,7 @@ export default {
       editModal: {
         categoryPlaceholder: 'Selecione uma categoria',
         errors: {
-          priceMin: 'Preço não pode ser negativo.',
+          priceMin: 'Preço deve ser maior que zero.',
         },
         fields: {
           category: 'Categoria',
@@ -1268,6 +1268,10 @@ export default {
           status: 'Status',
         },
         placeholder: 'Deixe em branco pra limpar',
+        previewMeetsTargetNo: 'Não bate a margem alvo do produto.',
+        previewMeetsTargetYes: 'Bate a margem alvo do produto.',
+        previewProfit: 'Lucro nesse preço',
+        simulating: 'Calculando...',
         success: 'Preço praticado atualizado com sucesso.',
         title: 'Editar preço praticado',
       },

@@ -16,8 +16,10 @@ import {
   toProductMarketplace,
 } from '../types/productMarketplace.type'
 import {
+  type PricingEvaluation,
   type ProductMarketplacePricing,
   toProductMarketplacePricing,
+  toSimulatedPricingEvaluation,
 } from '../types/productMarketplacePricing.type'
 import { toUserMarketplace, type UserMarketplace } from '../types/userMarketplace.type'
 
@@ -295,6 +297,15 @@ export async function listProductMarketplaces(
  * payload — diferente de `categoryId`, o `Select` do modal nunca fica
  * sem valor (todo vínculo já nasce com um status real), então não existe
  * o caso "não mexer" que justificasse omitir a chave.
+ *
+ * **`practicedPrice` não aceita `0` desde 2026-09-11** (achado real do
+ * backend: preço exatamente zero divide por zero no cálculo de margem
+ * assim que uma faixa de comissão do marketplace começa em
+ * `range_min=0`) — `min:0.01`, não `min:0`. `null` continua aceito pra
+ * limpar o preço já definido. Espelhado em
+ * `updatePracticedPriceFormSchema.ts` (`.min(0.01, ...)`), então esse
+ * `422` não deveria acontecer na prática — validação client-side já
+ * barra `0` antes do roundtrip.
  */
 export async function updateProductMarketplace(
   productId: string,
@@ -313,6 +324,30 @@ export async function updateProductMarketplace(
     payload,
   )
   return toProductMarketplace(data.data)
+}
+
+/**
+ * `GET .../simulate` (2026-09-11, pedido direto do usuário — "testar um
+ * preço praticado hipotético antes de aplicar de verdade, sem risco de
+ * esquecer de reverter") — READ-ONLY, nunca persiste nada; devolve o
+ * MESMO shape de `pricing` de sempre (`toSimulatedPricingEvaluation`,
+ * `productMarketplacePricing.type.ts`), só calculado em cima de
+ * `practicedPrice` sem gravar. `practicedPrice` é sempre um número real
+ * aqui (nunca `null`) — não faz sentido "simular limpar o preço", é
+ * sempre um valor hipotético que o vendedor está cogitando praticar.
+ * Consumido pelo preview debounced de `UpdatePracticedPriceModal.vue`.
+ */
+export async function simulateProductMarketplacePricing(
+  productId: string,
+  productMarketplaceId: string,
+  practicedPrice: number,
+): Promise<PricingEvaluation> {
+  const { data } = await apiClient.get<
+    ApiResponse<components['schemas']['SimulateProductMarketplacePricingResource']>
+  >(`/products/${productId}/marketplaces/${productMarketplaceId}/simulate`, {
+    params: { practiced_price: practicedPrice },
+  })
+  return toSimulatedPricingEvaluation(data.data)
 }
 
 // ---------------------------------------------------------------------------

@@ -6,18 +6,23 @@ erDiagram
     USER ||--o{ USER_MARKETPLACE : connects
     MARKETPLACE ||--o{ USER_MARKETPLACE : is_connected_by
     MARKETPLACE ||--o{ PRICING_RULE : has
+    MARKETPLACE ||--o{ CATEGORY_MARKETPLACE : has
+    PRODUCT_CATEGORY ||--o{ CATEGORY_MARKETPLACE : has
+    PRODUCT_CATEGORY ||--o{ PRODUCT_MARKETPLACE : categorizes
     PRODUCT ||--o{ PRODUCT_MARKETPLACE : links
     USER_MARKETPLACE ||--o{ PRODUCT_MARKETPLACE : receives
     USER ||--o{ USER_NOTIFICATION : receives
     NOTIFICATION ||--o{ USER_NOTIFICATION : delivered_as
+    USER ||--o{ USER_FAVORITE : bookmarks
     USER ||--o{ SSO_ACCOUNT : authenticates_via
+    USER ||--o| COMPANY : owns
     USER ||--o{ AUDIT_LOG : generates
     USER ||--o{ TRANSACTION : makes
     SUBSCRIPTION ||--o{ TRANSACTION : generates
-    USER ||--o{ COMPANY : owns
-    MARKETPLACE ||--o{ CATEGORY_MARKETPLACE : has
-    PRODUCT_CATEGORY ||--o{ CATEGORY_MARKETPLACE : is_priced_in
-    PRODUCT_CATEGORY ||--o{ PRODUCT_MARKETPLACE : categorizes
+    USER ||--o{ TICKET : opens
+    TICKET ||--o{ TICKET_MESSAGE : has
+    USER ||--o{ TICKET_MESSAGE : writes
+    TICKET_MESSAGE ||--o{ TICKET_MESSAGE_ATTACHMENT : has
 
     PLAN {
         uuid id PK
@@ -27,9 +32,18 @@ erDiagram
         int max_marketplaces
         int max_products
         boolean active
+        boolean is_trial
+        int trial_days
         timestamp created_at
         timestamp updated_at
     }
+    %% is_trial/trial_days (decisão 2026-08-31, reabre o ponto "Trial: não
+    %% entra no MVP" com novo motivo de negócio — pedido direto do usuário):
+    %% is_trial marca o plano trial (só 1 hoje), trial_days é a duração
+    %% (10). billing_cycle ganha o valor "trial" (terceiro caso do enum,
+    %% nem monthly nem yearly — não é cobrança recorrente de verdade).
+    %% SUBSCRIPTION nascida de um plano trial pula PAYMENT/TRANSACTION
+    %% inteiramente: nasce direto status=active, sem checkout nenhum.
 
     USER {
         uuid id PK
@@ -42,34 +56,50 @@ erDiagram
         timestamp created_at
         timestamp updated_at
     }
-    %% USER.document removido em 2026-09-02 — mora só em COMPANY agora
     %% USER.role accepted values: admin_master, user — único controle de acesso no MVP (sem group_id/menu granular)
     %% USER.status accepted values: active, deleted (default active) — deleted = soft
     %% delete/anonimização (name/email/password apagados, nunca DELETE físico,
     %% histórico financeiro/auditoria ligado ao id continua íntegro). Não usa SoftDeletes/
     %% deleted_at nativo do Laravel de propósito — esconderia a linha de toda query por
     %% Global Scope, inclusive a tela de admin que precisa listar/ver qualquer usuário.
+    %% document (CPF/CNPJ) saiu daqui em 2026-09-02 — mora em COMPANY agora.
 
     COMPANY {
         uuid id PK
         uuid user_id FK
         string name
         string document
+        string tax_regime
         string responsible_document
         decimal sales_tax_percentage
+        decimal operational_cost_percentage
         timestamp created_at
         timestamp updated_at
     }
-    %% Novo em 2026-09-02 (pedido direto do usuário) — unique (user_id):
-    %% 1 empresa por usuário. document é CPF ou CNPJ (mesma Document VO que
-    %% já validava USER.document antes). responsible_document (nullable,
-    %% sempre CPF) só é obrigatório quando document é CNPJ — empresa PJ
-    %% precisa de um CPF de responsável; se document já é CPF, a própria
-    %% pessoa já é o responsável. sales_tax_percentage (imposto sobre
-    %% venda) ainda sem uso em nenhuma regra de precificação, mesmo status
-    %% de PRODUCT.operational_cost. Gate obrigatório antes de assinar um
-    %% plano (LoginResultResource.requires_company) — ver seção 5.
-    %% Sem DELETE: excluir a própria empresa quebraria esse gate.
+    %% Cadastro de empresa do vendedor — obrigatório antes de assinar um plano
+    %% (SubscribeToPlanAction recusa sem ela; requires_company em /auth/me e
+    %% /auth/login sinaliza isso pro front). unique (user_id): 1 empresa por
+    %% usuário. document aceita CPF (11) ou CNPJ (14), validado via
+    %% Domain/Identity/ValueObjects/Document. responsible_document (CPF,
+    %% nullable) é obrigatório só quando document é CNPJ — Mercado Pago só
+    %% aceita CPF como documento do pagador (GET /v1/identification_types
+    %% pra Brasil devolve só CPF), pesquisado antes de implementar.
+    %% tax_regime (nullable, decisão 2026-09-08, pedido direto do usuário):
+    %% individual (PF) / mei / simples_nacional — puramente informativo, sem
+    %% regra de negócio conectada (o aviso de porte maior não contemplado é
+    %% só texto no frontend, backend não bloqueia nada).
+    %% operational_cost_percentage (nullable, decisão 2026-09-08, pedido
+    %% direto do usuário — corrigido no mesmo dia: mora aqui, não em
+    %% USER_MARKETPLACE): percentual NOVO, um valor só pra empresa toda,
+    %% mesmo tratamento de ads_percentage/affiliate_percentage (deduzido
+    %% do lucro, considerado no denominador do suggested_price) —
+    %% desambiguado de PRODUCT.shipping_cost (era PRODUCT.operational_cost,
+    %% valor FIXO em R$, renomeado no mesmo dia pra não colidir de nome).
+    %% sales_tax_percentage ("imposto sobre venda") só armazenado nesta
+    %% rodada, ainda sem uso em regra de precificação. Hard delete (não
+    %% anonimização) quando o usuário exclui a própria conta — nada mais
+    %% referencia COMPANY.id, e CPF/CNPJ é exatamente o dado que o pedido de
+    %% exclusão (LGPD) quer remover.
 
     SUBSCRIPTION {
         uuid id PK
@@ -99,7 +129,7 @@ erDiagram
         string ean
         string ncm
         decimal cost_price
-        decimal operational_cost
+        decimal shipping_cost
         decimal target_margin
         decimal weight
         decimal height
@@ -108,17 +138,30 @@ erDiagram
         timestamp created_at
         timestamp updated_at
     }
-    %% operational_cost (nullable) soma custo operacional (combustível,
-    %% embalagem, etiqueta, mão de obra) — opcional, informativo, ainda
-    %% sem uso em nenhuma regra de precificação. weight (kg) e
-    %% height/width/length (cm) são nullable — opcionais no cadastro,
-    %% ainda sem uso em nenhuma regra de precificação/frete
+    %% cost_price ("preço de custo") era purchase_price, renomeado 2026-09-02
+    %% (pedido direto do usuário). shipping_cost (nullable, renomeado de
+    %% operational_cost em 2026-09-08, pedido direto do usuário — pra não
+    %% colidir de nome com COMPANY.operational_cost_percentage
+    %% novo): custos de envio do produto (embalagem, etiqueta, frete etc.)
+    %% — opcional, valor FIXO em R$, já subtraído direto do lucro na
+    %% fórmula de precificação (seção 3) desde sempre.
+    %% full_sale_price ("preço de venda") removido do cadastro no mesmo dia —
+    %% nunca teve regra de negócio conectada (PricingCalculator, existente e
+    %% testado isoladamente, nunca ligado a rota nenhuma).
+    %% weight (kg) e height/width/length (cm) são nullable — opcionais no
+    %% cadastro, ainda sem uso em nenhuma regra de precificação/frete
+    %% ean/ncm são nullable — opcionais no cadastro desde 2026-09-04 (pedido
+    %% direto do usuário, nem todo vendedor tem os dois códigos em mãos no
+    %% momento do cadastro), continuam validados no formato (Ean/Ncm VOs)
+    %% só quando informados.
 
     MARKETPLACE {
         uuid id PK
         string name
         boolean active
         boolean coming_soon
+        boolean requires_store_document_type
+        decimal individual_fixed_fee
         string logo_url
         string description
         json tags
@@ -127,14 +170,27 @@ erDiagram
         timestamp updated_at
     }
     %% logo_url/description/tags/website_url nullable — cadastro visual pra
-    %% tela de conectar marketplace. tags é array simples (json), sem
-    %% entidade própria tipo MARKETPLACE_TAG. logo_url NUNCA aceita link
-    %% externo — o admin manda a imagem em base64, o backend
-    %% decodifica/valida/hospeda no disco 'public' do Laravel e persiste a
-    %% URL PRÓPRIA aqui.
-    %% coming_soon (default false, novo em 2026-09-02): ortogonal a
-    %% active — continua aparecendo em GET /marketplaces, só não pode ser
-    %% conectado ainda.
+    %% tela de conectar marketplace (pedido do front, 2026-08-31). tags é
+    %% array simples (json), sem entidade própria tipo MARKETPLACE_TAG — não
+    %% há necessidade de normalizar categorias livres definidas pelo admin.
+    %% logo_url NUNCA aceita link externo (decisão revista no mesmo dia,
+    %% pedido direto do usuário): o admin manda a imagem em base64
+    %% (data:image/png;base64,...), o backend decodifica/valida/hospeda no
+    %% disco 'public' do Laravel (Domain/Pricing/ValueObjects/Base64Image +
+    %% MarketplaceLogoStorageInterface) e persiste a URL PRÓPRIA aqui —
+    %% nunca depende de um link de terceiro que pode cair.
+    %% coming_soon (decisão 2026-09-02, default false) — "em breve",
+    %% ortogonal a active: aparece em GET /v1/marketplaces (front mostra o
+    %% aviso), mas CreateUserMarketplaceAction recusa conectar enquanto true.
+    %% requires_store_document_type (decisão 2026-09-04, default false) —
+    %% mesmo raciocínio de coming_soon: aparece em GET /v1/marketplaces
+    %% (front mostra o campo PF/PJ no formulário de conexão), e
+    %% CreateUserMarketplaceAction recusa conectar sem
+    %% USER_MARKETPLACE.store_document_type enquanto true (422
+    %% errorMessageStoreDocumentTypeRequired). individual_fixed_fee
+    %% (nullable) é a "taxa fixa para PF" que o marketplace cobra — entra no
+    %% ProductMarketplacePricingCalculator condicionada a
+    %% USER_MARKETPLACE.store_document_type=individual da conexão.
 
     USER_MARKETPLACE {
         uuid id PK
@@ -145,14 +201,34 @@ erDiagram
         decimal ads_percentage
         decimal campaign_discount_percentage
         decimal affiliate_percentage
+        decimal coupon_value
+        string store_document_type
         timestamp created_at
         timestamp updated_at
     }
     %% unique (user_id, marketplace_id): 1 conta por marketplace por usuário
     %% ads_percentage/campaign_discount_percentage/affiliate_percentage
-    %% (nullable, novos em 2026-09-02): percentual informativo por canal,
-    %% editável ao conectar e depois, ainda sem uso em nenhuma regra de
-    %% precificação
+    %% (nullable, decisão 2026-09-02): percentuais opcionais da própria
+    %% conta/loja do usuário naquele canal — nem todo vendedor usa
+    %% ads/campanha/afiliado. Entram no cálculo do ProductMarketplacePricingCalculator
+    %% desde 2026-09-03 (pedido direto do usuário): ads/affiliate são
+    %% deduzidos do lucro igual imposto; campaign_discount_percentage vira
+    %% o "preço de anúncio para desconto" ("VALOR DO ANUNCIO PARA DESCONTO"
+    %% da planilha, preço a listar pra bater o preço ativo depois do
+    %% desconto de campanha) — nenhum dos 3 mais "só armazenado".
+    %% coupon_value (nullable, decisão 2026-09-04, pedido direto do
+    %% usuário): valor de cupom que a conta costuma dar no canal — valor
+    %% FIXO em R$, não percentual, diferente dos 3 campos acima. Entra no
+    %% cálculo do ProductMarketplacePricingCalculator desde o dia em que foi
+    %% criado: mesmo tratamento algébrico de PRICING_RULE.fixed_fee (soma
+    %% direto no preço sugerido, subtrai direto do lucro — nunca
+    %% multiplicado pelo preço de venda).
+    %% store_document_type (nullable, decisão 2026-09-04, pedido direto do
+    %% usuário): enum individual (PF) / company (PJ) — nullable/opcional em
+    %% geral, mas OBRIGATÓRIO no momento de conectar
+    %% (CreateUserMarketplaceAction, 422 errorMessageStoreDocumentTypeRequired)
+    %% quando MARKETPLACE.requires_store_document_type=true pro marketplace
+    %% escolhido. Editável depois via PATCH.
 
     PRICING_RULE {
         uuid id PK
@@ -171,16 +247,30 @@ erDiagram
         uuid product_id FK
         uuid user_marketplace_id FK
         uuid category_id FK
+        decimal practiced_price
+        string status
         timestamp created_at
         timestamp updated_at
     }
     %% vínculo puro (decisão 2026-08-26) — suggested_price/is_approximated
     %% removidos nesta rodada, ficam pra uma tela/tabela futura quando o
     %% PricingCalculator (já existente) entrar em uso de verdade
-    %% category_id (nullable, novo em 2026-09-02): nem todo marketplace
-    %% cobra por categoria, e vínculos antigos não têm categoria nenhuma.
-    %% Só aceita categoria com CATEGORY_MARKETPLACE configurado pro
-    %% marketplace do vínculo. Sem PATCH pra trocar só a categoria.
+    %% category_id (nullable, decisão 2026-09-02): categoria escolhida pelo
+    %% usuário, só aceita PRODUCT_CATEGORY com CATEGORY_MARKETPLACE cadastrado
+    %% pro marketplace desse vínculo — validado na Action, não no banco.
+    %% practiced_price (nullable, decisão 2026-09-03, planilha real fornecida
+    %% pelo usuário — PRECIFICAÇAO.xlsx): preço de venda que o vendedor
+    %% pratica de fato nesse canal. É a "tela futura" acima, finalmente
+    %% implementada — ProductMarketplacePricingCalculator usa esse preço +
+    %% PRODUCT.cost_price/shipping_cost/target_margin +
+    %% COMPANY.sales_tax_percentage + USER_MARKETPLACE.ads_percentage +
+    %% PRICING_RULE do marketplace pra checar se bate a margem alvo ou
+    %% sugerir um novo preço. Endpoint: GET /v1/user-marketplaces/{id}/products.
+    %% status (not_sent/pending/sent, default not_sent, decisão 2026-09-10,
+    %% pedido direto do usuário): marcado manualmente pelo vendedor na tela
+    %% de precificação — puramente informativo, sem regra de negócio
+    %% conectada. Editável via PATCH /v1/products/{id}/marketplaces/{id},
+    %% mesmo endpoint que já edita practiced_price/category_id.
 
     PRODUCT_CATEGORY {
         uuid id PK
@@ -189,9 +279,10 @@ erDiagram
         timestamp created_at
         timestamp updated_at
     }
-    %% Novo em 2026-09-02 (pedido direto do usuário) — categoria simples,
-    %% sem hierarquia/subcategoria (parent_id desenhado e removido na
-    %% mesma rodada de revisão). Cadastro exclusivo do admin.
+    %% Categoria simples e plana — sem hierarquia/subcategoria (decisão
+    %% 2026-09-02, revertida de uma primeira versão com parent_id, pedido
+    %% direto do usuário). active=false esconde da seleção pra NOVOS
+    %% vínculos, não desfaz os existentes.
 
     CATEGORY_MARKETPLACE {
         uuid id PK
@@ -201,12 +292,10 @@ erDiagram
         timestamp created_at
         timestamp updated_at
     }
-    %% unique (category_id, marketplace_id) — comissão de uma
-    %% PRODUCT_CATEGORY num MARKETPLACE específico. Nem todo marketplace
-    %% tem categoria vinculada (opcional, não lista obrigatória). Leitura
-    %% transparente pra qualquer usuário autenticado (mesmo padrão de
-    %% PRICING_RULE), alimenta o seletor de categoria ao vincular produto
-    %% ao marketplace.
+    %% Comissão que um MARKETPLACE cobra pra produtos de uma PRODUCT_CATEGORY
+    %% — cadastrado pelo admin. Nem todo marketplace cobra por categoria,
+    %% essa tabela não tem linha obrigatória por marketplace. unique
+    %% (category_id, marketplace_id).
 
     NOTIFICATION {
         uuid id PK
@@ -233,6 +322,19 @@ erDiagram
     }
     %% entrega de 1 NOTIFICATION pra 1 destinatário — "lida"/"não lida" mora
     %% aqui, nunca em NOTIFICATION. unique (user_id, notification_id)
+
+    USER_FAVORITE {
+        uuid id PK
+        uuid user_id FK
+        string label
+        string route_name
+        timestamp created_at
+        timestamp updated_at
+    }
+    %% Atalho de navegação da sidebar do front (pedido pelo front, 2026-08-31)
+    %% — não é dado de negócio do domínio de precificação, é preferência de UI
+    %% por usuário. route_name é o nome da rota do Vue Router (não path/URL).
+    %% unique (user_id, route_name): não dá pra favoritar a mesma rota 2x.
 
     SSO_ACCOUNT {
         uuid id PK
@@ -294,4 +396,52 @@ erDiagram
     }
     %% PASSWORD_RESET has no FK on purpose: mirrors Laravel's default password_reset_tokens table
     %% PASSWORD_RESET keeps only created_at (no updated_at) — mirrors Laravel's own password_reset_tokens migration, not a domain entity
+
+    TICKET {
+        uuid id PK
+        uuid user_id FK
+        string subject
+        string status
+        timestamp resolved_at
+        uuid resolved_by FK
+        timestamp created_at
+        timestamp updated_at
+    }
+    %% Bounded Context Support (decisão 2026-09-01, pedido direto do usuário).
+    %% status: open | in_progress | resolved — open -> in_progress é
+    %% automático (decisão 2026-09-08, pedido direto do usuário), assim que
+    %% um admin_master responde pela 1a vez, idempotente, nunca reabre um
+    %% resolved. Contestar uma resolução (só quem abriu pode) volta o status
+    %% direto pra open, sem passar por in_progress; a mensagem da contestação
+    %% já fica no histórico de TICKET_MESSAGE. resolved_by (nullable): quem
+    %% marcou resolvido — pode ser o próprio user_id (dono) OU qualquer
+    %% admin_master, sem atribuição de chamado a um admin específico.
+
+    TICKET_MESSAGE {
+        uuid id PK
+        uuid ticket_id FK
+        uuid user_id FK
+        text body
+        timestamp created_at
+        timestamp updated_at
+    }
+    %% user_id: autor da mensagem — dono do chamado OU qualquer admin_master
+
+    TICKET_MESSAGE_ATTACHMENT {
+        uuid id PK
+        uuid ticket_message_id FK
+        string url
+        timestamp created_at
+        timestamp updated_at
+    }
+    %% Imagem anexada a uma TICKET_MESSAGE (decisão 2026-09-08, pedido direto
+    %% do usuário — vale pra mensagem inicial do chamado E pra respostas de
+    %% usuário/admin, até 5 por mensagem). Upload em base64 no corpo do
+    %% request, mesmo pipeline já usado por MARKETPLACE.logo_url
+    %% (Base64Image::fromDataUri — decodifica/valida/hospeda no disco
+    %% 'public' do Laravel, nunca aceita URL externa). Base64Image foi
+    %% promovido de Domain/Pricing/ValueObjects pra Domain/Shared/ValueObjects
+    %% nesta rodada, por passar a ser usado por 2 Bounded Contexts (Pricing +
+    %% Support). url é sempre a URL própria hospedada por nós, nunca a de
+    %% terceiro.
 ```

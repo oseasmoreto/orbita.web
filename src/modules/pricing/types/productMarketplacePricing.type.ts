@@ -3,6 +3,8 @@ import type { PriceSegment, SegmentKey } from '../services/pricingBreakdown'
 import type { ProductMarketplaceStatus } from './productMarketplace.type'
 
 type ProductMarketplacePricingResource = components['schemas']['ProductMarketplacePricingResource']
+type SimulateProductMarketplacePricingResource =
+  components['schemas']['SimulateProductMarketplacePricingResource']
 
 /**
  * Achado real, 2026-09-03 — o schema OpenAPI gerado (`schema.d.ts`) infere
@@ -205,6 +207,36 @@ function toPricingBreakdown(
   }
 }
 
+/**
+ * Extraído de `toProductMarketplacePricing` em 2026-09-11 — o endpoint
+ * novo de simulação (`GET .../simulate`, "testar um preço praticado
+ * hipotético antes de aplicar de verdade") devolve o MESMO formato de
+ * `pricing` (`SimulateProductMarketplacePricingResource`), só que os
+ * booleanos já vêm certos de origem (não passa pela Action que anexa
+ * `$evaluation` dinamicamente num Model — mesmo achado do comentário de
+ * `PricingEvaluationResource` acima, que só se aplica ao endpoint de
+ * listagem) — por isso aceita os 2 tipos sem precisar do cast
+ * `as unknown as` de novo aqui dentro.
+ */
+function toPricingEvaluation(
+  pricing: PricingEvaluationResource | SimulateProductMarketplacePricingResource,
+): PricingEvaluation {
+  return {
+    isApproximated: pricing.is_approximated,
+    meetsTargetMargin: pricing.meets_target_margin,
+    practicedBreakdown: pricing.practiced_breakdown
+      ? toPricingBreakdown(pricing.practiced_breakdown)
+      : null,
+    practicedCampaignPrice: pricing.practiced_campaign_price,
+    practicedMarginPercentage: pricing.practiced_margin_percentage,
+    practicedProfit: pricing.practiced_profit,
+    suggestedBreakdown: toPricingBreakdown(pricing.suggested_breakdown),
+    suggestedCampaignPrice: pricing.suggested_campaign_price,
+    suggestedPrice: pricing.suggested_price,
+    suggestedProfit: pricing.suggested_profit,
+  }
+}
+
 export function toProductMarketplacePricing(
   resource: ProductMarketplacePricingResource,
 ): ProductMarketplacePricing {
@@ -215,25 +247,18 @@ export function toProductMarketplacePricing(
     createdAt: resource.created_at,
     id: resource.id,
     practicedPrice: resource.practiced_price,
-    pricing: {
-      isApproximated: pricing.is_approximated,
-      meetsTargetMargin: pricing.meets_target_margin,
-      practicedBreakdown: resource.pricing.practiced_breakdown
-        ? toPricingBreakdown(resource.pricing.practiced_breakdown)
-        : null,
-      practicedCampaignPrice: pricing.practiced_campaign_price,
-      practicedMarginPercentage: pricing.practiced_margin_percentage,
-      practicedProfit: pricing.practiced_profit,
-      suggestedBreakdown: toPricingBreakdown(resource.pricing.suggested_breakdown),
-      suggestedCampaignPrice: pricing.suggested_campaign_price,
-      suggestedPrice: pricing.suggested_price,
-      suggestedProfit: pricing.suggested_profit,
-    },
+    pricing: toPricingEvaluation(pricing),
     productId: resource.product_id,
     productName: resource.product_name,
     status: resource.status,
     userMarketplaceId: resource.user_marketplace_id,
   }
+}
+
+export function toSimulatedPricingEvaluation(
+  resource: SimulateProductMarketplacePricingResource,
+): PricingEvaluation {
+  return toPricingEvaluation(resource)
 }
 
 /**
