@@ -148,7 +148,7 @@ export default {
         ctaHighlighted: 'Assinar com desconto',
         ctaTrial: 'Testar grátis',
         equivalentNote: '*Valor equivalente para comparação.',
-        maxMarketplaces: 'Até {count} marketplaces conectados',
+        maxMarketplaces: 'Até {count} canais de venda conectados',
         maxProducts: 'Até {count} produtos cadastrados',
         monthlyDescription: 'Tenha acesso a todos os recursos pagando mensalmente.',
         mostEconomical: 'Mais econômico',
@@ -282,14 +282,14 @@ export default {
         submitEdit: 'Salvar alterações',
         updateSuccess: 'Produto atualizado com sucesso.',
       },
-      marketplacesButton: 'Marketplaces',
+      marketplacesButton: 'Canais de venda',
       planLimit: {
         reached:
           'Você atingiu o limite de produtos do seu plano. Faça upgrade para cadastrar mais.',
         usage: '{total} de {max} produtos cadastrados',
       },
       pricingShortcut: 'Ver precificação',
-      pricingShortcutUnavailable: 'Conecte um marketplace antes de ver a precificação.',
+      pricingShortcutUnavailable: 'Conecte um canal de venda antes de ver a precificação.',
       searchPlaceholder: 'Buscar por SKU',
       title: 'Produtos',
     },
@@ -346,7 +346,7 @@ export default {
     },
     eyebrow: 'Precificação',
     planUsage: {
-      marketplaces: 'Marketplaces',
+      marketplaces: 'Canais de venda',
       products: 'Produtos',
       title: 'Uso do plano',
     },
@@ -364,7 +364,7 @@ export default {
     },
     stats: {
       activeLinks: 'Vínculos ativos',
-      marketplacesConnected: 'Marketplaces conectados',
+      marketplacesConnected: 'Canais de venda conectados',
       outOfMargin: 'Fora da margem',
       productsRegistered: 'Produtos cadastrados',
     },
@@ -570,7 +570,7 @@ export default {
   help: {
     groups: {
       empresa: 'Empresa',
-      marketplace: 'Marketplace',
+      marketplace: 'Canais de venda',
       precificacao: 'Precificação',
       produto: 'Produto',
       vinculo: 'Vínculo',
@@ -1249,14 +1249,14 @@ export default {
       pauseSuccess: 'Conexão pausada com sucesso.',
       pricingButton: 'Ver precificação',
       title: 'Canais de venda',
-      usage: '{total} de {max} marketplaces conectados',
+      usage: '{total} de {max} canais de venda conectados',
     },
     productMarketplacePricing: {
       campaignPriceLabel: 'Preço a anunciar',
       campaignPriceTooltip:
         'Preço que compensa o desconto de campanha configurado nesta conexão.\n\nNão é o preço já com desconto aplicado — é o valor MAIOR que você precisa colocar no anúncio pra, depois do desconto, ainda receber o preço sugerido/praticado de verdade.',
       copyPriceTooltip: 'Clique para copiar',
-      editConnectionButton: 'Editar vínculo do marketplace',
+      editConnectionButton: 'Editar canal de venda',
       editModal: {
         categoryPlaceholder: 'Selecione uma categoria',
         errors: {
@@ -1284,9 +1284,9 @@ export default {
         averageMarginTooltip: 'Considerando uma unidade de cada produto.',
       },
       noActiveConnectionsHint:
-        'Nenhuma conexão ativa disponível — conecte um marketplace antes de ver a precificação.',
+        'Nenhuma conexão ativa disponível — conecte um canal de venda antes de ver a precificação.',
       noConnectionsCta: 'Ir para Canais de venda',
-      noConnectionsHint: 'Conecte um marketplace antes de ver a precificação.',
+      noConnectionsHint: 'Conecte um canal de venda antes de ver a precificação.',
       practicedBadge: 'Praticado',
       priceCopied: 'Preço copiado para a área de transferência.',
       priceCopyFailed: 'Não foi possível copiar o preço.',
@@ -1331,19 +1331,19 @@ export default {
       columns: {
         category: 'Categoria',
         createdAt: 'Vinculado em',
-        marketplace: 'Marketplace',
+        marketplace: 'Canal de venda',
         practicedPrice: 'Preço praticado',
         status: 'Status',
         storeName: 'Loja',
       },
-      empty: 'Nenhum marketplace vinculado ainda.',
-      title: 'Marketplaces do produto',
-      titleWithProduct: 'Marketplaces de {product}',
+      empty: 'Nenhum canal de venda vinculado ainda.',
+      title: 'Canais de venda do produto',
+      titleWithProduct: 'Canais de venda de {product}',
     },
   },
   pricingDashboardMockup: {
     copyPriceButton: 'Copiar preço sugerido',
-    editConnectionButton: 'Editar vínculo do marketplace',
+    editConnectionButton: 'Editar canal de venda',
     kpis: {
       averageMargin: 'Margem média',
       productCount: 'Produtos',

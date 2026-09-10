@@ -1129,6 +1129,65 @@ omitido — o `Select` nunca fica sem valor). Exibido com `StatusDot`
 browser real: PATCH manda `{practiced_price, status}`, `200` com
 `status` persistido; coluna atualiza a cor/label na hora.
 
+**Nomenclatura padronizada pra "Canais de venda", 2026-09-11, pedido
+direto do usuário** ("pro usuário temos o menu 'canais de venda', porém
+em precificação chamamos de 'editar vínculo mktplace', temos que manter
+apenas canais de venda como padrão") — o menu da sidebar
+(`sidebar.nav.salesChannels`) sempre foi "Canais de venda", mas vários
+textos de UI ao redor ainda diziam "marketplace"/"vínculo" pro MESMO
+conceito (a lista de `USER_MARKETPLACE` do usuário), gerando 2 nomes pra
+1 coisa só. **Só rótulos de texto mudaram — nenhuma URL/rota/nome de
+arquivo** (pedido explícito: "as urls podem se manter, apenas os labels
+mesmo"), tudo isolado em `core/i18n/messages/pt-BR.ts`:
+
+- `pricing.productMarketplacePricing.editConnectionButton` /
+  `pricingDashboardMockup.editConnectionButton`: "Editar vínculo do
+  marketplace" → **"Editar canal de venda"**.
+- `pricing.productMarketplacePricing.noConnectionsHint`/
+  `noActiveConnectionsHint`: "conecte um marketplace..." → "conecte um
+  canal de venda...".
+- `pricing.marketplaces.usage` (subtítulo da própria tela "Canais de
+  venda"): "{total} de {max} marketplaces conectados" → "... canais de
+  venda conectados".
+- `dashboard.stats.marketplacesConnected`/`dashboard.planUsage.marketplaces`
+  (KPIs do dashboard "Padrão"): "Marketplaces conectados"/"Marketplaces"
+  → "Canais de venda conectados"/"Canais de venda".
+- `billing.choosePlan.card.maxMarketplaces` (card de plano, tela de
+  escolha): "Até {count} marketplaces conectados" → "... canais de venda
+  conectados".
+- `pricing.productMarketplaces.*` (esta view): título "Marketplaces do
+  produto"/"Marketplaces de {product}" → "Canais de venda do
+  produto"/"Canais de venda de {product}"; coluna "Marketplace" → "Canal
+  de venda"; `empty`: "Nenhum marketplace vinculado" → "Nenhum canal de
+  venda vinculado".
+- `catalog.products.marketplacesButton` (atalho no rodapé do `Drawer` de
+  `ProductForm.vue` e nos botões "ver marketplaces" das visões de
+  precificação) / `pricingShortcutUnavailable`: "Marketplaces"/"Conecte
+  um marketplace..." → "Canais de venda"/"Conecte um canal de venda...".
+- `help.groups.marketplace` (rótulo de seção do guia de Ajuda — o
+  conteúdo do próprio passo, `public/guides/onboarding/shopee.json`, já
+  dizia "Veja os canais de venda disponíveis"): "Marketplace" → "Canais
+  de venda".
+
+**Deliberadamente NÃO renomeado** — são um conceito diferente, o
+catálogo `MARKETPLACE` que o `admin_master` cadastra (Shopee, Amazon
+etc.), não a lista de conexões do vendedor: `pricing.admin.marketplaces.*`
+(`AdminMarketplacesView`/`AdminMarketplaceForm`, títulos "Marketplaces"/
+"Novo marketplace"/"Marketplace ativo"), `sidebar.nav.adminMarketplaces`,
+`billing.admin.plans.form.fields.maxMarketplaces` (campo técnico do
+formulário admin de `PLAN.max_marketplaces`), `common.marketplaces.*`
+(nomes reais dos canais — "Amazon", "Shopee" etc.), diálogos de
+conectar/desconectar UM marketplace específico
+(`pricing.marketplaces.connectModal.connectSuccess`/
+`disconnectConfirm.title` — "Desconectar marketplace?" continua correto,
+é sobre O marketplace específico sendo desconectado, ex. "Shopee", não
+sobre o nome da tela/feature). Verificado em browser real (Playwright,
+porta 5174, com uma conexão Shopee + 1 produto seedados via tinker): as
+8 telas/textos acima renderizam o rótulo novo, nenhum resquício do texto
+antigo restou em nenhuma delas. `npm run typecheck`/`eslint`/`biome
+check`/`vitest run` (403 testes) — todos verdes, mudança 100% isolada no
+catálogo i18n.
+
 ## AdminProductCategoriesView / AdminProductCategoryForm (`modules/pricing/views/AdminProductCategoriesView.vue`, `modules/pricing/components/AdminProductCategoryForm.vue`)
 
 CRUD de `PRODUCT_CATEGORY` — exclusivo do admin (tarefa 64,
