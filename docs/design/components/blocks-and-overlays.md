@@ -293,6 +293,33 @@ critério já usado no Badge/Search pra valor fora da escala sólida).
   marketplace (`MarketplaceLogo`, `shared/components/ui/`, dentro de um
   `Tooltip` com o nome no hover), não dava pra expressar isso só com
   `column.title: string`.
+- **`DataTableColumn.sticky?: boolean`, mesmo dia, algumas horas depois**
+  — pedido direto do usuário na tabela de precificação por conexão
+  (`ProductMarketplacePricingView.vue`, 10+ parcelas de breakdown força
+  scroll horizontal): "deixar a coluna com o nome do produto fixa no
+  scroll lateral". `position: sticky` no `<th>`/`<td>` marcados
+  (`.ui-data-table__header-cell--sticky`/`__cell--sticky`), com
+  `background-color: $color-bg-1` explícito (senão o conteúdo das outras
+  colunas aparece "vazando" por baixo durante o scroll, já que a célula
+  sem fundo próprio é transparente) e `box-shadow: 1px 0 0 $color-ink-10`
+  (hairline, mesmo token de `button-secondary`) separando visualmente a
+  coluna fixa do resto.
+  - **Suporta mais de uma coluna sticky ao mesmo tempo, corrigido no
+    mesmo dia** — achado real do usuário: marcou "Produto" E "Status"
+    como `sticky`, e a 2ª sobrepôs a 1ª. A 1ª versão cravava `left: 0`
+    fixo em TODA coluna `sticky` (funcionava só com uma). Corrigido
+    medindo a largura real de cada `<th>` sticky via `ResizeObserver`
+    (`stickyColumnWidths`, reativo) e empilhando os offsets na mesma
+    ordem de `columns` (`stickyLeftOffsets` — 1ª sticky em `left: 0`, a
+    2ª em `left: <largura medida da 1ª>`, e assim por diante), aplicado
+    via `:style` inline (não dá pra expressar offset dinâmico só com
+    classe CSS estática). Reage sozinho se o conteúdo da coluna sticky
+    mudar de largura (nome de produto mais longo/curto entre páginas) —
+    sem recálculo manual, sem prop nova pro consumidor passar largura à
+    mão. `selectable` (coluna de checkbox) não entra nessa conta ainda —
+    combinar `selectable` com `sticky` não foi testado/pedido até agora.
+    Verificado em browser real: `getBoundingClientRect()` das 2 colunas
+    sticky confirmando limites exatos, sem sobreposição de pixel nenhum.
 - **Achado real, sistêmico — afeta qualquer ícone dentro de célula de
   `<table>`, não só o `Checkbox`**: o reset global (`svg { max-width:
   100% }`, `core/styles/_reset.scss`) colapsa a largura de um `<svg>` pra

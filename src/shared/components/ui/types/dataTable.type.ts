@@ -11,6 +11,16 @@ export interface DataTableColumn {
   align?: 'left' | 'right'
   key: string
   sortable?: boolean
+  /**
+   * Fixa a coluna no scroll horizontal (`position: sticky; left: 0`) —
+   * pedido direto do usuário, 2026-09-10 (`ProductMarketplacePricingView.vue`,
+   * a tabela por conexão tem 10+ parcelas de breakdown, "deixar a coluna
+   * com o nome do produto fixa no scroll lateral"). Pensado pra UMA
+   * coluna (a primeira, visualmente à esquerda) — marcar mais de uma
+   * como `sticky` empilha todas em `left: 0` e sobrepõe, então o
+   * consumidor é quem garante isso, o componente não valida.
+   */
+  sticky?: boolean
   title: string
 }
 

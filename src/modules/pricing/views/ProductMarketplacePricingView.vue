@@ -95,9 +95,13 @@ import {
   productMarketplaceStatusColor,
   productMarketplaceStatusLabelKey,
 } from '../types/productMarketplace.type'
-import type { ProductMarketplaceStatus } from '../types/productMarketplace.type'
-import type { PriceSegment, SegmentKey } from '../services/pricingBreakdown'
-import type { ProductMarketplacePricing } from '../types/productMarketplacePricing.type'
+import type { SegmentKey } from '../services/pricingBreakdown'
+import type {
+  PricingTableRow,
+  PricingTableSegmentCell,
+  PricingViewMode,
+  ProductMarketplacePricing,
+} from '../types/productMarketplacePricing.type'
 import type { DataTableColumn } from '@/shared/components/ui/types/dataTable.type'
 import type { TabBarOption } from '@/shared/components/ui/types/tabBar.type'
 
@@ -235,51 +239,13 @@ function handleSaved(): void {
   void list.refresh()
 }
 
-type ViewMode = 'bar' | 'table'
-const viewMode = ref<ViewMode>('table')
-
-/**
- * Praticado e sugerido viram COLUNAS separadas na visão de tabela (pedido
- * direto do usuário, 2026-09-03) — diferente da barra, que só mostra o
- * preço "ativo" (praticado quando existe, senão sugerido). Aqui os dois
- * ficam sempre visíveis lado a lado, então a linha carrega os dois
- * conjuntos de dado (margem/lucro) em vez de só o resolvido por
- * `resolveActivePricing`. `practicedPrice`/`practicedMarginPercent`/
- * `practicedProfit` ficam `null` juntos quando ainda não há preço
- * praticado — os 3 sempre nascem/faltam em conjunto.
- */
-/**
- * Cada coluna de parcela carrega valor + % (2026-09-04, pedido direto do
- * usuário — mesma % agora exposta pelo backend, `PriceSegment.percent`,
- * `pricingBreakdown.ts`), não mais só a string de dinheiro — a célula
- * (`#[cell-${key}]` abaixo) mostra os dois juntos, mesmo par
- * `money (percent%)` já usado no preço principal desta view.
- */
-type SegmentCell = Pick<PriceSegment, 'percent' | 'value'>
-
-type PricingTableRow = {
-  id: string
-  isApproximated: boolean
-  meetsTargetMargin: boolean | null
-  practicedCampaignPrice: string | null
-  practicedMarginPercent: number | null
-  practicedPrice: string | null
-  practicedProfit: string | null
-  productId: string
-  productName: string
-  source: ProductMarketplacePricing
-  status: ProductMarketplaceStatus
-  suggestedCampaignPrice: string
-  suggestedMarginPercent: number
-  suggestedPrice: string
-  suggestedProfit: string
-} & Record<SegmentKey, SegmentCell>
+const viewMode = ref<PricingViewMode>('table')
 
 const tableRows = computed<PricingTableRow[]>(() =>
   displayRows.value.map(({ row, segments }) => {
     const segmentValues = Object.fromEntries(
       segments.map((segment) => [segment.key, { percent: segment.percent, value: segment.value }]),
-    ) as Record<SegmentKey, SegmentCell>
+    ) as Record<SegmentKey, PricingTableSegmentCell>
     const { pricing } = row
     // Achado real, 2026-09-04 (mesmo motivo de `resolveActivePricing`,
     // `pricingBreakdown.ts`) — `practicedCampaignPrice` NÃO entra mais
@@ -316,8 +282,16 @@ const tableRows = computed<PricingTableRow[]>(() =>
 // 2026-09-04) — as 10 parcelas do breakdown + os 2 preços finais, nunca
 // `productName` (texto).
 const tableColumns = computed<DataTableColumn[]>(() => [
-  { key: 'productName', title: t('pricing.productMarketplacePricing.table.columns.product') },
-  { key: 'status', title: t('pricing.productMarketplacePricing.table.columns.status') },
+  {
+    key: 'productName',
+    sticky: true,
+    title: t('pricing.productMarketplacePricing.table.columns.product'),
+  },
+  {
+    key: 'status',
+    sticky: true,
+    title: t('pricing.productMarketplacePricing.table.columns.status'),
+  },
   ...SEGMENT_KEYS.map((key) => ({ align: 'right' as const, key, title: segmentLabel(key) })),
   {
     align: 'right',
@@ -564,9 +538,9 @@ const tableColumns = computed<DataTableColumn[]>(() => [
         </template>
 
         <template v-for="key in SEGMENT_KEYS" :key="key" #[`cell-${key}`]="{ value }">
-          {{ formatMoney((value as SegmentCell).value) }}
+          {{ formatMoney((value as PricingTableSegmentCell).value) }}
           <span class="product-marketplace-pricing-view__table-segment-percent">
-            ({{ formatPercent((value as SegmentCell).percent, 1) }})
+            ({{ formatPercent((value as PricingTableSegmentCell).percent, 1) }})
           </span>
         </template>
 

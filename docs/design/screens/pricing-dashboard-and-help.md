@@ -263,6 +263,25 @@ breadcrumb "Operação / Canais de venda / Precificação" em vez de cair só
 no título sozinho (mesmo achado real já documentado pra
 `catalog-products`).
 
+- **Achado real reportado pelo usuário, 2026-09-10 — `type`/`interface`
+  soltos direto no `.vue`, único caso em todo o projeto**: `ViewMode`,
+  `SegmentCell` e `PricingTableRow` viviam declarados dentro do próprio
+  `<script setup>` desta view — toda outra tela/componente do projeto já
+  mantinha tipo em `modules/<contexto>/types/`, só este arquivo tinha
+  fugido da convenção (conferido: `grep` por `^type \|^interface` em todo
+  `.vue` do projeto não achou nenhum outro caso). Movidos pra
+  `productMarketplacePricing.type.ts` como `PricingViewMode`/
+  `PricingTableSegmentCell`/`PricingTableRow` (renomeados só pra evitar
+  nome genérico demais num arquivo de tipos compartilhado — `ViewMode`/
+  `SegmentCell` colidiriam de nome fácil com outro módulo no futuro).
+- **Coluna "Produto" fixa no scroll horizontal, mesmo dia** — pedido
+  direto do usuário (10+ parcelas de breakdown forçam scroll lateral na
+  visão em tabela): `DataTableColumn.sticky: true` na coluna
+  `productName` — mecanismo novo, genérico, em `DataTable.vue` (ver seção
+  própria em `docs/design/components/blocks-and-overlays.md`). Verificado
+  em browser real: scroll horizontal simulado (`scrollLeft`) mantém
+  "Produto" visível com hairline separando do conteúdo que desliza por
+  baixo.
 - **Achado real, schema OpenAPI gerado mente sobre 2 campos booleanos** —
   `ProductMarketplacePricingResource.pricing.meets_target_margin`/
   `is_approximated` chegam tipados como `string` em `schema.d.ts`

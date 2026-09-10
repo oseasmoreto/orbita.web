@@ -1,4 +1,5 @@
 import type { components } from '@/core/api/schema'
+import type { PriceSegment, SegmentKey } from '../services/pricingBreakdown'
 import type { ProductMarketplaceStatus } from './productMarketplace.type'
 
 type ProductMarketplacePricingResource = components['schemas']['ProductMarketplacePricingResource']
@@ -234,3 +235,49 @@ export function toProductMarketplacePricing(
     userMarketplaceId: resource.user_marketplace_id,
   }
 }
+
+/**
+ * Alterna entre as 2 visões de `ProductMarketplacePricingView.vue` — sem
+ * origem na API, estado de UI puro (mesma categoria de exemplo já citada
+ * em `docs/infra/convencoes-frontend-infra.md` seção 6.1, "cria union
+ * type manual pra algo que não existe no contrato da API"). Extraído pra
+ * cá em 2026-09-10 (achado real reportado pelo usuário: `type`/`interface`
+ * soltos dentro de um `.vue` é o único caso disso em todo o projeto —
+ * toda outra tela/componente já mantinha tipo em `types/`, este arquivo
+ * era a única exceção).
+ */
+export type PricingViewMode = 'bar' | 'table'
+
+/**
+ * Cada coluna de parcela da visão em tabela carrega valor + % (2026-09-04,
+ * pedido direto do usuário — mesma % já exposta pelo backend,
+ * `PriceSegment.percent`) — a célula mostra os dois juntos, mesmo par
+ * `money (percent%)` já usado no preço principal da view.
+ */
+export type PricingTableSegmentCell = Pick<PriceSegment, 'percent' | 'value'>
+
+/**
+ * Linha achatada da visão em tabela de `ProductMarketplacePricingView.vue`
+ * — praticado e sugerido viram COLUNAS separadas aqui (pedido direto do
+ * usuário, 2026-09-03), diferente da visão em barra (só o preço "ativo",
+ * `resolveActivePricing`). `practicedPrice`/`practicedMarginPercent`/
+ * `practicedProfit` ficam `null` juntos quando ainda não há preço
+ * praticado — os 3 sempre nascem/faltam em conjunto.
+ */
+export type PricingTableRow = {
+  id: string
+  isApproximated: boolean
+  meetsTargetMargin: boolean | null
+  practicedCampaignPrice: string | null
+  practicedMarginPercent: number | null
+  practicedPrice: string | null
+  practicedProfit: string | null
+  productId: string
+  productName: string
+  source: ProductMarketplacePricing
+  status: ProductMarketplaceStatus
+  suggestedCampaignPrice: string
+  suggestedMarginPercent: number
+  suggestedPrice: string
+  suggestedProfit: string
+} & Record<SegmentKey, PricingTableSegmentCell>
