@@ -587,6 +587,90 @@ de codar do lado deles — dinheiro de verdade)**:
   praticado; `R$ 120,54` > `R$ 96,43` sugerido da 2ª linha); tooltip do
   ícone `Info` mostra o texto completo da ressalva ao passar o mouse.
 
+**Componentização, 2026-09-11, pedido direto do usuário** ("nossa tela de
+pricing o arquivo está gigante, conseguimos quebrar em componentes
+menores") — o arquivo tinha passado de 1000 linhas (`wc -l`: 1071),
+bem acima do guia de ~150 linhas de template de
+`docs/infra/convencoes-frontend-infra.md` seção 3. Quebrado em 4 blocks
+novos, todos em `modules/pricing/components/blocks/` (composição
+específica do domínio de precificação, ainda sem motivo de subir pra
+`shared/` — seção 3.2 do mesmo doc):
+
+- **`PricingConnectionToolbar.vue`** — busca (debounced, segue no pai) +
+  alternância barra/tabela. `search` via `defineModel`, `viewMode` via
+  prop + `update:viewMode` (não `defineModel` — o pai decide o valor
+  junto de outro estado, sem necessidade do açúcar de v-model duplo aqui).
+- **`PricingMarginKpiRow.vue`** — KPI de margem média + tooltip + botão
+  "Editar vínculo do marketplace" (`emit('editConnection')`).
+- **`PricingBarBreakdown.vue`** (maior dos 4, ~390 linhas — quase tudo
+  SCSS: as 10 regras de cor por segmento + os 10 swatches `@extend`,
+  únicas no arquivo, nunca compartilhadas com `PricingTableView.vue`
+  porque `<style scoped>` não vaza entre componentes — legenda +
+  swatch teriam que duplicar a paleta de qualquer forma se ficassem em
+  componentes separados, então legenda e barra por produto ficaram
+  JUNTAS aqui de propósito) — visão em barra inteira: legenda, card por
+  produto (nome/status/preço ativo/badge/hints de sugerido e campanha) e
+  a barra segmentada em si. Recebe `rows: PricingDisplayRow[]` (tipo novo
+  em `productMarketplacePricing.type.ts`, o `{ active, row, segments }`
+  que antes só existia como o retorno inline do `computed displayRows`
+  do pai) + `showEmpty`, emite `editPrice`/`editProduct`/`viewMarketplaces`.
+- **`PricingTableView.vue`** — visão em tabela inteira: `DataTable` +
+  todos os slots `#cell-*` (produto, status, as 11 parcelas dinâmicas via
+  `v-for="key in SEGMENT_KEYS"`, preço praticado, preço sugerido) +
+  `#empty`. Mesmos 3 emits do breakdown.
+
+`ProductMarketplacePricingView.vue` caiu de 1071 pra ~300 linhas — vira
+puramente o orquestrador (composables, estado de rota/paginação/busca,
+handlers de navegação), delega toda apresentação pros 4 blocks acima +
+`PaginationNav`/`UpdatePracticedPriceModal` (que já eram componentes
+próprios antes desta rodada). `marginToneClass`/`segmentLabel` viraram
+funções locais duplicadas em cada block que precisa (mesmo padrão já
+usado no projeto pra `outcomeTone` — wrapper de 2-3 linhas por
+componente é preferível a prop-drilling de função).
+
+**Convenção de documentação, mesmo pedido** ("os comentários nos arquivos
+`.vue` podem virar `.md` na pasta `docs` referenciando o componente, ou
+os componentes que tiverem pasta própria colocar junto do `.vue`, mas é
+um ou outro, temos que ter padrão") — decisão: como os 4 blocks acima são
+arquivos `.vue` SOLTOS em `blocks/` (sem pasta própria — nenhum ainda
+justifica isso, são componentes de 1 arquivo cada), a documentação real
+fica **centralizada aqui**, não em `.md` ao lado do `.vue`. Cada block
+carrega só um docblock de 1-3 linhas no topo apontando pra esta seção —
+nunca um histórico completo duplicado dentro do `.vue`. Regra geral daqui
+pra frente: **um componente só ganha `.md` ao lado do próprio `.vue`
+quando ganhar uma pasta própria** (`modules/<contexto>/components/<Nome>/`
+com `<Nome>.vue` + `<Nome>.md` dentro); enquanto for um arquivo solto
+(em `blocks/` ou direto em `components/`), a documentação mora no
+`docs/design/screens/*.md`/`docs/design/components/*.md` correspondente,
+igual sempre foi feito nesta tela e em toda a Fase 1-9. Não há hoje
+nenhum componente do projeto com pasta própria — se um dia um block
+crescer o bastante pra precisar de sub-arquivos (sub-componentes
+privados, fixture, teste dedicado), aí sim vira pasta com `.md` junto.
+
+Nomes de classe SCSS mudaram junto da extração (`product-marketplace-pricing-view__*`
+→ `pricing-bar-breakdown__*`/`pricing-table-view__*`/
+`pricing-margin-kpi-row__*`/`pricing-connection-toolbar__*`, prefixo
+BEM = nome do componente que a classe vive agora) — histórico de achados
+reais documentado nos itens acima desta seção (rampa de cor dos
+segmentos, `svg { display: block }` quebrando texto inline,
+`justify-content: flex-end` pra alinhar filho flex numa célula "alinhada
+à direita", `paragraph-spacing` do nome do produto) continua válido, só
+o prefixo da classe mudou — não é uma regra nova, é a mesma regra
+reaplicada no arquivo novo.
+
+Verificado em browser real (Playwright, porta 5174, dado real seedado via
+tinker — 1 conexão Shopee ativa, 3 produtos, 1 com preço praticado):
+visão em tabela renderiza corretamente (busca, toggle, KPI, colunas
+sticky "Produto"/"Status", paginação); visão em barra renderiza
+corretamente (legenda com as 10 cores, card por produto, badge
+Praticado/Sugerido, barra segmentada); clicar em "editar preço" abre
+`UpdatePracticedPriceModal.vue` com os dados certos nas DUAS visões
+(confirma que o emit `editPrice` sobe corretamente de cada block até o
+pai); clicar em "ver marketplaces" navega pra
+`/products/{id}/marketplaces` corretamente a partir da visão em barra.
+`npm run typecheck`/`eslint`/`biome check`/`vitest run` (403 testes) —
+todos verdes.
+
 ## HelpView (`shared/views/HelpView.vue`)
 
 **Central de Ajuda, pedido direto do usuário, 2026-09-03**: "quero

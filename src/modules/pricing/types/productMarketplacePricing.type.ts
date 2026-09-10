@@ -1,5 +1,5 @@
 import type { components } from '@/core/api/schema'
-import type { PriceSegment, SegmentKey } from '../services/pricingBreakdown'
+import type { ActivePricing, PriceSegment, SegmentKey } from '../services/pricingBreakdown'
 import type { ProductMarketplaceStatus } from './productMarketplace.type'
 
 type ProductMarketplacePricingResource = components['schemas']['ProductMarketplacePricingResource']
@@ -289,6 +289,19 @@ export type PricingTableSegmentCell = Pick<PriceSegment, 'percent' | 'value'>
  * `practicedProfit` ficam `null` juntos quando ainda não há preço
  * praticado — os 3 sempre nascem/faltam em conjunto.
  */
+/**
+ * Linha pré-computada da visão em barra (`resolveActivePricing`/
+ * `buildPriceSegments` rodados uma única vez por `displayRows`,
+ * `ProductMarketplacePricingView.vue`) — extraído pra cá em 2026-09-11,
+ * mesma componentização que gerou `PricingBarBreakdown.vue`
+ * (`modules/pricing/components/blocks/`).
+ */
+export interface PricingDisplayRow {
+  active: ActivePricing
+  row: ProductMarketplacePricing
+  segments: PriceSegment[]
+}
+
 export type PricingTableRow = {
   id: string
   isApproximated: boolean
