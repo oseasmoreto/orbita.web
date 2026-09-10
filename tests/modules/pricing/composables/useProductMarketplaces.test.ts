@@ -47,6 +47,7 @@ const link: ProductMarketplace = {
   id: 'link-1',
   practicedPrice: '69.90',
   productId: 'prod-1',
+  status: 'not_sent',
   userMarketplaceId: 'conn-1',
 }
 
@@ -56,6 +57,7 @@ const linkWithCategory: ProductMarketplace = {
   id: 'link-2',
   practicedPrice: null,
   productId: 'prod-1',
+  status: 'sent',
   userMarketplaceId: 'conn-1',
 }
 
@@ -87,6 +89,7 @@ describe('buildProductMarketplaceRows', () => {
         marketplaceName: 'Shopee',
         practicedPrice: '69.90',
         productId: 'prod-1',
+        status: 'not_sent',
         storeName: 'Minha Loja Shopee',
         userMarketplaceId: 'conn-1',
       },

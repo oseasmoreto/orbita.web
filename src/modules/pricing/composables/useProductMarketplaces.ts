@@ -8,7 +8,7 @@ import {
 } from '../services/pricingApi'
 import type { CategoryMarketplace } from '../types/categoryMarketplace.type'
 import type { Marketplace } from '../types/marketplace.type'
-import type { ProductMarketplace } from '../types/productMarketplace.type'
+import type { ProductMarketplace, ProductMarketplaceStatus } from '../types/productMarketplace.type'
 import type { UserMarketplace } from '../types/userMarketplace.type'
 
 export interface ProductMarketplaceRow {
@@ -20,6 +20,7 @@ export interface ProductMarketplaceRow {
   marketplaceName: string
   practicedPrice: string | null
   productId: string
+  status: ProductMarketplaceStatus
   storeName: string
   userMarketplaceId: string
 }
@@ -59,6 +60,7 @@ export function buildProductMarketplaceRows(
       marketplaceName: marketplace?.name ?? '—',
       practicedPrice: link.practicedPrice,
       productId: link.productId,
+      status: link.status,
       storeName: connection?.storeName ?? '—',
       userMarketplaceId: link.userMarketplaceId,
     }

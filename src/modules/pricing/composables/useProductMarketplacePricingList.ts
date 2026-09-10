@@ -56,6 +56,13 @@ const EMPTY_TOTALS: ProductMarketplacePricingTotals = {
  * original tinha isso via `TabBar`, a v1 real tinha perdido). Trocar o
  * `.value` do ref e chamar `refresh()` já refaz a busca pra conexão
  * nova, sem precisar recriar o composable inteiro.
+ *
+ * `reset()` sobrescreve o do `useResourceList` (2026-09-10, mesmo
+ * achado do comentário em `reset()` lá) pra também zerar `totals` —
+ * senão, trocar de aba pra uma conexão cujo `fetchPage` falha (margem
+ * alvo impossível, por exemplo) deixava a `Margem média` (KPI) da aba
+ * ANTERIOR visível: `totals.value` só é reatribuído dentro do `fetchPage`
+ * em caso de SUCESSO, nunca no `catch` do `refresh()`.
  */
 export function useProductMarketplacePricingList(userMarketplaceId: Ref<string>) {
   const totals = ref<ProductMarketplacePricingTotals>(EMPTY_TOTALS)
@@ -74,5 +81,10 @@ export function useProductMarketplacePricingList(userMarketplaceId: Ref<string>)
     perPage: 15,
   })
 
-  return { ...list, totals }
+  function reset(): void {
+    list.reset()
+    totals.value = EMPTY_TOTALS
+  }
+
+  return { ...list, reset, totals }
 }

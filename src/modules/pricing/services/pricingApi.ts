@@ -10,7 +10,11 @@ import {
 } from '../types/marketplace.type'
 import { type PricingRule, toPricingRule } from '../types/pricingRule.type'
 import { type ProductCategory, toProductCategory } from '../types/productCategory.type'
-import { type ProductMarketplace, toProductMarketplace } from '../types/productMarketplace.type'
+import {
+  type ProductMarketplace,
+  type ProductMarketplaceStatus,
+  toProductMarketplace,
+} from '../types/productMarketplace.type'
 import {
   type ProductMarketplacePricing,
   toProductMarketplacePricing,
@@ -286,16 +290,23 @@ export async function listProductMarketplaces(
  * aceita `category_id: null` pra "limpar" a categoria (decisão do
  * próprio endpoint, categoria não entra em cálculo de precificação hoje),
  * então omitir a chave é o único jeito de "não mexer" na categoria atual.
+ *
+ * `status` (mesmo dia, `not_sent`/`pending`/`sent`) sempre entra no
+ * payload — diferente de `categoryId`, o `Select` do modal nunca fica
+ * sem valor (todo vínculo já nasce com um status real), então não existe
+ * o caso "não mexer" que justificasse omitir a chave.
  */
 export async function updateProductMarketplace(
   productId: string,
   productMarketplaceId: string,
   practicedPrice: number | null,
+  status: ProductMarketplaceStatus,
   categoryId?: string,
 ): Promise<ProductMarketplace> {
   const payload: UpdateProductMarketplaceRequest = {
     category_id: categoryId,
     practiced_price: practicedPrice,
+    status,
   }
   const { data } = await apiClient.patch<ApiResponse<ProductMarketplaceResource>>(
     `/products/${productId}/marketplaces/${productMarketplaceId}`,

@@ -17,13 +17,13 @@ import type { ProductMarketplace } from '../types/productMarketplace.type'
  * diferentes do backend (achado real, 2026-09-03: `practicedPrice`
  * nunca tinha sido adicionado no tipo `ProductMarketplace` "simples",
  * só no da listagem calculada — ver comentário em
- * `productMarketplace.type.ts`). `categoryId` entrou em 2026-09-10 pelo
- * mesmo motivo — os 2 tipos já tinham o campo, só o alvo do PATCH não
- * pedia ainda.
+ * `productMarketplace.type.ts`). `categoryId`/`status` entraram em
+ * 2026-09-10 pelo mesmo motivo — os 2 tipos já tinham os campos, só o
+ * alvo do PATCH não pedia ainda.
  */
 export type PracticedPriceTarget = Pick<
   ProductMarketplace,
-  'categoryId' | 'id' | 'practicedPrice' | 'productId'
+  'categoryId' | 'id' | 'practicedPrice' | 'productId' | 'status'
 >
 
 /**
@@ -45,6 +45,7 @@ export function useUpdatePracticedPriceForm() {
   const values = reactive<UpdatePracticedPriceFormValues>({
     categoryId: null,
     practicedPrice: null,
+    status: 'not_sent',
   })
   const errors = ref<Partial<Record<keyof UpdatePracticedPriceFormValues, string>>>({})
   const isSubmitting = ref(false)
@@ -52,6 +53,7 @@ export function useUpdatePracticedPriceForm() {
   function reset(row: PracticedPriceTarget): void {
     values.categoryId = row.categoryId
     values.practicedPrice = row.practicedPrice === null ? null : Number(row.practicedPrice)
+    values.status = row.status
     errors.value = {}
   }
 
@@ -81,6 +83,7 @@ export function useUpdatePracticedPriceForm() {
         row.productId,
         row.id,
         values.practicedPrice,
+        values.status,
         values.categoryId ?? undefined,
       )
       toast.success(t('pricing.productMarketplacePricing.editModal.success'))

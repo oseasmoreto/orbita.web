@@ -14,6 +14,11 @@ import { z } from 'zod'
  * `taxRegime`/`storeDocumentType`); o `service` nunca manda a chave
  * quando o valor é `null` (backend não aceita "limpar" categoria por
  * este endpoint), então essa nulabilidade nunca chega a virar um 422.
+ *
+ * `status` (2026-09-10, mesmo dia) — `z.enum` dos 3 valores aceitos
+ * (`ProductMarketplaceStatus`, gerado). Diferente de `categoryId`, nunca
+ * `null`: todo vínculo já nasce com um status real (`not_sent` default),
+ * o `Select` do modal sempre tem uma opção marcada.
  */
 export function createUpdatePracticedPriceFormSchema(t: (key: string) => string) {
   return z.object({
@@ -22,6 +27,7 @@ export function createUpdatePracticedPriceFormSchema(t: (key: string) => string)
       .number()
       .min(0, t('pricing.productMarketplacePricing.editModal.errors.priceMin'))
       .nullable(),
+    status: z.enum(['not_sent', 'pending', 'sent']),
   })
 }
 

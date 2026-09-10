@@ -1,6 +1,6 @@
 # Telas — Catalog e Pricing (marketplaces)
 
-ProductLaunchList, ProductForm (rename `operationalCost`→`shippingCost`; ícone discreto "Marketplaces" no rodapé do Drawer, 2026-09-10), atalho "Ver precificação" em ProductsView, AdminMarketplacesView/AdminMarketplaceForm, MarketplaceLogo, MarketplacesView, ConnectMarketplaceModal, adendo `coupon`/`percentage_of_total`/`individual_fixed_fee`/`shippingCost`+`operationalCost` (da EMPRESA, ver `COMPANY.operationalCostPercentage` em `billing-and-identity.md`) de ProductMarketplacePricingView, ProductMarketplacesView (2026-09-10: vínculo produto↔marketplace virou automático, modal de "vincular" E "Desvincular"/DELETE removidos, category_id virou mutável via PATCH), AdminProductCategoriesView, AdminCategoryMarketplaceList.
+ProductLaunchList, ProductForm (rename `operationalCost`→`shippingCost`; ícone discreto "Marketplaces" no rodapé do Drawer, 2026-09-10), atalho "Ver precificação" em ProductsView, AdminMarketplacesView/AdminMarketplaceForm, MarketplaceLogo, MarketplacesView, ConnectMarketplaceModal, adendo `coupon`/`percentage_of_total`/`individual_fixed_fee`/`shippingCost`+`operationalCost` (da EMPRESA, ver `COMPANY.operationalCostPercentage` em `billing-and-identity.md`) de ProductMarketplacePricingView, ProductMarketplacesView (2026-09-10: vínculo produto↔marketplace virou automático, modal de "vincular" E "Desvincular"/DELETE removidos, category_id virou mutável via PATCH, status manual novo — StatusDot em ProductMarketplacesView E ProductMarketplacePricingView), AdminProductCategoriesView, AdminCategoryMarketplaceList.
 
 > Faz parte do design system do Orbita — tokens e princípios gerais ficam em
 > `docs/design/design-system.md`, este arquivo é a continuação dele.
@@ -1084,6 +1084,22 @@ do próprio backend — sem opção "nenhuma" no `Select`). Verificado em
 browser real contra o backend local: PATCH manda
 `{practiced_price, category_id}`, `200` com os dois persistidos; tabela
 atualiza preço E categoria na mesma ação.
+
+**Coluna "Status" nova, algumas horas depois, 2026-09-10** — campo
+`status` (`not_sent`/`pending`/`sent`, enum manual do vendedor, sem
+regra de negócio conectada, default `not_sent` em todo vínculo) pedido
+pelo usuário direto na tela de precificação, pra marcar se já enviou o
+produto pro canal. Editável no MESMO `PATCH` de `practicedPrice`/
+`categoryId` (sem endpoint novo) — diferente de `categoryId`, o campo é
+SEMPRE visível no `UpdatePracticedPriceModal.vue` (nunca condicional:
+todo vínculo já tem um status real) e SEMPRE entra no payload (nunca
+omitido — o `Select` nunca fica sem valor). Exibido com `StatusDot`
+(`shared/components/ui/StatusDot.vue`), mesmo padrão de `TicketStatus`
+(`modules/support/types/ticket.type.ts`): `productMarketplaceStatusColor`/
+`productMarketplaceStatusLabelKey` (`productMarketplace.type.ts`) —
+`not_sent → gray`, `pending → yellow`, `sent → green`. Verificado em
+browser real: PATCH manda `{practiced_price, status}`, `200` com
+`status` persistido; coluna atualiza a cor/label na hora.
 
 ## AdminProductCategoriesView / AdminProductCategoryForm (`modules/pricing/views/AdminProductCategoriesView.vue`, `modules/pricing/components/AdminProductCategoryForm.vue`)
 

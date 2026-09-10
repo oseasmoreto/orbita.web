@@ -73,6 +73,7 @@ import PaginationNav from '@/shared/components/blocks/PaginationNav.vue'
 import Button from '@/shared/components/ui/Button.vue'
 import Icon from '@/shared/components/ui/Icon.vue'
 import Search from '@/shared/components/ui/Search.vue'
+import StatusDot from '@/shared/components/ui/StatusDot.vue'
 import TabBar from '@/shared/components/ui/TabBar.vue'
 import Tooltip from '@/shared/components/ui/Tooltip.vue'
 import { useApiMessage } from '@/shared/composables/useApiMessage'
@@ -90,6 +91,11 @@ import {
   resolveActivePricing,
   SEGMENT_KEYS,
 } from '../services/pricingBreakdown'
+import {
+  productMarketplaceStatusColor,
+  productMarketplaceStatusLabelKey,
+} from '../types/productMarketplace.type'
+import type { ProductMarketplaceStatus } from '../types/productMarketplace.type'
 import type { PriceSegment, SegmentKey } from '../services/pricingBreakdown'
 import type { ProductMarketplacePricing } from '../types/productMarketplacePricing.type'
 import type { DataTableColumn } from '@/shared/components/ui/types/dataTable.type'
@@ -155,6 +161,14 @@ watch(activeConnectionId, (id, previousId) => {
   }
 
   void router.replace({ name: 'marketplace-pricing', params: { userMarketplaceId: id } })
+  // Achado real, 2026-09-10 (reportado pelo usuário via captura — trocar
+  // de aba, ex. Shein → Shopee → Shein de novo, deixava a tabela E a
+  // "Margem média" da aba ANTERIOR visíveis por baixo do erro da aba
+  // nova): `refresh()` sozinho não limpa dado velho quando o fetch da
+  // conexão nova FALHA (`422 errorMessageTargetMarginUnreachable`, por
+  // exemplo) — `reset()` (`useResourceList.ts`) zera tudo antes,
+  // garantindo que uma aba nova nunca herda visualmente dado da anterior.
+  list.reset()
   void list.refresh()
 })
 
@@ -254,6 +268,7 @@ type PricingTableRow = {
   productId: string
   productName: string
   source: ProductMarketplacePricing
+  status: ProductMarketplaceStatus
   suggestedCampaignPrice: string
   suggestedMarginPercent: number
   suggestedPrice: string
@@ -287,6 +302,7 @@ const tableRows = computed<PricingTableRow[]>(() =>
       productId: row.productId,
       productName: row.productName,
       source: row,
+      status: row.status,
       suggestedCampaignPrice: pricing.suggestedCampaignPrice,
       suggestedMarginPercent: computeMarginPercent(pricing.suggestedProfit, pricing.suggestedPrice),
       suggestedPrice: pricing.suggestedPrice,
@@ -301,6 +317,7 @@ const tableRows = computed<PricingTableRow[]>(() =>
 // `productName` (texto).
 const tableColumns = computed<DataTableColumn[]>(() => [
   { key: 'productName', title: t('pricing.productMarketplacePricing.table.columns.product') },
+  { key: 'status', title: t('pricing.productMarketplacePricing.table.columns.status') },
   ...SEGMENT_KEYS.map((key) => ({ align: 'right' as const, key, title: segmentLabel(key) })),
   {
     align: 'right',
@@ -425,6 +442,9 @@ const tableColumns = computed<DataTableColumn[]>(() => [
                   @click="goToProductEdit(row.productId)"
                 />
                 <p class="product-marketplace-pricing-view__product-name">{{ row.productName }}</p>
+                <StatusDot :color="productMarketplaceStatusColor(row.status)">
+                  {{ $t(productMarketplaceStatusLabelKey(row.status)) }}
+                </StatusDot>
               </div>
 
               <div class="product-marketplace-pricing-view__product-meta">
@@ -535,6 +555,12 @@ const tableColumns = computed<DataTableColumn[]>(() => [
             />
             <span>{{ row.productName }}</span>
           </div>
+        </template>
+
+        <template #cell-status="{ row }">
+          <StatusDot :color="productMarketplaceStatusColor(row.status)">
+            {{ $t(productMarketplaceStatusLabelKey(row.status)) }}
+          </StatusDot>
         </template>
 
         <template v-for="key in SEGMENT_KEYS" :key="key" #[`cell-${key}`]="{ value }">

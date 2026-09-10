@@ -110,6 +110,65 @@ describe('useResourceList', () => {
     expect(list.items.value).toEqual([])
   })
 
+  it('discards a stale refresh() that resolves after a newer one was already applied (out-of-order race)', async () => {
+    const resolvers: Array<(value: { items: Row[]; total: number }) => void> = []
+    async function fetchPage() {
+      return new Promise<{ items: Row[]; total: number }>((resolve) => {
+        resolvers.push(resolve)
+      })
+    }
+    const list = useResourceList({ fetchPage })
+
+    const first = list.refresh()
+    const second = list.refresh()
+
+    // Resolve OUT OF ORDER — the newer call finishes first (2nd request in
+    // flight), then the older one finishes last. Mirrors switching pricing
+    // tabs quickly: the response for the tab the user LEFT can still land
+    // after the response for the tab they're now ON.
+    resolvers[1]?.({ items: [{ id: 'b', name: 'Row B' }], total: 1 })
+    await second
+    resolvers[0]?.({ items: [{ id: 'a', name: 'Row A' }], total: 1 })
+    await first
+
+    expect(list.items.value).toEqual([{ id: 'b', name: 'Row B' }])
+    expect(list.total.value).toBe(1)
+  })
+
+  it('reset() clears items/total/error/page — needed when the caller switches to an unrelated context (e.g. pricing tab)', async () => {
+    const { fetchPage } = createFetchPage(1)
+    const list = useResourceList({ fetchPage })
+
+    await list.refresh()
+    await list.setPage(1)
+    expect(list.items.value).toHaveLength(1)
+
+    list.reset()
+
+    expect(list.items.value).toEqual([])
+    expect(list.total.value).toBe(0)
+    expect(list.currentPage.value).toBe(1)
+    expect(list.error.value).toBeNull()
+  })
+
+  it('reset() invalidates any refresh() already in flight — a stale response landing after reset() must not resurrect old data', async () => {
+    let resolveSlow: ((value: { items: Row[]; total: number }) => void) | null = null
+    async function slowFetch() {
+      return new Promise<{ items: Row[]; total: number }>((resolve) => {
+        resolveSlow = resolve
+      })
+    }
+    const list = useResourceList({ fetchPage: slowFetch })
+
+    const pending = list.refresh()
+    list.reset()
+    resolveSlow?.({ items: [{ id: 'x', name: 'Stale' }], total: 1 })
+    await pending
+
+    expect(list.items.value).toEqual([])
+    expect(list.total.value).toBe(0)
+  })
+
   it('clears a previous error on a successful refresh', async () => {
     const state: { shouldFail: boolean } = { shouldFail: true }
     async function flakyFetch() {

@@ -1,4 +1,5 @@
 import type { components } from '@/core/api/schema'
+import type { ProductMarketplaceStatus } from './productMarketplace.type'
 
 type ProductMarketplacePricingResource = components['schemas']['ProductMarketplacePricingResource']
 
@@ -162,6 +163,7 @@ export interface ProductMarketplacePricing {
   pricing: PricingEvaluation
   productId: string
   productName: string
+  status: ProductMarketplaceStatus
   userMarketplaceId: string
 }
 
@@ -228,6 +230,7 @@ export function toProductMarketplacePricing(
     },
     productId: resource.product_id,
     productName: resource.product_name,
+    status: resource.status,
     userMarketplaceId: resource.user_marketplace_id,
   }
 }

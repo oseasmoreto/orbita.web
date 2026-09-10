@@ -15,10 +15,14 @@
  * do mesmo endpoint `GET /products/{id}` que Catalog já consome, sem
  * duplicar o tipo `Product`/`toProduct()` inteiro.
  *
- * `practicedPrice`/`categoryId` (`category_id` virou mutável via `PATCH`
- * em 2026-09-10) editáveis via `UpdatePracticedPriceModal.vue`, mesmo
- * modal reaproveitado por `ProductMarketplacePricingView.vue` — ver
- * comentário nele.
+ * `practicedPrice`/`categoryId`/`status` (`category_id` virou mutável via
+ * `PATCH` em 2026-09-10, `status` — enum manual do vendedor — entrou no
+ * mesmo dia) editáveis via `UpdatePracticedPriceModal.vue`, mesmo modal
+ * reaproveitado por `ProductMarketplacePricingView.vue` — ver comentário
+ * nele. Coluna "Status" usa `StatusDot`, mesmo padrão de
+ * `ticketStatusColor`/`ticketStatusLabelKey` (`modules/support/types/ticket.type.ts`),
+ * espelhado aqui em `productMarketplaceStatusColor`/`productMarketplaceStatusLabelKey`
+ * (`productMarketplace.type.ts`).
  *
  * **Sem modal de "vincular marketplace" (removido em 2026-09-10)** —
  * backend passou a criar `PRODUCT_MARKETPLACE` automaticamente (todo
@@ -46,6 +50,7 @@ import { ArrowLineLeft, PencilSimpleLine } from '@/shared/components/icons/regul
 import DataTable from '@/shared/components/blocks/DataTable.vue'
 import Button from '@/shared/components/ui/Button.vue'
 import IconText from '@/shared/components/ui/IconText.vue'
+import StatusDot from '@/shared/components/ui/StatusDot.vue'
 import { useApiMessage } from '@/shared/composables/useApiMessage'
 import { formatMoney } from '@/shared/services/formatNumber'
 import { parseApiError } from '@/shared/services/parseApiError'
@@ -53,6 +58,10 @@ import MarketplaceLogo from '../components/MarketplaceLogo.vue'
 import UpdatePracticedPriceModal from '../components/UpdatePracticedPriceModal.vue'
 import { useProductMarketplaces } from '../composables/useProductMarketplaces'
 import { getProductName } from '../services/pricingApi'
+import {
+  productMarketplaceStatusColor,
+  productMarketplaceStatusLabelKey,
+} from '../types/productMarketplace.type'
 import type { ProductMarketplaceRow } from '../composables/useProductMarketplaces'
 import type { DataTableColumn } from '@/shared/components/ui/types/dataTable.type'
 
@@ -89,6 +98,7 @@ const columns = computed<DataTableColumn[]>(() => [
   { key: 'storeName', title: t('pricing.productMarketplaces.columns.storeName') },
   { key: 'categoryTitle', title: t('pricing.productMarketplaces.columns.category') },
   { key: 'practicedPrice', title: t('pricing.productMarketplaces.columns.practicedPrice') },
+  { key: 'status', title: t('pricing.productMarketplaces.columns.status') },
   { key: 'createdAt', title: t('pricing.productMarketplaces.columns.createdAt') },
 ])
 
@@ -161,6 +171,11 @@ function goBackToProducts(): void {
             @click="openEditPrice(row)"
           />
         </div>
+      </template>
+      <template #cell-status="{ row }">
+        <StatusDot :color="productMarketplaceStatusColor(row.status)">
+          {{ $t(productMarketplaceStatusLabelKey(row.status)) }}
+        </StatusDot>
       </template>
       <template #cell-createdAt="{ row }">
         {{ formatCreatedAt(row.createdAt) }}

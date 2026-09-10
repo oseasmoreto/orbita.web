@@ -1721,6 +1721,13 @@ export interface components {
             user_marketplace_id: string;
             category_id: string | null;
             practiced_price: string | null;
+            /**
+             * @description Status manual do vendedor (not_sent/pending/sent, decisão
+             *     2026-09-10) — editável direto desta tela via
+             *     PATCH /v1/products/{id}/marketplaces/{id}, mesmo endpoint que
+             *     já edita practiced_price/category_id.
+             */
+            status: components["schemas"]["ProductMarketplaceStatus"];
             pricing: {
                 practiced_profit: string;
                 practiced_margin_percentage: string;
@@ -1843,9 +1850,17 @@ export interface components {
             user_marketplace_id: string;
             category_id: string | null;
             practiced_price: string | null;
+            status: components["schemas"]["ProductMarketplaceStatus"];
             /** Format: date-time */
             created_at: string | null;
         };
+        /**
+         * ProductMarketplaceStatus
+         * @description Status manual, marcado pelo próprio vendedor da tela de precificação (`GET /v1/user-marketplaces/{id}/products`) — pedido direto do usuário, 2026-09-10. Puramente informativo: nenhuma regra de negócio conectada, sem transição automática (diferente de `Support\Enums\TicketStatus`) — o vendedor controla os 3 valores manualmente via `PATCH /v1/products/{id}/marketplaces/{id}`, mesmo endpoint que já edita `practiced_price`/`category_id`.
+         *
+         * @enum {string}
+         */
+        ProductMarketplaceStatus: "not_sent" | "pending" | "sent";
         /** ProductResource */
         ProductResource: {
             id: string;
@@ -2128,12 +2143,15 @@ export interface components {
          *     fazer sentido desde que todo vínculo nasce automático) — mesma validação
          *     de "categoria precisa ter comissão configurada pro marketplace desse
          *      * vínculo" de CreateProductMarketplaceRequest, feita na Action (não dá pra
-         *     expressar aqui sem já ter resolvido o vínculo).
+         *     expressar aqui sem já ter resolvido o vínculo). status (mesmo dia) é
+         *     puramente informativo, marcado manualmente pelo vendedor — sem regra de
+         *     negócio conectada, só validação de enum.
          */
         UpdateProductMarketplaceRequest: {
             practiced_price: number | null;
             /** Format: uuid */
             category_id?: string | null;
+            status?: components["schemas"]["ProductMarketplaceStatus"];
         };
         /** UpdateProductRequest */
         UpdateProductRequest: {

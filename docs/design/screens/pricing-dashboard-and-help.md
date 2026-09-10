@@ -306,7 +306,11 @@ no título sozinho (mesmo achado real já documentado pra
   2026-09-10** atrás de uma prop opcional `categoryOptions` — só
   `ProductMarketplacesView.vue` passa (única tela com coluna
   "Categoria"), esta tela (por CONEXÃO) não mostra categoria, então o
-  campo não renderiza aqui. Ver adendo completo em
+  campo não renderiza aqui. **3º campo, `status`, entrou no mesmo dia,
+  algumas horas depois** — diferente de `categoryId`, SEMPRE visível nos
+  2 consumidores (todo vínculo já tem um status real, `not_sent`
+  default) — `StatusDot` na célula/card + `Select` estático no modal
+  (`not_sent`/`pending`/`sent`). Ver adendo completo em
   `docs/design/screens/catalog-and-pricing.md`, seção
   `ProductMarketplacesView`.
 - **Bug real do backend, encontrado testando em browser real, reportado

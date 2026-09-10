@@ -1,6 +1,6 @@
 <script setup lang="ts">
 /**
- * `practicedPrice` sempre editável (`UpdateProductMarketplaceRequest`).
+ * `practicedPrice`/`status` sempre editáveis (`UpdateProductMarketplaceRequest`).
  * `categoryId` (2026-09-10, virou mutável via `PATCH`) só aparece quando
  * o consumidor passa `categoryOptions` — hoje só `ProductMarketplacesView.vue`
  * (tabela POR PRODUTO, tem a coluna "Categoria"); `ProductMarketplacePricingView.vue`
@@ -9,8 +9,14 @@
  * por causa de 1 campo opcional num dos 2 consumidores. Categoria só
  * TROCA, nunca LIMPA de volta pra vazio (mesma régua de
  * `updateProductMarketplace`, `pricingApi.ts`) — `Select` sem opção de
- * "nenhuma". `Modal`, não `Drawer` — mesmo raciocínio de
- * `EditUserRoleModal.vue`/`OverrideSubscriptionModal.vue`: ação pontual.
+ * "nenhuma". `status` (mesmo dia) é o oposto: SEMPRE visível nos 2
+ * consumidores — todo vínculo já nasce com um valor real (`not_sent`
+ * default), sem caso condicional pra esconder. Opções estáticas, mesmo
+ * padrão de `roleOptions`/`statusOptions` em `EditUserRoleModal.vue`
+ * (enum fixo pequeno, sem necessidade de Zod validar formato — só o
+ * `Select` já restringe o valor possível). `Modal`, não `Drawer` — mesmo
+ * raciocínio de `EditUserRoleModal.vue`/`OverrideSubscriptionModal.vue`:
+ * ação pontual.
  *
  * Não emite a linha atualizada — o preço praticado muda TAMBÉM lucro/
  * margem/`meetsTargetMargin` (calculados no backend,
@@ -27,6 +33,7 @@
  * sabe de onde veio a linha.
  */
 import { computed, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
 import FormGroup from '@/shared/components/blocks/FormGroup.vue'
 import Button from '@/shared/components/ui/Button.vue'
 import Input from '@/shared/components/ui/Input.vue'
@@ -37,6 +44,7 @@ import {
   type PracticedPriceTarget,
   useUpdatePracticedPriceForm,
 } from '../composables/useUpdatePracticedPriceForm'
+import type { ProductMarketplaceStatus } from '../types/productMarketplace.type'
 import type { SelectOption } from '@/shared/components/ui/types/select.type'
 
 const props = defineProps<{
@@ -44,6 +52,14 @@ const props = defineProps<{
   label?: string
   row: PracticedPriceTarget | null
 }>()
+
+const { t } = useI18n()
+
+const statusOptions: SelectOption[] = [
+  { label: t('pricing.productMarketplaceStatus.notSent'), value: 'not_sent' },
+  { label: t('pricing.productMarketplaceStatus.pending'), value: 'pending' },
+  { label: t('pricing.productMarketplaceStatus.sent'), value: 'sent' },
+]
 
 const emit = defineEmits<{ saved: [] }>()
 
@@ -103,6 +119,17 @@ async function handleSubmit(): Promise<void> {
         :invalid="Boolean(errors.practicedPrice)"
         :placeholder="$t('pricing.productMarketplacePricing.editModal.placeholder')"
         type="number"
+      />
+    </FormGroup>
+
+    <FormGroup
+      :error="errors.status"
+      :label="$t('pricing.productMarketplacePricing.editModal.fields.status')"
+    >
+      <Select
+        :model-value="values.status"
+        :options="statusOptions"
+        @update:model-value="(value) => (values.status = value as ProductMarketplaceStatus)"
       />
     </FormGroup>
 

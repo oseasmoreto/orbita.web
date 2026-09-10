@@ -1303,6 +1303,7 @@ export default {
         fields: {
           category: 'Categoria',
           practicedPrice: 'Preço praticado (R$)',
+          status: 'Status',
         },
         placeholder: 'Deixe em branco pra limpar',
         success: 'Preço praticado atualizado com sucesso.',
@@ -1343,6 +1344,7 @@ export default {
         columns: {
           practicedPrice: 'Preço praticado',
           product: 'Produto',
+          status: 'Status',
           suggestedPrice: 'Preço sugerido',
         },
       },
@@ -1353,6 +1355,11 @@ export default {
       },
       viewToggleLabel: 'Alternar visualização',
     },
+    productMarketplaceStatus: {
+      notSent: 'Não enviado',
+      pending: 'Aguardando',
+      sent: 'Enviado',
+    },
     productMarketplaces: {
       backToProducts: 'Voltar para Produtos',
       columns: {
@@ -1360,6 +1367,7 @@ export default {
         createdAt: 'Vinculado em',
         marketplace: 'Marketplace',
         practicedPrice: 'Preço praticado',
+        status: 'Status',
         storeName: 'Loja',
       },
       empty: 'Nenhum marketplace vinculado ainda.',
