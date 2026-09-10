@@ -13,17 +13,30 @@
  * o mesmo par `get`/`set` estava duplicado à mão aqui e em
  * `ProductLaunchForm.vue`), convertendo string↔number na borda deste
  * componente, sem vazar essa conversão pro composable.
+ *
+ * Ícone "Marketplaces" no rodapé (slot `leading` de `CrudFormActions`,
+ * 2026-09-10) — substitui o antigo botão "Marketplaces" da linha de
+ * `ProductsView.vue`: backend passou a vincular produto↔conexão
+ * automaticamente (todo produto já nasce linkado a toda `USER_MARKETPLACE`
+ * ativa), então a tela de "vincular" antiga não faz mais sentido como
+ * ação de destaque na listagem — vira só um atalho discreto de acesso
+ * rápido, só em modo `edit` (produto precisa existir pra ter vínculo).
+ * Navega por NOME de rota (`product-marketplaces`) pro módulo `pricing`,
+ * nunca um import direto — mesma regra de fronteira já seguida por
+ * `ProductsView.vue`/`goToMarketplaces`.
  */
+import { useRouter } from 'vue-router'
 import { useNumberFieldModel } from '@/shared/composables/useNumberFieldModel'
 import { useProductForm } from '../composables/useProductForm'
 import type { ProductFormValues } from '../schemas/productFormSchema'
 import type { Product } from '../types/product.type'
 import CrudFormActions from '@/shared/components/blocks/CrudFormActions.vue'
 import FormGroup from '@/shared/components/blocks/FormGroup.vue'
+import Button from '@/shared/components/ui/Button.vue'
 import Icon from '@/shared/components/ui/Icon.vue'
 import Input from '@/shared/components/ui/Input.vue'
 import Tooltip from '@/shared/components/ui/Tooltip.vue'
-import { Info } from '@/shared/components/icons/regular.generated'
+import { Info, Storefront } from '@/shared/components/icons/regular.generated'
 
 const props = defineProps<{
   mode: 'create' | 'edit'
@@ -35,9 +48,17 @@ const emit = defineEmits<{
   saved: [product: Product]
 }>()
 
+const router = useRouter()
 const { errors, isSubmitting, reset, submit, values } = useProductForm()
 
 reset(props.product ?? undefined)
+
+function goToMarketplaces(): void {
+  if (!props.product) {
+    return
+  }
+  void router.push({ name: 'product-marketplaces', params: { id: props.product.id } })
+}
 
 const costPriceInput = useNumberFieldModel(values, 'costPrice')
 const shippingCostInput = useNumberFieldModel(values, 'shippingCost', { nullable: true })
@@ -155,7 +176,17 @@ async function handleSubmit(): Promise<void> {
           : $t('catalog.products.form.submitEdit')
       "
       @cancel="emit('cancel')"
-    />
+    >
+      <template v-if="props.mode === 'edit'" #leading>
+        <Button
+          :aria-label="$t('catalog.products.marketplacesButton')"
+          :icon-before="Storefront"
+          type="button"
+          variant="ghost"
+          @click="goToMarketplaces"
+        />
+      </template>
+    </CrudFormActions>
   </form>
 </template>
 

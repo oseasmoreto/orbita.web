@@ -4,18 +4,33 @@ const updatePracticedPriceFormSchema = createUpdatePracticedPriceFormSchema((key
 
 describe('updatePracticedPriceFormSchema', () => {
   it('accepts a valid positive price', () => {
-    expect(updatePracticedPriceFormSchema.safeParse({ practicedPrice: 69.9 }).success).toBe(true)
+    expect(
+      updatePracticedPriceFormSchema.safeParse({ categoryId: null, practicedPrice: 69.9 }).success,
+    ).toBe(true)
   })
 
   it('accepts null (clears an already-set price)', () => {
-    expect(updatePracticedPriceFormSchema.safeParse({ practicedPrice: null }).success).toBe(true)
+    expect(
+      updatePracticedPriceFormSchema.safeParse({ categoryId: null, practicedPrice: null }).success,
+    ).toBe(true)
   })
 
   it('accepts zero', () => {
-    expect(updatePracticedPriceFormSchema.safeParse({ practicedPrice: 0 }).success).toBe(true)
+    expect(
+      updatePracticedPriceFormSchema.safeParse({ categoryId: null, practicedPrice: 0 }).success,
+    ).toBe(true)
   })
 
   it('rejects a negative price', () => {
-    expect(updatePracticedPriceFormSchema.safeParse({ practicedPrice: -1 }).success).toBe(false)
+    expect(
+      updatePracticedPriceFormSchema.safeParse({ categoryId: null, practicedPrice: -1 }).success,
+    ).toBe(false)
+  })
+
+  it('accepts a real category id', () => {
+    expect(
+      updatePracticedPriceFormSchema.safeParse({ categoryId: 'cat-1', practicedPrice: 69.9 })
+        .success,
+    ).toBe(true)
   })
 })

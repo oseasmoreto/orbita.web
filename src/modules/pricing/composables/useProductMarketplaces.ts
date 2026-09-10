@@ -1,8 +1,6 @@
 import { computed, ref } from 'vue'
 import type { SelectOption } from '@/shared/components/ui/types/select.type'
 import {
-  createProductMarketplace,
-  deleteProductMarketplace,
   listMarketplaceCategories,
   listMarketplaces,
   listProductMarketplaces,
@@ -14,6 +12,7 @@ import type { ProductMarketplace } from '../types/productMarketplace.type'
 import type { UserMarketplace } from '../types/userMarketplace.type'
 
 export interface ProductMarketplaceRow {
+  categoryId: string | null
   categoryTitle: string | null
   createdAt: string | null
   id: string
@@ -52,6 +51,7 @@ export function buildProductMarketplaceRows(
       : undefined
 
     return {
+      categoryId: link.categoryId,
       categoryTitle: categoryLink?.category.title ?? null,
       createdAt: link.createdAt,
       id: link.id,
@@ -63,36 +63,6 @@ export function buildProductMarketplaceRows(
       userMarketplaceId: link.userMarketplaceId,
     }
   })
-}
-
-/**
- * Opções pro `Select` de "vincular marketplace" — só conexões ATIVAS
- * (`UserMarketplaceNotActiveException`, backend) e ainda NÃO vinculadas
- * a este produto (evita a Action recusar com
- * `ProductAlreadyLinkedToMarketplaceException` — validação de UI, não só
- * espera o 422, mesmo critério já usado em `useMarketplaceConnection`
- * pro unique de `USER_MARKETPLACE`). Nunca lista `Marketplace` direto —
- * regra não-negociável do `CLAUDE.md` (produto só vincula a marketplace
- * CONECTADO).
- */
-export function buildAvailableConnectionOptions(
-  connections: UserMarketplace[],
-  marketplaces: Marketplace[],
-  links: ProductMarketplace[],
-): SelectOption[] {
-  const linkedConnectionIds = new Set(links.map((link) => link.userMarketplaceId))
-
-  return connections
-    .filter((connection) => connection.active && !linkedConnectionIds.has(connection.id))
-    .map((connection) => {
-      const marketplace = marketplaces.find(
-        (candidate) => candidate.id === connection.marketplaceId,
-      )
-      return {
-        label: `${marketplace?.name ?? '—'} — ${connection.storeName}`,
-        value: connection.id,
-      }
-    })
 }
 
 /**
@@ -153,16 +123,14 @@ export function useProductMarketplaces(productId: string) {
       categoriesByMarketplace.value,
     ),
   )
-  const availableOptions = computed(() =>
-    buildAvailableConnectionOptions(connections.value, marketplaces.value, links.value),
-  )
 
   /**
-   * Opções pro `Select` de categoria — categorias já com comissão
-   * configurada pro marketplace da conexão escolhida (`nem todo
-   * marketplace tem categoria vinculada`, cross-session tarefa 64). Vazio
-   * quando o marketplace não tem nenhuma — `ProductMarketplacesView.vue`
-   * esconde o campo inteiro nesse caso, categoria é sempre opcional.
+   * Opções pro `Select` de categoria do modal de edição
+   * (`UpdatePracticedPriceModal.vue`, `category_id` virou mutável via
+   * `PATCH` em 2026-09-10, junto com a remoção do `DELETE`/"vincular") —
+   * categorias já com comissão configurada pro marketplace da conexão
+   * dessa linha. Vazio quando o marketplace não tem nenhuma — o modal
+   * esconde o campo inteiro nesse caso.
    */
   function categoryOptionsFor(userMarketplaceId: string): SelectOption[] {
     const connection = connections.value.find((candidate) => candidate.id === userMarketplaceId)
@@ -179,27 +147,11 @@ export function useProductMarketplaces(productId: string) {
     )
   }
 
-  async function link(userMarketplaceId: string, categoryId?: string): Promise<void> {
-    await createProductMarketplace(productId, {
-      category_id: categoryId === '' ? undefined : categoryId,
-      user_marketplace_id: userMarketplaceId,
-    })
-    await refresh()
-  }
-
-  async function unlink(productMarketplaceId: string): Promise<void> {
-    await deleteProductMarketplace(productId, productMarketplaceId)
-    await refresh()
-  }
-
   return {
-    availableOptions,
     categoryOptionsFor,
     error,
     isLoading,
-    link,
     refresh,
     rows,
-    unlink,
   }
 }

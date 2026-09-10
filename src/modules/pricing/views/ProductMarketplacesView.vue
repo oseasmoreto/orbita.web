@@ -15,28 +15,38 @@
  * do mesmo endpoint `GET /products/{id}` que Catalog já consome, sem
  * duplicar o tipo `Product`/`toProduct()` inteiro.
  *
- * Sem update de categoria/marketplace — trocar de canal é sempre
- * `DELETE` + `POST` de novo. `practicedPrice` (tarefa 76) é o único
- * campo mutável — achado real, 2026-09-03: essa tabela (por PRODUTO)
- * nunca mostrava/editava o preço praticado, só a tabela por CONEXÃO
- * (`ProductMarketplacePricingView.vue`) tinha isso, apesar do backend já
- * expor o campo aqui desde sempre. `UpdatePracticedPriceModal.vue`
- * reaproveitado das duas telas — ver comentário nele.
+ * `practicedPrice`/`categoryId` (`category_id` virou mutável via `PATCH`
+ * em 2026-09-10) editáveis via `UpdatePracticedPriceModal.vue`, mesmo
+ * modal reaproveitado por `ProductMarketplacePricingView.vue` — ver
+ * comentário nele.
+ *
+ * **Sem modal de "vincular marketplace" (removido em 2026-09-10)** —
+ * backend passou a criar `PRODUCT_MARKETPLACE` automaticamente (todo
+ * produto já nasce vinculado a toda `USER_MARKETPLACE` ativa do usuário,
+ * e vice-versa): a tela sempre chega aqui já com todo vínculo possível
+ * existindo, então o antigo fluxo de criar (`POST`, `Select` de conexão +
+ * categoria) ficaria permanentemente vazio/inalcançável.
+ *
+ * **Sem "Desvincular" (removido no mesmo dia)** — o endpoint `DELETE`
+ * foi removido do backend junto: o vínculo nasceu pensado só como passo
+ * interno de "trocar categoria" (apaga + recria), nunca como feature
+ * permanente de excluir produto de canal; com o vínculo automático +
+ * seeder de backfill (roda em todo deploy, recria vínculo faltante), uma
+ * exclusão manual seria desfeita silenciosamente no próximo deploy —
+ * achado do backend depois desta tela ter chegado a implementar
+ * "Desvincular" numa rodada anterior. Coluna "Ações" some junto (nada
+ * mais restava nela — editar preço já é o lápis dentro da própria
+ * célula "Preço praticado").
  */
-import { computed, onMounted, ref, watch } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRoute, useRouter } from 'vue-router'
 import dayjs from 'dayjs'
-import { ArrowLineLeft, PencilSimpleLine, Trash } from '@/shared/components/icons/regular.generated'
-import ConfirmDialog from '@/shared/components/blocks/ConfirmDialog.vue'
+import { ArrowLineLeft, PencilSimpleLine } from '@/shared/components/icons/regular.generated'
 import DataTable from '@/shared/components/blocks/DataTable.vue'
 import Button from '@/shared/components/ui/Button.vue'
 import IconText from '@/shared/components/ui/IconText.vue'
-import Modal from '@/shared/components/ui/Modal.vue'
-import Select from '@/shared/components/ui/Select.vue'
 import { useApiMessage } from '@/shared/composables/useApiMessage'
-import { useConfirmAction } from '@/shared/composables/useConfirmAction'
-import { useToast } from '@/shared/composables/useToast'
 import { formatMoney } from '@/shared/services/formatNumber'
 import { parseApiError } from '@/shared/services/parseApiError'
 import MarketplaceLogo from '../components/MarketplaceLogo.vue'
@@ -45,12 +55,10 @@ import { useProductMarketplaces } from '../composables/useProductMarketplaces'
 import { getProductName } from '../services/pricingApi'
 import type { ProductMarketplaceRow } from '../composables/useProductMarketplaces'
 import type { DataTableColumn } from '@/shared/components/ui/types/dataTable.type'
-import type { SelectOption } from '@/shared/components/ui/types/select.type'
 
 const route = useRoute()
 const router = useRouter()
 const { t } = useI18n()
-const toast = useToast()
 const { resolveMessage } = useApiMessage()
 
 const productId = route.params.id as string
@@ -82,66 +90,19 @@ const columns = computed<DataTableColumn[]>(() => [
   { key: 'categoryTitle', title: t('pricing.productMarketplaces.columns.category') },
   { key: 'practicedPrice', title: t('pricing.productMarketplaces.columns.practicedPrice') },
   { key: 'createdAt', title: t('pricing.productMarketplaces.columns.createdAt') },
-  { key: 'operations', title: t('common.actions.actions') },
 ])
 
 function formatCreatedAt(value: string | null): string {
   return value ? dayjs(value).format('DD/MM/YYYY') : '—'
 }
 
-const isLinkModalOpen = ref(false)
-const selectedConnectionId = ref('')
-const selectedCategoryId = ref('')
-const isLinking = ref(false)
-
-function openLinkModal(): void {
-  selectedConnectionId.value = ''
-  selectedCategoryId.value = ''
-  isLinkModalOpen.value = true
-}
-
-// Categoria reseta sempre que a conexão muda — o `Select` de categoria
-// que estava marcado pode não existir mais no marketplace da NOVA
-// conexão escolhida (tarefa 64: categoria é sempre por marketplace).
-watch(selectedConnectionId, () => {
-  selectedCategoryId.value = ''
-})
-
-const categoryOptionsForSelectedConnection = computed<SelectOption[]>(() =>
-  selectedConnectionId.value
-    ? productMarketplaces.categoryOptionsFor(selectedConnectionId.value)
-    : [],
-)
-
-async function handleLink(): Promise<void> {
-  if (!selectedConnectionId.value) {
-    return
-  }
-
-  isLinking.value = true
-
-  try {
-    await productMarketplaces.link(selectedConnectionId.value, selectedCategoryId.value)
-    toast.success(t('pricing.productMarketplaces.linkSuccess'))
-    isLinkModalOpen.value = false
-  } catch (caughtError) {
-    toast.error(resolveMessage(parseApiError(caughtError).messageKey))
-  } finally {
-    isLinking.value = false
-  }
-}
-
-const unlinkConfirmation = useConfirmAction<ProductMarketplaceRow>()
-
-async function handleUnlink(): Promise<void> {
-  await unlinkConfirmation.confirm(async (target) => {
-    await productMarketplaces.unlink(target.id)
-    toast.success(t('pricing.productMarketplaces.unlinkSuccess'))
-  })
-}
-
 const isEditPriceModalOpen = ref(false)
 const editingPriceRow = ref<ProductMarketplaceRow | null>(null)
+const editingPriceRowCategoryOptions = computed(() =>
+  editingPriceRow.value
+    ? productMarketplaces.categoryOptionsFor(editingPriceRow.value.userMarketplaceId)
+    : [],
+)
 
 function openEditPrice(row: ProductMarketplaceRow): void {
   editingPriceRow.value = row
@@ -160,38 +121,22 @@ function goBackToProducts(): void {
 <template>
   <div class="product-marketplaces-view">
     <div class="product-marketplaces-view__header">
-      <div>
-        <Button
-          class="product-marketplaces-view__back"
-          :icon-before="ArrowLineLeft"
-          variant="ghost"
-          @click="goBackToProducts"
-        >
-          {{ $t('pricing.productMarketplaces.backToProducts') }}
-        </Button>
-        <h1 class="product-marketplaces-view__title">
-          {{
-            productName
-              ? $t('pricing.productMarketplaces.titleWithProduct', { product: productName })
-              : $t('pricing.productMarketplaces.title')
-          }}
-        </h1>
-      </div>
       <Button
-        :disabled="productMarketplaces.availableOptions.value.length === 0"
-        variant="primary"
-        @click="openLinkModal"
+        class="product-marketplaces-view__back"
+        :icon-before="ArrowLineLeft"
+        variant="ghost"
+        @click="goBackToProducts"
       >
-        {{ $t('pricing.productMarketplaces.linkButton') }}
+        {{ $t('pricing.productMarketplaces.backToProducts') }}
       </Button>
+      <h1 class="product-marketplaces-view__title">
+        {{
+          productName
+            ? $t('pricing.productMarketplaces.titleWithProduct', { product: productName })
+            : $t('pricing.productMarketplaces.title')
+        }}
+      </h1>
     </div>
-
-    <p
-      v-if="productMarketplaces.availableOptions.value.length === 0"
-      class="product-marketplaces-view__hint"
-    >
-      {{ $t('pricing.productMarketplaces.noAvailableConnectionsHint') }}
-    </p>
 
     <p v-if="listErrorMessage" class="product-marketplaces-view__error" role="alert">
       {{ listErrorMessage }}
@@ -220,65 +165,14 @@ function goBackToProducts(): void {
       <template #cell-createdAt="{ row }">
         {{ formatCreatedAt(row.createdAt) }}
       </template>
-      <template #cell-operations="{ row }">
-        <Button :icon-before="Trash" variant="ghost" @click="unlinkConfirmation.request(row)">
-          {{ $t('pricing.productMarketplaces.unlinkButton') }}
-        </Button>
-      </template>
       <template #empty>
         {{ $t('pricing.productMarketplaces.empty') }}
       </template>
     </DataTable>
 
-    <Modal v-model="isLinkModalOpen" :title="$t('pricing.productMarketplaces.linkModal.title')">
-      <Select
-        v-model="selectedConnectionId"
-        :label="$t('pricing.productMarketplaces.linkModal.fields.connection')"
-        :options="productMarketplaces.availableOptions.value"
-        :placeholder="$t('pricing.productMarketplaces.linkModal.placeholder')"
-      />
-
-      <!--
-        Categoria é sempre OPCIONAL (tarefa 64) — só aparece quando o
-        marketplace da conexão escolhida tem alguma categoria com
-        comissão configurada (`categoryOptionsFor`, `useProductMarketplaces.ts`).
-        Nem todo marketplace cobra por categoria.
-      -->
-      <Select
-        v-if="categoryOptionsForSelectedConnection.length > 0"
-        v-model="selectedCategoryId"
-        class="product-marketplaces-view__category-select"
-        :label="$t('pricing.productMarketplaces.linkModal.fields.category')"
-        :options="categoryOptionsForSelectedConnection"
-        :placeholder="$t('pricing.productMarketplaces.linkModal.categoryPlaceholder')"
-      />
-
-      <template #footer>
-        <Button variant="outline" @click="isLinkModalOpen = false">
-          {{ $t('common.actions.cancel') }}
-        </Button>
-        <Button
-          :disabled="isLinking || !selectedConnectionId"
-          variant="primary"
-          @click="handleLink"
-        >
-          {{ $t('pricing.productMarketplaces.linkModal.submit') }}
-        </Button>
-      </template>
-    </Modal>
-
-    <ConfirmDialog
-      v-model:open="unlinkConfirmation.isOpen.value"
-      :cancel-label="$t('common.actions.cancel')"
-      :confirm-label="$t('pricing.productMarketplaces.unlinkButton')"
-      :description="$t('pricing.productMarketplaces.unlinkConfirm.description')"
-      :title="$t('pricing.productMarketplaces.unlinkConfirm.title')"
-      @cancel="unlinkConfirmation.cancel()"
-      @confirm="handleUnlink()"
-    />
-
     <UpdatePracticedPriceModal
       v-model="isEditPriceModalOpen"
+      :category-options="editingPriceRowCategoryOptions"
       :label="
         editingPriceRow
           ? `${editingPriceRow.marketplaceName} — ${editingPriceRow.storeName}`
@@ -301,8 +195,8 @@ function goBackToProducts(): void {
 
 .product-marketplaces-view__header {
   display: flex;
+  flex-direction: column;
   align-items: flex-start;
-  justify-content: space-between;
   gap: $spacing-16;
 }
 
@@ -316,21 +210,12 @@ function goBackToProducts(): void {
   color: $color-ink;
 }
 
-.product-marketplaces-view__hint {
-  font-size: $font-size-sm;
-  color: $color-ink-40;
-}
-
 .product-marketplaces-view__error {
   padding: $spacing-12 $spacing-16;
   font-size: $font-size-sm;
   color: $color-accent-red;
   background-color: color-mix(in srgb, $color-accent-red 12%, transparent);
   border-radius: $radius-8;
-}
-
-.product-marketplaces-view__category-select {
-  margin-top: $spacing-16;
 }
 
 .product-marketplaces-view__price-cell {

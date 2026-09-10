@@ -5,7 +5,7 @@ import { useToast } from '@/shared/composables/useToast'
 import { parseApiError } from '@/shared/services/parseApiError'
 import type { UpdatePracticedPriceFormValues } from '../schemas/updatePracticedPriceFormSchema'
 import { createUpdatePracticedPriceFormSchema } from '../schemas/updatePracticedPriceFormSchema'
-import { updateProductMarketplacePracticedPrice } from '../services/pricingApi'
+import { updateProductMarketplace } from '../services/pricingApi'
 import type { ProductMarketplace } from '../types/productMarketplace.type'
 
 /**
@@ -17,17 +17,22 @@ import type { ProductMarketplace } from '../types/productMarketplace.type'
  * diferentes do backend (achado real, 2026-09-03: `practicedPrice`
  * nunca tinha sido adicionado no tipo `ProductMarketplace` "simples",
  * só no da listagem calculada — ver comentário em
- * `productMarketplace.type.ts`).
+ * `productMarketplace.type.ts`). `categoryId` entrou em 2026-09-10 pelo
+ * mesmo motivo — os 2 tipos já tinham o campo, só o alvo do PATCH não
+ * pedia ainda.
  */
-export type PracticedPriceTarget = Pick<ProductMarketplace, 'id' | 'practicedPrice' | 'productId'>
+export type PracticedPriceTarget = Pick<
+  ProductMarketplace,
+  'categoryId' | 'id' | 'practicedPrice' | 'productId'
+>
 
 /**
  * Bespoke, mesma categoria de `useOverrideSubscriptionForm.ts`/
- * `useUpdateUserRoleForm.ts` — 1 campo só (`practicedPrice`), não é o
- * par create/update que `useResourceForm` modela (não existe "criar" um
- * `PRODUCT_MARKETPLACE` por aqui, só editar o preço praticado de um
- * vínculo já existente — vincular é `ProductMarketplacesView.vue`).
- * `submit()` recebe a `row` inteira (não só o id) porque
+ * `useUpdateUserRoleForm.ts` — 2 campos (`practicedPrice`/`categoryId`),
+ * não é o par create/update que `useResourceForm` modela (não existe
+ * "criar" um `PRODUCT_MARKETPLACE` por aqui — o vínculo já nasce
+ * automático no backend, só editar um já existente). `submit()` recebe a
+ * `row` inteira (não só o id) porque
  * `PATCH /products/{productId}/marketplaces/{productMarketplaceId}`
  * precisa dos DOIS ids, `productId` não é o mesmo `id` do vínculo.
  */
@@ -37,11 +42,15 @@ export function useUpdatePracticedPriceForm() {
   const { resolveMessage, resolveFieldError } = useApiMessage()
   const schema = createUpdatePracticedPriceFormSchema(t)
 
-  const values = reactive<UpdatePracticedPriceFormValues>({ practicedPrice: null })
+  const values = reactive<UpdatePracticedPriceFormValues>({
+    categoryId: null,
+    practicedPrice: null,
+  })
   const errors = ref<Partial<Record<keyof UpdatePracticedPriceFormValues, string>>>({})
   const isSubmitting = ref(false)
 
   function reset(row: PracticedPriceTarget): void {
+    values.categoryId = row.categoryId
     values.practicedPrice = row.practicedPrice === null ? null : Number(row.practicedPrice)
     errors.value = {}
   }
@@ -68,7 +77,12 @@ export function useUpdatePracticedPriceForm() {
     isSubmitting.value = true
 
     try {
-      await updateProductMarketplacePracticedPrice(row.productId, row.id, values.practicedPrice)
+      await updateProductMarketplace(
+        row.productId,
+        row.id,
+        values.practicedPrice,
+        values.categoryId ?? undefined,
+      )
       toast.success(t('pricing.productMarketplacePricing.editModal.success'))
       return true
     } catch (caughtError) {

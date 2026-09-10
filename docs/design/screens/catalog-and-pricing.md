@@ -1,6 +1,6 @@
 # Telas — Catalog e Pricing (marketplaces)
 
-ProductLaunchList, ProductForm (rename `operationalCost`→`shippingCost`), atalho "Ver precificação" em ProductsView, AdminMarketplacesView/AdminMarketplaceForm, MarketplaceLogo, MarketplacesView, ConnectMarketplaceModal, adendo `coupon`/`percentage_of_total`/`individual_fixed_fee`/`shippingCost`+`operationalCost` (da EMPRESA, ver `COMPANY.operationalCostPercentage` em `billing-and-identity.md`) de ProductMarketplacePricingView, ProductMarketplacesView, AdminProductCategoriesView, AdminCategoryMarketplaceList.
+ProductLaunchList, ProductForm (rename `operationalCost`→`shippingCost`; ícone discreto "Marketplaces" no rodapé do Drawer, 2026-09-10), atalho "Ver precificação" em ProductsView, AdminMarketplacesView/AdminMarketplaceForm, MarketplaceLogo, MarketplacesView, ConnectMarketplaceModal, adendo `coupon`/`percentage_of_total`/`individual_fixed_fee`/`shippingCost`+`operationalCost` (da EMPRESA, ver `COMPANY.operationalCostPercentage` em `billing-and-identity.md`) de ProductMarketplacePricingView, ProductMarketplacesView (2026-09-10: vínculo produto↔marketplace virou automático, modal de "vincular" E "Desvincular"/DELETE removidos, category_id virou mutável via PATCH), AdminProductCategoriesView, AdminCategoryMarketplaceList.
 
 > Faz parte do design system do Orbita — tokens e princípios gerais ficam em
 > `docs/design/design-system.md`, este arquivo é a continuação dele.
@@ -1032,6 +1032,58 @@ tabela). Verificado em browser real contra o backend local: escolher uma
 conexão cujo marketplace tem categoria configurada revela o 2º `Select`;
 escolher uma categoria e vincular grava `category_id` corretamente
 (conferido direto no banco); a coluna "Categoria" mostra o título certo.
+
+**Modal de "Vincular marketplace" removido, 2026-09-10** — backend (sessão
+de peer `ticket-message-image-attachments`) passou a criar
+`PRODUCT_MARKETPLACE` automaticamente: todo produto já nasce vinculado a
+toda `USER_MARKETPLACE` ativa do usuário (e vice-versa, ao conectar uma
+conexão nova), `practicedPrice`/`categoryId` nascem `null`. `POST
+/products/{id}/marketplaces` continua existindo (agora idempotente,
+`200` pra vínculo já existente / `201` só no caso raro de lacuna não
+coberta pelo auto-vínculo), mas nenhuma tela chama mais esse endpoint —
+`link()`/`buildAvailableConnectionOptions()` (`useProductMarketplaces.ts`)
+e `createProductMarketplace()` (`pricingApi.ts`) foram removidos por
+inteiro: com todo vínculo possível já existindo de cara, a lista de
+"conexões disponíveis pra vincular" ficaria sempre vazia — código morto,
+não uma opção guardada pra fallback. `unlink()` (`DELETE`) continua —
+ação real e distinta (parar de vender um produto naquele canal
+específico), não relacionada ao auto-vínculo.
+
+O botão "Marketplaces" que abria esta tela saiu da linha da listagem de
+`ProductsView.vue` (pedido do próprio usuário à sessão de backend) e
+virou um ícone discreto (`Storefront`,
+`variant="ghost"`, sem texto — mesmo padrão do botão de editar preço
+praticado desta própria tela) no rodapé do `Drawer` de edição de produto
+(`ProductForm.vue`), plugado no novo slot `leading` de
+`CrudFormActions.vue` (`shared/components/blocks/`, slot opcional —
+vazio em todo outro consumidor do bloco, sem impacto neles). Só aparece
+em modo `edit` (produto precisa existir pra ter vínculo). Verificado em
+browser real: criar um produto sem nenhuma conexão ativa → tela mostra o
+estado vazio (`"Nenhum marketplace vinculado ainda."`, sem botão
+"Vincular"); conectar um marketplace depois → o mesmo produto aparece
+automaticamente vinculado na tela, sem nenhuma ação manual de "vincular".
+
+**"Desvincular" (`DELETE`) removido no mesmo dia, algumas horas depois**
+— essa tela chegou a implementar "Desvincular" (coluna "Ações",
+`ConfirmDialog`) na 1ª rodada da mudança acima, tratando-o como feature
+permanente de "tirar produto de um canal". O backend reportou o problema
+real: aquele `DELETE` nasceu só como passo interno de "trocar categoria"
+(apaga+recria), nunca pra isso — com vínculo automático + seeder de
+backfill (recria vínculo faltante em todo deploy), a exclusão seria
+silenciosamente desfeita em produção. Resolução: `DELETE` saiu do
+backend (rota removida — patch manual de `schema.d.ts`, removendo
+`productMarketplace.destroy`), coluna "Ações" saiu junto (nada mais
+restava nela). Em troca, **`category_id` virou mutável via `PATCH`** —
+o campo select de categoria (mesmas opções que antes viviam no modal de
+"vincular", `categoryOptionsFor`) foi pro `UpdatePracticedPriceModal.vue`
+(compartilhado com `ProductMarketplacePricingView.vue`), atrás de uma
+prop opcional `categoryOptions` — só esta tela passa (é a única com
+coluna "Categoria"), então o campo simplesmente não aparece no outro
+consumidor. Categoria só TROCA, nunca LIMPA de volta pra vazio (decisão
+do próprio backend — sem opção "nenhuma" no `Select`). Verificado em
+browser real contra o backend local: PATCH manda
+`{practiced_price, category_id}`, `200` com os dois persistidos; tabela
+atualiza preço E categoria na mesma ação.
 
 ## AdminProductCategoriesView / AdminProductCategoryForm (`modules/pricing/views/AdminProductCategoriesView.vue`, `modules/pricing/components/AdminProductCategoryForm.vue`)
 

@@ -85,6 +85,17 @@ rodapé com 2 `Button` (Cancelar `outline`, Submit `primary`), alinhados
 - Ver `.ai/rules/crud-pattern.md` pra quando usar — todo `<Recurso>Form.vue`
   novo (Fase 4 em diante) usa este bloco pro rodapé, nunca reescreve a
   marcação/CSS à mão de novo.
+- **Slot `leading` opcional, 2026-09-10** — conteúdo alinhado à esquerda,
+  antes de Cancelar/Salvar (`justify-content: space-between` em vez de
+  `flex-end`; vazio some sem afetar layout, `flex-end` visual idêntico
+  em todo consumidor que não usa o slot). Primeiro uso:
+  `ProductForm.vue`, um `Button` `icon-before="Storefront"` `variant="ghost"`
+  sem texto (mesmo padrão de ícone isolado do botão de editar preço
+  praticado de `ProductMarketplacesView.vue`) — atalho discreto pra
+  "Marketplaces do produto", só em modo `edit`, substituindo o antigo
+  botão de texto que ficava na linha da listagem (`ProductsView.vue`) —
+  ver adendo em `docs/design/screens/catalog-and-pricing.md`, seção
+  `ProductMarketplacesView`.
 
 ## Modal (`shared/components/ui/Modal.vue`)
 

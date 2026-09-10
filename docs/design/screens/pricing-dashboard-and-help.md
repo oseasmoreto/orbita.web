@@ -297,12 +297,18 @@ no título sozinho (mesmo achado real já documentado pra
   diferente de `useProductList.ts` — UI que não filtra nada de verdade é
   pior que não ter UI nenhuma).
 - **`UpdatePracticedPriceModal.vue`** — bespoke, mesma categoria de
-  `EditUserRoleModal.vue`/`OverrideSubscriptionModal.vue` (1 campo,
-  ação pontual, não o par create/update que `useResourceForm` modela).
-  Não emite a linha atualizada — preço praticado muda TAMBÉM lucro/
-  margem/`meetsTargetMargin` (calculados no backend), então o consumidor
-  sempre refaz `list.refresh()` inteiro depois de `saved`, nunca tenta
-  recalcular isso no cliente.
+  `EditUserRoleModal.vue`/`OverrideSubscriptionModal.vue` (ação pontual,
+  não o par create/update que `useResourceForm` modela). Não emite a
+  linha atualizada — preço praticado muda TAMBÉM lucro/margem/
+  `meetsTargetMargin` (calculados no backend), então o consumidor sempre
+  refaz `list.refresh()` inteiro depois de `saved`, nunca tenta
+  recalcular isso no cliente. **2º campo, `categoryId`, entrou em
+  2026-09-10** atrás de uma prop opcional `categoryOptions` — só
+  `ProductMarketplacesView.vue` passa (única tela com coluna
+  "Categoria"), esta tela (por CONEXÃO) não mostra categoria, então o
+  campo não renderiza aqui. Ver adendo completo em
+  `docs/design/screens/catalog-and-pricing.md`, seção
+  `ProductMarketplacesView`.
 - **Bug real do backend, encontrado testando em browser real, reportado
   cross-session e corrigido no mesmo dia**: `PATCH .../marketplaces/{id}`
   com `{"practiced_price": 99.9}` (exatamente o tipo `number | null` que

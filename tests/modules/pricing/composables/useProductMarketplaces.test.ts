@@ -1,7 +1,4 @@
-import {
-  buildAvailableConnectionOptions,
-  buildProductMarketplaceRows,
-} from '@/modules/pricing/composables/useProductMarketplaces'
+import { buildProductMarketplaceRows } from '@/modules/pricing/composables/useProductMarketplaces'
 import type { CategoryMarketplace } from '@/modules/pricing/types/categoryMarketplace.type'
 import type { Marketplace } from '@/modules/pricing/types/marketplace.type'
 import type { ProductMarketplace } from '@/modules/pricing/types/productMarketplace.type'
@@ -44,14 +41,6 @@ const amazonConnection: UserMarketplace = {
   storeName: 'Minha Loja Amazon',
 }
 
-const inactiveConnection: UserMarketplace = {
-  active: false,
-  createdAt: '2026-01-01T00:00:00Z',
-  id: 'conn-3',
-  marketplaceId: 'mkt-2',
-  storeName: 'Loja Pausada',
-}
-
 const link: ProductMarketplace = {
   categoryId: null,
   createdAt: '2026-02-01T00:00:00Z',
@@ -90,6 +79,7 @@ describe('buildProductMarketplaceRows', () => {
 
     expect(rows).toEqual([
       {
+        categoryId: null,
         categoryTitle: null,
         createdAt: '2026-02-01T00:00:00Z',
         id: 'link-1',
@@ -132,33 +122,5 @@ describe('buildProductMarketplaceRows', () => {
     )
 
     expect(rows[0]?.categoryTitle).toBeNull()
-  })
-})
-
-describe('buildAvailableConnectionOptions', () => {
-  it('offers only active connections not yet linked to this product', () => {
-    const options = buildAvailableConnectionOptions(
-      [shopeeConnection, amazonConnection],
-      [shopee, amazon],
-      [link],
-    )
-
-    expect(options).toEqual([{ label: 'Amazon — Minha Loja Amazon', value: 'conn-2' }])
-  })
-
-  it('excludes inactive connections — never offer a paused connection to link', () => {
-    const options = buildAvailableConnectionOptions(
-      [shopeeConnection, inactiveConnection],
-      [shopee, amazon],
-      [],
-    )
-
-    expect(options).toEqual([{ label: 'Shopee — Minha Loja Shopee', value: 'conn-1' }])
-  })
-
-  it('returns an empty list when every active connection is already linked', () => {
-    const options = buildAvailableConnectionOptions([shopeeConnection], [shopee], [link])
-
-    expect(options).toEqual([])
   })
 })

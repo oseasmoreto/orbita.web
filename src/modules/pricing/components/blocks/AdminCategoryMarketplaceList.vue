@@ -51,9 +51,7 @@ const deleteConfirmation = useConfirmAction<CategoryMarketplace>()
  * Opções pro `Select` de "vincular categoria" — todas as categorias
  * ATIVAS ainda NÃO vinculadas a este marketplace (evita a Action recusar
  * com `errorMessageCategoryAlreadyLinkedToMarketplace` — validação de
- * UI, mesmo critério de `buildAvailableConnectionOptions`,
- * `useProductMarketplaces.ts`). Buscado uma vez, à parte da paginação da
- * lista de vínculos.
+ * UI). Buscado uma vez, à parte da paginação da lista de vínculos.
  */
 const allActiveCategories = ref<ProductCategory[]>([])
 

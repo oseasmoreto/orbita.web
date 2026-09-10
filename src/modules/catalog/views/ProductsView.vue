@@ -43,12 +43,7 @@
  *   listagem já carregada (`list.items.value`); se o id não existir,
  *   mostra o erro e volta pra `/products`.
  */
-import {
-  ChartBar,
-  PencilSimpleLine,
-  Storefront,
-  Trash,
-} from '@/shared/components/icons/regular.generated'
+import { ChartBar, PencilSimpleLine, Trash } from '@/shared/components/icons/regular.generated'
 import dayjs from 'dayjs'
 import { computed, ref, watch } from 'vue'
 import { TabsContent } from 'reka-ui'
@@ -154,17 +149,6 @@ function goToCreate(): void {
 
 function goToEdit(product: Product): void {
   void router.push({ name: 'products-edit', params: { id: product.id } })
-}
-
-/**
- * `PRODUCT_MARKETPLACE` é do Bounded Context Pricing (backend,
- * `Api/Pricing/ProductMarketplaceController`) — nunca uma aba dentro
- * deste Drawer (colidiria com a regra de fronteira de módulo, seção 2 de
- * `docs/infra/convencoes-frontend-infra.md`). Navegação por NOME de
- * rota, nunca um import de `modules/pricing/*`.
- */
-function goToMarketplaces(product: Product): void {
-  void router.push({ name: 'product-marketplaces', params: { id: product.id } })
 }
 
 async function openEditById(id: string): Promise<void> {
@@ -322,9 +306,6 @@ function handleSaved(): void {
         <div class="products-view__row-actions">
           <Button :icon-before="PencilSimpleLine" variant="ghost" @click="goToEdit(row)">
             {{ $t('common.actions.edit') }}
-          </Button>
-          <Button :icon-before="Storefront" variant="ghost" @click="goToMarketplaces(row)">
-            {{ $t('catalog.products.marketplacesButton') }}
           </Button>
           <Button
             :icon-before="Trash"

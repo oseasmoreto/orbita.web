@@ -28,7 +28,6 @@ type UserMarketplaceResource = components['schemas']['UserMarketplaceResource']
 type CreateUserMarketplaceRequest = components['schemas']['CreateUserMarketplaceRequest']
 type UpdateUserMarketplaceRequest = components['schemas']['UpdateUserMarketplaceRequest']
 type ProductMarketplaceResource = components['schemas']['ProductMarketplaceResource']
-type CreateProductMarketplaceRequest = components['schemas']['CreateProductMarketplaceRequest']
 type UpdateProductMarketplaceRequest = components['schemas']['UpdateProductMarketplaceRequest']
 type ProductMarketplacePricingResource = components['schemas']['ProductMarketplacePricingResource']
 type ProductCategoryResource = components['schemas']['ProductCategoryResource']
@@ -247,10 +246,11 @@ export async function getUserMarketplaceStoreName(userMarketplaceId: string): Pr
 
 // ---------------------------------------------------------------------------
 // PRODUCT_MARKETPLACE — vínculo puro, sempre aninhado a UM produto
-// próprio. `categoryId` continua imutável (trocar de canal é sempre
-// DELETE + POST de novo) — só `practicedPrice` é mutável via PATCH
-// (tarefa 76, motor de precificação real), ver `updateProductMarketplacePracticedPrice`
-// logo abaixo.
+// próprio, criado automaticamente pelo backend (2026-09-10 — todo
+// produto já nasce vinculado a toda conexão ativa, e vice-versa). Sem
+// DELETE (removido do backend no mesmo dia — vínculo é permanente
+// enquanto produto e conexão existirem); `practicedPrice`/`categoryId`
+// mutáveis via PATCH, ver `updateProductMarketplace` logo abaixo.
 // ---------------------------------------------------------------------------
 
 export interface ListProductMarketplacesParams {
@@ -271,24 +271,6 @@ export async function listProductMarketplaces(
   return { items: data.data.items.map(toProductMarketplace), meta: data.data.meta }
 }
 
-export async function createProductMarketplace(
-  productId: string,
-  payload: CreateProductMarketplaceRequest,
-): Promise<ProductMarketplace> {
-  const { data } = await apiClient.post<ApiResponse<ProductMarketplaceResource>>(
-    `/products/${productId}/marketplaces`,
-    payload,
-  )
-  return toProductMarketplace(data.data)
-}
-
-export async function deleteProductMarketplace(
-  productId: string,
-  productMarketplaceId: string,
-): Promise<void> {
-  await apiClient.delete(`/products/${productId}/marketplaces/${productMarketplaceId}`)
-}
-
 /**
  * `practicedPrice: null` limpa o preço já definido — o backend exige a
  * CHAVE sempre presente no corpo (`present`, não `sometimes`/`required`),
@@ -296,13 +278,25 @@ export async function deleteProductMarketplace(
  * `useNumberFieldModel` (string vazia → `null`) no consumidor, convertido
  * pra `number` aqui só na borda da chamada de API — mesmo padrão de
  * `useProductForm.ts` pros campos decimais opcionais.
+ *
+ * `categoryId` virou mutável em 2026-09-10 (junto com a remoção do
+ * `DELETE` — trocar categoria deixou de precisar de excluir e recriar o
+ * vínculo). Diferente de `practicedPrice`, a chave só entra no payload
+ * quando `categoryId` é passado (`undefined` por padrão) — o backend não
+ * aceita `category_id: null` pra "limpar" a categoria (decisão do
+ * próprio endpoint, categoria não entra em cálculo de precificação hoje),
+ * então omitir a chave é o único jeito de "não mexer" na categoria atual.
  */
-export async function updateProductMarketplacePracticedPrice(
+export async function updateProductMarketplace(
   productId: string,
   productMarketplaceId: string,
   practicedPrice: number | null,
+  categoryId?: string,
 ): Promise<ProductMarketplace> {
-  const payload: UpdateProductMarketplaceRequest = { practiced_price: practicedPrice }
+  const payload: UpdateProductMarketplaceRequest = {
+    category_id: categoryId,
+    practiced_price: practicedPrice,
+  }
   const { data } = await apiClient.patch<ApiResponse<ProductMarketplaceResource>>(
     `/products/${productId}/marketplaces/${productMarketplaceId}`,
     payload,

@@ -7,8 +7,7 @@
  *
  * `categoryId` só é ESCOLHIDO no CREATE (`Select` com `categoryOptions`,
  * já filtrado pelo consumidor pra excluir categorias já vinculadas a
- * este marketplace — mesmo critério de `buildAvailableConnectionOptions`
- * em `useProductMarketplaces.ts`). No EDIT, a categoria é fixa
+ * este marketplace). No EDIT, a categoria é fixa
  * (`UpdateCategoryMarketplaceRequest` real do backend nem aceita esse
  * campo — trocar de categoria é sempre excluir e vincular outra) — mostra
  * o título como texto desabilitado, mesmo padrão do campo `hash` em

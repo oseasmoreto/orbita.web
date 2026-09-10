@@ -7,15 +7,14 @@ type ProductMarketplaceResource = components['schemas']['ProductMarketplaceResou
  * nunca `MARKETPLACE` direto — é isso que garante que só se vincula a um
  * canal já conectado. `categoryId` (nullable) — tarefa 64: nem todo
  * marketplace cobra por categoria, e vínculos antigos não têm categoria
- * nenhuma. Sem `PATCH` pra trocar categoria/marketplace — trocar é sempre
- * `DELETE`+`POST` de novo. `practicedPrice` (nullable, tarefa 76) é o
- * ÚNICO campo mutável via `PATCH` — achado real, 2026-09-03: o tipo de
- * domínio nunca tinha sido atualizado quando o backend adicionou o campo
- * ao `ProductMarketplaceResource` (só `ProductMarketplacePricingResource`,
- * o resource NOVO da listagem calculada, tinha ganhado o campo aqui do
- * lado do frontend) — `ProductMarketplacesView.vue` (tabela por PRODUTO,
- * não por conexão) ficou sem mostrar/editar o preço praticado por causa
- * disso, mesmo o backend já expondo o dado desde sempre.
+ * nenhuma. `practicedPrice` (nullable, tarefa 76) e `categoryId` são os
+ * 2 campos mutáveis via `PATCH` — `categoryId` virou mutável em
+ * 2026-09-10, junto com a remoção do `POST`/`DELETE` de "vincular"
+ * (backend passou a criar o vínculo automaticamente: todo produto já
+ * nasce vinculado a toda conexão ativa, então "excluir e recriar pra
+ * trocar categoria" deixou de fazer sentido). Categoria só pode ser
+ * TROCADA por esse `PATCH`, não LIMPA de volta pra `null` — decisão do
+ * próprio backend (categoria não entra em cálculo de precificação hoje).
  */
 export interface ProductMarketplace {
   categoryId: ProductMarketplaceResource['category_id']

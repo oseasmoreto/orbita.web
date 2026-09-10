@@ -8,6 +8,14 @@
  * `cancel` (o `submit` já é o próprio `@submit.prevent` do `<form>` pai,
  * este bloco não precisa saber disso) e recebe os 2 textos já traduzidos
  * pelo consumidor (bloco nunca decide texto de UI).
+ *
+ * Slot `leading` (2026-09-10, pedido direto do usuário — atalho pra
+ * marketplaces do produto dentro do próprio Drawer de edição, ver
+ * `ProductForm.vue`): conteúdo opcional alinhado à esquerda, antes dos
+ * botões Cancelar/Salvar. Vazio por padrão — `justify-content:
+ * space-between` com o slot sem conteúdo empurra os botões pro canto
+ * direito exatamente como antes, sem afetar nenhum outro consumidor deste
+ * bloco.
  */
 import Button from '../ui/Button.vue'
 
@@ -25,12 +33,17 @@ const emit = defineEmits<{ cancel: [] }>()
 
 <template>
   <div class="crud-form-actions">
-    <Button type="button" variant="outline" @click="emit('cancel')">
-      {{ cancelLabel }}
-    </Button>
-    <Button :disabled="isSubmitting" type="submit" variant="primary">
-      {{ submitLabel }}
-    </Button>
+    <div class="crud-form-actions__leading">
+      <slot name="leading" />
+    </div>
+    <div class="crud-form-actions__buttons">
+      <Button type="button" variant="outline" @click="emit('cancel')">
+        {{ cancelLabel }}
+      </Button>
+      <Button :disabled="isSubmitting" type="submit" variant="primary">
+        {{ submitLabel }}
+      </Button>
+    </div>
   </div>
 </template>
 
@@ -38,8 +51,14 @@ const emit = defineEmits<{ cancel: [] }>()
 
 .crud-form-actions {
   display: flex;
-  justify-content: flex-end;
+  align-items: center;
+  justify-content: space-between;
   gap: $spacing-8;
   padding-top: $spacing-16;
+}
+
+.crud-form-actions__buttons {
+  display: flex;
+  gap: $spacing-8;
 }
 </style>

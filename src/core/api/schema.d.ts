@@ -812,7 +812,7 @@ export interface paths {
         get: operations["productMarketplace.show"];
         put?: never;
         post?: never;
-        delete: operations["productMarketplace.destroy"];
+        delete?: never;
         options?: never;
         head?: never;
         patch: operations["productMarketplace.update"];
@@ -2122,12 +2122,18 @@ export interface components {
         };
         /**
          * UpdateProductMarketplaceRequest
-         * @description Só practiced_price é mutável (tarefa 76) — categoria continua imutável,
-         *     trocar de canal continua sendo sempre DELETE + POST de novo (decisão da
-         *     tarefa 46, não revista).
+         * @description practiced_price é o único campo sempre obrigatório no corpo (tarefa 76).
+         *     category_id virou mutável em 2026-09-10 (antes exigia DELETE + POST de
+         *     novo pra trocar — removido junto com o endpoint DELETE, que deixou de
+         *     fazer sentido desde que todo vínculo nasce automático) — mesma validação
+         *     de "categoria precisa ter comissão configurada pro marketplace desse
+         *      * vínculo" de CreateProductMarketplaceRequest, feita na Action (não dá pra
+         *     expressar aqui sem já ter resolvido o vínculo).
          */
         UpdateProductMarketplaceRequest: {
             practiced_price: number | null;
+            /** Format: uuid */
+            category_id?: string | null;
         };
         /** UpdateProductRequest */
         UpdateProductRequest: {
@@ -4998,34 +5004,6 @@ export interface operations {
                         success: boolean;
                         message: string;
                         data: components["schemas"]["ProductMarketplaceResource"];
-                        errors: null;
-                    };
-                };
-            };
-            401: components["responses"]["AuthenticationException"];
-        };
-    };
-    "productMarketplace.destroy": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                product: string;
-                productMarketplace: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": {
-                        success: boolean;
-                        message: string;
-                        data: null;
                         errors: null;
                     };
                 };

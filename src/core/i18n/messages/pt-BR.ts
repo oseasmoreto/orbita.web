@@ -1296,10 +1296,12 @@ export default {
       copyPriceTooltip: 'Clique para copiar',
       editConnectionButton: 'Editar vínculo do marketplace',
       editModal: {
+        categoryPlaceholder: 'Selecione uma categoria',
         errors: {
           priceMin: 'Preço não pode ser negativo.',
         },
         fields: {
+          category: 'Categoria',
           practicedPrice: 'Preço praticado (R$)',
         },
         placeholder: 'Deixe em branco pra limpar',
@@ -1361,28 +1363,8 @@ export default {
         storeName: 'Loja',
       },
       empty: 'Nenhum marketplace vinculado ainda.',
-      linkButton: 'Vincular marketplace',
-      linkModal: {
-        categoryPlaceholder: 'Selecione uma categoria (opcional)',
-        fields: {
-          category: 'Categoria',
-          connection: 'Conexão',
-        },
-        placeholder: 'Selecione uma conexão',
-        submit: 'Vincular',
-        title: 'Vincular marketplace',
-      },
-      linkSuccess: 'Marketplace vinculado com sucesso.',
-      noAvailableConnectionsHint:
-        'Nenhuma conexão ativa disponível — conecte um marketplace antes de vincular.',
       title: 'Marketplaces do produto',
       titleWithProduct: 'Marketplaces de {product}',
-      unlinkButton: 'Desvincular',
-      unlinkConfirm: {
-        description: 'Essa ação não pode ser desfeita.',
-        title: 'Desvincular marketplace?',
-      },
-      unlinkSuccess: 'Marketplace desvinculado com sucesso.',
     },
   },
   pricingDashboardMockup: {
