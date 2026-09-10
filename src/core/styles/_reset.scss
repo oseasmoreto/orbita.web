@@ -7,6 +7,43 @@
   box-sizing: border-box;
 }
 
+// Barra de scroll fina e discreta, global — pedido direto do usuário,
+// 2026-09-11 ("temos muitas barras na horizontal, temos que dar um
+// talento pra ficarem finas e discretas"): `DataTable.vue` (colunas de
+// breakdown), `Drawer.vue`/`Modal.vue` (corpo com overflow), sidebar,
+// `Combobox.vue`/`Select.vue`, `Textarea.vue` — qualquer container com
+// scroll, atual ou futuro, sem precisar lembrar de aplicar em cada um
+// (regra em `*`, não numa classe específica). `scrollbar-width`/
+// `scrollbar-color` cobre Firefox; o trio `::-webkit-scrollbar*` cobre
+// Chrome/Safari/Edge (WebKit/Blink não suportam as props padrão até
+// hoje). Cor vem de `$color-ink-20`/`$color-ink-40` (hover) — os mesmos
+// tokens `--color-ink-*` já usados pra hairline/texto secundário em todo
+// o design system, então já flipam sozinhos no tema escuro (`[data-theme='dark']`),
+// sem precisar de uma segunda declaração aqui. `border-radius: $radius-80`
+// (pill) no thumb, mesma escala do resto do projeto.
+* {
+  scrollbar-width: thin;
+  scrollbar-color: $color-ink-20 transparent;
+}
+
+*::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+*::-webkit-scrollbar-thumb {
+  background-color: $color-ink-20;
+  border-radius: $radius-80;
+}
+
+*::-webkit-scrollbar-thumb:hover {
+  background-color: $color-ink-40;
+}
+
 html,
 body,
 #app {

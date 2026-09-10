@@ -436,6 +436,28 @@ Se um componente futuro precisar de elevação de verdade (dropdown sobre
 conteúdo, modal), isso é uma decisão nova a tomar — não existe token pra
 seguir aqui ainda.
 
+## Scroll
+
+**Barra de scroll fina e discreta, global, 2026-09-11** (pedido direto
+do usuário — "temos muitas barras na horizontal, temos que dar um
+talento pra ficarem finas e discretas"): regra em `*` dentro de
+`core/styles/_reset.scss` (não uma classe/mixin que cada componente
+precisa lembrar de aplicar) — cobre `DataTable.vue` (a origem do pedido,
+colunas de breakdown na tela de precificação), `Drawer.vue`/`Modal.vue`,
+sidebar, `Combobox.vue`/`Select.vue`, `Textarea.vue`, e qualquer
+container com `overflow` futuro, automaticamente.
+
+- `scrollbar-width: thin` + `scrollbar-color: {colors.ink-20} transparent`
+  cobre Firefox; o trio `::-webkit-scrollbar`/`-track`/`-thumb` (8px,
+  mesmas cores, `border-radius: {rounded.80}` — pill) cobre Chrome/
+  Safari/Edge, que não suportam as props padrão.
+- Cor vem dos MESMOS tokens `{colors.ink-20}`/`{colors.ink-40}` (hover)
+  já usados pra hairline/texto secundário no resto do sistema — flipa
+  sozinha no tema escuro (`[data-theme='dark']`), sem declaração extra.
+- Verificado via CSSOM/`getComputedStyle` em browser real (screenshot
+  não é confiável aqui — Chromium headless renderiza scrollbar overlay
+  por padrão, largura 0 até interação, independente do CSS).
+
 ## Shapes
 
 ### Escala de raio
