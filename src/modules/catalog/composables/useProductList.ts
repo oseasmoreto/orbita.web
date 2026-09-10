@@ -5,6 +5,42 @@ import { useResourceList } from '@/shared/composables/useResourceList'
 import { listProducts } from '../services/catalogApi'
 import type { Product } from '../types/product.type'
 
+export interface ProductMarketplaceColumn {
+  id: string
+  logoUrl: string | null
+  name: string
+}
+
+/**
+ * Uma coluna POR marketplace vinculado (pedido direto do usuário,
+ * 2026-09-10 — "cada logo de mktplace tem que ser uma coluna na tabela
+ * com o status"), não uma coluna só com vários logos dentro. Deduplica
+ * por `marketplaceId` — na prática todo produto já nasce vinculado à
+ * MESMA conexão ativa (decisão 2026-09-10 do backend, vínculo
+ * automático), então cada marketplace normalmente aparece em TODOS os
+ * produtos da página; o dedup é o que evita colunas repetidas. Ordem é
+ * "primeira vez que aparece" (percorre produto por produto, na ordem já
+ * ordenada da página) — sem critério de negócio pra ordenar diferente
+ * disso ainda.
+ */
+export function buildProductMarketplaceColumns(products: Product[]): ProductMarketplaceColumn[] {
+  const columnsById = new Map<string, ProductMarketplaceColumn>()
+
+  for (const product of products) {
+    for (const marketplace of product.marketplaces) {
+      if (!columnsById.has(marketplace.marketplaceId)) {
+        columnsById.set(marketplace.marketplaceId, {
+          id: marketplace.marketplaceId,
+          logoUrl: marketplace.marketplaceLogoUrl,
+          name: marketplace.marketplaceName,
+        })
+      }
+    }
+  }
+
+  return [...columnsById.values()]
+}
+
 /**
  * `GET /products` só ordena por essas 3 colunas (`core/api/schema.d.ts`,
  * `product.index`) — qualquer outra `key` (ex.: uma coluna calculada

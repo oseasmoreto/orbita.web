@@ -240,7 +240,6 @@ export default {
         createdAt: 'Cadastrado em',
         name: 'Nome',
         sku: 'SKU',
-        targetMargin: 'Margem alvo',
       },
       createButton: 'Novo produto',
       deleteConfirm: {

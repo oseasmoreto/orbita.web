@@ -15,12 +15,27 @@
  * conectados, Fase 4) repete exatamente esta forma, trocando só o
  * service/tipo/colunas/form.
  *
- * Colunas espelham só campos reais de `ProductResource` — sem
- * "Marketplace" (isso é `PRODUCT_MARKETPLACE`, fora do CRUD de produto)
- * nem badge de "dentro/fora da margem" (precisaria do preço sugerido,
- * gap de backend já registrado — `PricingCalculator` nunca exposto em
- * rota). `targetMargin` aparece como o valor configurado, não um status
- * calculado.
+ * Colunas espelham só campos reais de `ProductResource` — sem badge de
+ * "dentro/fora da margem" (precisaria do preço sugerido, gap de backend
+ * já registrado — `PricingCalculator` nunca exposto em rota). Margem
+ * alvo (`targetMargin`) NÃO vira coluna (pedido direto do usuário,
+ * 2026-09-10 — "ocultar a margem de lucro na listagem"), continua só no
+ * formulário de edição.
+ *
+ * **1 coluna POR marketplace vinculado, 2026-09-10** (`ProductResource.marketplaces`,
+ * eager load novo do backend + "cada logo de mktplace tem que ser uma
+ * coluna na tabela com o status") — `buildProductMarketplaceColumns`
+ * (`useProductList.ts`) deriva o conjunto de marketplaces a partir dos
+ * PRÓPRIOS produtos já carregados na página (não uma 2ª chamada de API:
+ * como todo produto já nasce vinculado a toda conexão ativa, decisão
+ * 2026-09-10 do backend, o `marketplaces[]` de qualquer produto da
+ * página já reflete o conjunto completo). Cabeçalho é só o LOGO
+ * (`MarketplaceLogo`, `shared/components/ui/`, via slot `#header-<key>`
+ * novo de `DataTable.vue` — sem nome visível, pedido explícito do
+ * usuário), célula é `StatusDot` com o status daquele produto NAQUELE
+ * marketplace (`not_sent`/`pending`/`sent`) — "—" quando o produto não
+ * tem vínculo com aquele marketplace específico (caso raro, gap que o
+ * auto-vínculo não cobriu).
  *
  * **Drawer sincronizado com a URL, 2026-08-31** — pedido direto do
  * usuário ("acessar direto e abrir os modais"): `/products/new`/
@@ -54,7 +69,7 @@ import { useApiMessage } from '@/shared/composables/useApiMessage'
 import { useCrudDrawer } from '@/shared/composables/useCrudDrawer'
 import { useConfirmAction } from '@/shared/composables/useConfirmAction'
 import { useToast } from '@/shared/composables/useToast'
-import { formatMoney, formatPercent } from '@/shared/services/formatNumber'
+import { formatMoney } from '@/shared/services/formatNumber'
 import { parseApiError } from '@/shared/services/parseApiError'
 import ConfirmDialog from '@/shared/components/blocks/ConfirmDialog.vue'
 import DataTable from '@/shared/components/blocks/DataTable.vue'
@@ -62,12 +77,19 @@ import ListToolbar from '@/shared/components/blocks/ListToolbar.vue'
 import PaginationNav from '@/shared/components/blocks/PaginationNav.vue'
 import Button from '@/shared/components/ui/Button.vue'
 import Drawer from '@/shared/components/ui/Drawer.vue'
+import MarketplaceLogo from '@/shared/components/ui/MarketplaceLogo.vue'
+import StatusDot from '@/shared/components/ui/StatusDot.vue'
 import TabBar from '@/shared/components/ui/TabBar.vue'
+import Tooltip from '@/shared/components/ui/Tooltip.vue'
 import ProductForm from '../components/ProductForm.vue'
 import ProductLaunchList from '../components/blocks/ProductLaunchList.vue'
 import { deleteProduct, getProduct } from '../services/catalogApi'
-import { useProductList } from '../composables/useProductList'
+import { buildProductMarketplaceColumns, useProductList } from '../composables/useProductList'
 import { usePlanLimit } from '../composables/usePlanLimit'
+import {
+  productMarketplaceStatusColor,
+  productMarketplaceStatusLabelKey,
+} from '../types/product.type'
 import type { Product } from '../types/product.type'
 import type { DataTableColumn } from '@/shared/components/ui/types/dataTable.type'
 import type { TabBarOption } from '@/shared/components/ui/types/tabBar.type'
@@ -203,14 +225,23 @@ watch(
   },
 )
 
+const marketplaceColumns = computed(() => buildProductMarketplaceColumns(list.items.value))
+
 const columns = computed<DataTableColumn[]>(() => [
   { key: 'name', sortable: true, title: t('catalog.products.columns.name') },
   { key: 'sku', title: t('catalog.products.columns.sku') },
   { key: 'costPrice', sortable: true, title: t('catalog.products.columns.costPrice') },
-  { key: 'targetMargin', title: t('catalog.products.columns.targetMargin') },
+  ...marketplaceColumns.value.map((marketplace) => ({
+    key: `marketplace-${marketplace.id}`,
+    title: marketplace.name,
+  })),
   { key: 'createdAt', sortable: true, title: t('catalog.products.columns.createdAt') },
   { key: 'operations', title: t('common.actions.actions') },
 ])
+
+function marketplaceLinkFor(row: Product, marketplaceId: string) {
+  return row.marketplaces.find((marketplace) => marketplace.marketplaceId === marketplaceId)
+}
 
 function formatCreatedAt(value: string | null): string {
   return value ? dayjs(value).format('DD/MM/YYYY') : '—'
@@ -296,24 +327,45 @@ function handleSaved(): void {
       <template #cell-costPrice="{ row }">
         {{ formatMoney(row.costPrice) }}
       </template>
-      <template #cell-targetMargin="{ row }">
-        {{ formatPercent(row.targetMargin) }}
+      <template
+        v-for="marketplace in marketplaceColumns"
+        :key="marketplace.id"
+        #[`header-marketplace-${marketplace.id}`]
+      >
+        <Tooltip :text="marketplace.name">
+          <MarketplaceLogo :logo-url="marketplace.logoUrl" :name="marketplace.name" :size="20" />
+        </Tooltip>
+      </template>
+      <template
+        v-for="marketplace in marketplaceColumns"
+        :key="marketplace.id"
+        #[`cell-marketplace-${marketplace.id}`]="{ row }"
+      >
+        <StatusDot
+          v-if="marketplaceLinkFor(row, marketplace.id)"
+          :color="productMarketplaceStatusColor(marketplaceLinkFor(row, marketplace.id)!.status)"
+        >
+          {{ $t(productMarketplaceStatusLabelKey(marketplaceLinkFor(row, marketplace.id)!.status)) }}
+        </StatusDot>
+        <span v-else>—</span>
       </template>
       <template #cell-createdAt="{ row }">
         {{ formatCreatedAt(row.createdAt) }}
       </template>
       <template #cell-operations="{ row }">
         <div class="products-view__row-actions">
-          <Button :icon-before="PencilSimpleLine" variant="ghost" @click="goToEdit(row)">
-            {{ $t('common.actions.edit') }}
-          </Button>
           <Button
+            :aria-label="$t('common.actions.edit')"
+            :icon-before="PencilSimpleLine"
+            variant="ghost"
+            @click="goToEdit(row)"
+          />
+          <Button
+            :aria-label="$t('common.actions.delete')"
             :icon-before="Trash"
             variant="ghost"
             @click="deleteConfirmation.request(row)"
-          >
-            {{ $t('common.actions.delete') }}
-          </Button>
+          />
         </div>
       </template>
       <template #empty>

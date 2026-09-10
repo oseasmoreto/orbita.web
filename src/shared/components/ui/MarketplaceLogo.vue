@@ -8,13 +8,20 @@
  * carregar — `logo_url` é um link que o admin cadastrou, pode ficar
  * quebrado sem que o cadastro tivesse como validar isso).
  *
+ * Promovido de `modules/pricing/components/` pra `shared/components/ui/`
+ * em 2026-09-10 — 2º módulo (`modules/catalog`, coluna "Marketplaces" de
+ * `ProductsView.vue`) passou a precisar da mesma lógica, e um módulo
+ * nunca importa de outro diretamente (`docs/infra/convencoes-frontend-infra.md`
+ * seção 2) — mesmo critério de promoção já documentado ali (sobe pra
+ * `shared/` só quando um SEGUNDO módulo precisa de verdade).
+ *
  * `size` controla os dois estados igualmente — `iconSize` do fallback é
  * sempre metade de `size` (mesma proporção já usada em
  * `MarketplacesView.vue`: 48/24).
  */
 import { ref } from 'vue'
 import { Storefront } from '@/shared/components/icons/regular.generated'
-import IconTile from '@/shared/components/ui/IconTile.vue'
+import IconTile from './IconTile.vue'
 
 const props = withDefaults(
   defineProps<{

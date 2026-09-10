@@ -1883,6 +1883,18 @@ export interface components {
             height: string | null;
             width: string | null;
             length: string | null;
+            /**
+             * @description Vínculos por marketplace + status (pedido direto do usuário,
+             *     2026-09-10 — front transforma cada um numa coluna da listagem).
+             *     Só populado quando a query já vem com eager load (ListProductsAction).
+             */
+            marketplaces?: {
+                id: string;
+                marketplace_id: string;
+                marketplace_name: string;
+                marketplace_logo_url: string | null;
+                status: components["schemas"]["ProductMarketplaceStatus"];
+            }[];
             /** Format: date-time */
             created_at: string | null;
         };

@@ -12,10 +12,12 @@
  * mesmo dia pra fechar o gap real de "pixel perfect" que a v1 tinha
  * (`{colors.tint-1}` + ícone `Storefront` genérico igual pra todo card,
  * sem descrição/tags/link — não existia dado nenhum pra isso). Logo é
- * `MarketplaceLogo.vue` (`modules/pricing/components/`, extraído depois
- * que este card, `AdminMarketplacesView.vue` e `ProductMarketplacesView.vue`
- * precisaram da mesma lógica de imagem+fallback) — nunca inventar
- * logo/cor que não existe.
+ * `MarketplaceLogo.vue` (`shared/components/ui/`, extraído depois que
+ * este card, `AdminMarketplacesView.vue` e `ProductMarketplacesView.vue`
+ * precisaram da mesma lógica de imagem+fallback; promovido de
+ * `modules/pricing/components/` pra `shared/` em 2026-09-10 quando
+ * `ProductsView.vue`, módulo `catalog`, virou o 4º consumidor) — nunca
+ * inventar logo/cor que não existe.
  *
  * `active` (toggle) e desconectar (`DELETE`) são ações DIFERENTES de
  * propósito — `active: false` só pausa (bloqueia NOVOS vínculos de
@@ -43,7 +45,7 @@ import { useConfirmAction } from '@/shared/composables/useConfirmAction'
 import { useToast } from '@/shared/composables/useToast'
 import { parseApiError } from '@/shared/services/parseApiError'
 import ConnectMarketplaceModal from '../components/blocks/ConnectMarketplaceModal.vue'
-import MarketplaceLogo from '../components/MarketplaceLogo.vue'
+import MarketplaceLogo from '@/shared/components/ui/MarketplaceLogo.vue'
 import {
   type MarketplaceConnectionCard,
   useMarketplaceConnections,

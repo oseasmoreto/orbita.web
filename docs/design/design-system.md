@@ -499,6 +499,7 @@ aqui é só um mapa, não substitui o conteúdo real.
 - Breadcrumb (`shared/components/ui/Breadcrumb.vue`) — ver `docs/design/components/blocks-and-overlays.md`
 - TabBar (`shared/components/ui/TabBar.vue`) — ver `docs/design/components/blocks-and-overlays.md`
 - BlockTab (`shared/components/ui/BlockTab.vue`) — ver `docs/design/components/blocks-and-overlays.md`
+- MarketplaceLogo (`shared/components/ui/MarketplaceLogo.vue`, promovido de `modules/pricing/components/` em 2026-09-10) — ver `docs/design/screens/catalog-and-pricing.md`
 - Notifiers / Toast (`shared/composables/useToast.ts`) — ver `docs/design/components/feedback-and-data-viz.md`
 - NotificationItem (`modules/platform/components/NotificationItem.vue`) — ver `docs/design/components/feedback-and-data-viz.md`
 - NotificationPanel (`modules/platform/components/NotificationPanel.vue`) — ver `docs/design/components/feedback-and-data-viz.md`
@@ -534,7 +535,6 @@ aqui é só um mapa, não substitui o conteúdo real.
 - ProductsView (`modules/catalog/views/ProductsView.vue`) — atalho "Ver precificação" — ver `docs/design/screens/catalog-and-pricing.md`
 - AdminMarketplacesView (`modules/pricing/views/AdminMarketplacesView.vue`) — ver `docs/design/screens/catalog-and-pricing.md`
 - AdminMarketplaceForm (`modules/pricing/components/AdminMarketplaceForm.vue`) — ver `docs/design/screens/catalog-and-pricing.md`
-- MarketplaceLogo (`modules/pricing/components/MarketplaceLogo.vue`) — ver `docs/design/screens/catalog-and-pricing.md`
 - MarketplacesView (`modules/pricing/views/MarketplacesView.vue`) — ver `docs/design/screens/catalog-and-pricing.md`
 - ConnectMarketplaceModal (`modules/pricing/components/blocks/ConnectMarketplaceModal.vue`) — ver `docs/design/screens/catalog-and-pricing.md`
 - ProductMarketplacePricingView (`modules/pricing/views/ProductMarketplacePricingView.vue`) — adendo `coupon` — ver `docs/design/screens/catalog-and-pricing.md`

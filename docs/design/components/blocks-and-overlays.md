@@ -285,6 +285,14 @@ critério já usado no Badge/Search pra valor fora da escala sólida).
 - **Sem paginação/filtro embutidos** (gap real, não implementado nesta
   rodada) — `Pagination` é um componente próprio no Figma, ainda não
   mapeado em nenhum tier do catálogo.
+- **Slot `#header-<key>="{ column }"` opcional, 2026-09-10** — mesmo
+  mecanismo do `#cell-<key>`, mas pro CABEÇALHO: sem esse slot continua
+  sendo só `column.title` (texto), nenhum consumidor existente precisa
+  mudar. Primeiro uso real: `ProductsView.vue` (`modules/catalog`) — uma
+  coluna por marketplace vinculado ao produto, cabeçalho é o LOGO do
+  marketplace (`MarketplaceLogo`, `shared/components/ui/`, dentro de um
+  `Tooltip` com o nome no hover), não dava pra expressar isso só com
+  `column.title: string`.
 - **Achado real, sistêmico — afeta qualquer ícone dentro de célula de
   `<table>`, não só o `Checkbox`**: o reset global (`svg { max-width:
   100% }`, `core/styles/_reset.scss`) colapsa a largura de um `<svg>` pra

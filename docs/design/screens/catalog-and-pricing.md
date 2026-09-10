@@ -1,6 +1,6 @@
 # Telas — Catalog e Pricing (marketplaces)
 
-ProductLaunchList, ProductForm (rename `operationalCost`→`shippingCost`; ícone discreto "Marketplaces" no rodapé do Drawer, 2026-09-10), atalho "Ver precificação" em ProductsView, AdminMarketplacesView/AdminMarketplaceForm, MarketplaceLogo, MarketplacesView, ConnectMarketplaceModal, adendo `coupon`/`percentage_of_total`/`individual_fixed_fee`/`shippingCost`+`operationalCost` (da EMPRESA, ver `COMPANY.operationalCostPercentage` em `billing-and-identity.md`) de ProductMarketplacePricingView, ProductMarketplacesView (2026-09-10: vínculo produto↔marketplace virou automático, modal de "vincular" E "Desvincular"/DELETE removidos, category_id virou mutável via PATCH, status manual novo — StatusDot em ProductMarketplacesView E ProductMarketplacePricingView), AdminProductCategoriesView, AdminCategoryMarketplaceList.
+ProductLaunchList, ProductForm (rename `operationalCost`→`shippingCost`; ícone discreto "Marketplaces" no rodapé do Drawer, 2026-09-10), atalho "Ver precificação" em ProductsView (2026-09-10: margem alvo saiu da listagem, ações da linha viraram ícone-só, 1 coluna por marketplace vinculado com StatusDot — DataTable ganhou slot `#header-<key>`), AdminMarketplacesView/AdminMarketplaceForm, MarketplaceLogo, MarketplacesView, ConnectMarketplaceModal, adendo `coupon`/`percentage_of_total`/`individual_fixed_fee`/`shippingCost`+`operationalCost` (da EMPRESA, ver `COMPANY.operationalCostPercentage` em `billing-and-identity.md`) de ProductMarketplacePricingView, ProductMarketplacesView (2026-09-10: vínculo produto↔marketplace virou automático, modal de "vincular" E "Desvincular"/DELETE removidos, category_id virou mutável via PATCH, status manual novo — StatusDot em ProductMarketplacesView E ProductMarketplacePricingView), AdminProductCategoriesView, AdminCategoryMarketplaceList.
 
 > Faz parte do design system do Orbita — tokens e princípios gerais ficam em
 > `docs/design/design-system.md`, este arquivo é a continuação dele.
@@ -160,6 +160,59 @@ daquela tela) ao lado do `<h1>`, num header novo
   e o caso de conta sem nenhuma conexão ativa mostrando o aviso em vez
   do botão quebrado) fica pendente do usuário.
 
+**3 pedidos diretos do usuário, 2026-09-10, algumas horas depois** —
+`GET /products` passou a trazer `marketplaces[]` (vínculo + `status`) em
+cada item (`ListProductsAction`, eager load novo do backend), e junto
+vieram 3 ajustes de UI:
+
+1. **Margem alvo saiu da listagem** — coluna `targetMargin` removida de
+   `columns`/`#cell-targetMargin` e do catálogo pt-BR
+   (`catalog.products.columns.targetMargin`); continua existindo no
+   formulário de edição, só não aparece mais na tabela.
+2. **Botões "Editar"/"Excluir" da linha viraram só ícone** — texto saiu,
+   `:aria-label` entrou (`common.actions.edit`/`common.actions.delete`,
+   chaves já existentes, reaproveitadas) — mesmo padrão já usado no
+   ícone "Marketplaces" do rodapé de `ProductForm.vue`.
+3. **1 coluna POR marketplace vinculado, cabeçalho só o logo** — 1ª
+   tentativa foi uma única coluna "Marketplaces" com todos os logos
+   dentro (`row.marketplaces.map(...)`, `MarketplaceLogo` em fila); o
+   usuário corrigiu ainda na mesma rodada: "cada logo de mktplace tem
+   que ser uma coluna na tabela com o status" — colunas DINÂMICAS, uma
+   por `marketplaceId` distinto, cabeçalho é só o logo (`Tooltip` com o
+   nome no hover, sem texto visível) e a célula é o `StatusDot` daquele
+   produto NAQUELE marketplace (`—` quando o produto não tem vínculo com
+   ele — caso raro, gap que o auto-vínculo automático não cobriu).
+   - `buildProductMarketplaceColumns` (`useProductList.ts`, testado
+     isoladamente — 3 testes: 1 coluna por marketplace distinto, dedup
+     quando o mesmo marketplace aparece em vários produtos da página,
+     lista vazia sem nenhum vínculo) deriva o conjunto de colunas a
+     partir dos PRÓPRIOS produtos já carregados — sem 2ª chamada de API:
+     como todo produto já nasce vinculado a toda conexão ativa (decisão
+     2026-09-10 do backend, ver adendo de `ProductMarketplacesView`
+     abaixo), o `marketplaces[]` de qualquer produto da página já
+     reflete o conjunto completo de conexões.
+   - **`DataTable.vue` ganhou slot `#header-<key>` opcional** (mesmo
+     mecanismo do `#cell-<key>` já existente) — sem ele o cabeçalho
+     continuava sendo só `column.title` (texto), único jeito de
+     renderizar uma IMAGEM no cabeçalho em vez de texto sem quebrar
+     nenhum outro consumidor da tabela.
+   - **`MarketplaceLogo.vue` promovido de `modules/pricing/components/`
+     pra `shared/components/ui/`** — `ProductsView.vue` (módulo
+     `catalog`) virou o 4º consumidor e o 1º de fora do módulo
+     `pricing`; um módulo nunca importa de outro diretamente. Ver seção
+     própria `MarketplaceLogo` abaixo.
+   - **`ProductMarketplaceStatus`/`productMarketplaceStatusColor`/
+     `productMarketplaceStatusLabelKey` duplicados em
+     `modules/catalog/types/product.type.ts`** (mesmo enum/mapeamento de
+     `modules/pricing/types/productMarketplace.type.ts`) — mesmo motivo
+     de fronteira de módulo; as CHAVES de tradução continuam
+     compartilhadas (`pricing.productMarketplaceStatus.*`), só a
+     função-mapa é duplicada (3 linhas), não o texto.
+   - Verificado em browser real: 2 conexões ativas → 2 colunas com logo
+     no cabeçalho (sem "Marketplaces" genérico em lugar nenhum), célula
+     mostra `StatusDot` cinza "Não enviado" pro vínculo recém-criado
+     (default do backend).
+
 ## AdminMarketplacesView (`modules/pricing/views/AdminMarketplacesView.vue`)
 
 Primeira tela ADMIN do projeto (Fase 4, 2026-08-31) — mesma forma visual
@@ -239,7 +292,7 @@ transparência já usada nos outros campos "só armazenado nesta rodada"
 do design system (`ads_percentage` antes de 2026-09-03, `operational_cost`,
 etc.).
 
-## MarketplaceLogo (`modules/pricing/components/MarketplaceLogo.vue`)
+## MarketplaceLogo (`shared/components/ui/MarketplaceLogo.vue`)
 
 **Extraído em 2026-08-31**, pedido direto do usuário ("adicione os logos
 a todas as listagens de mktplace") — o markup ícone-ou-imagem que já
@@ -249,6 +302,15 @@ existia solto dentro de `MarketplacesView.vue` (fallback `IconTile`/
 (`AdminMarketplacesView.vue`, `ProductMarketplacesView.vue`) — mesmo
 critério de promoção já usado no resto do projeto (só sobe/vira
 componente quando um consumidor adicional de verdade aparece).
+
+**Promovido de `modules/pricing/components/` pra `shared/components/ui/`
+em 2026-09-10** — coluna "Marketplaces" nova de `ProductsView.vue`
+(módulo `catalog`, ver seção própria abaixo) virou o 4º consumidor e o
+1º de FORA do módulo `pricing`; um módulo nunca importa de outro
+diretamente (`docs/infra/convencoes-frontend-infra.md` seção 2), mesma
+régua de promoção do próprio parágrafo acima, só que "subir pra shared"
+de verdade dessa vez (antes os 3 consumidores eram todos do mesmo
+módulo).
 
 - Só 2 props (`logoUrl`, `name` pro `alt`) + `size` opcional (default 24,
   usado em 24px nas duas tabelas e 48px no card grid) — sem decisão de

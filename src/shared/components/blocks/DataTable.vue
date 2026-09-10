@@ -11,6 +11,12 @@
  * data formatada...), o `DataTable` só monta a grade e nunca decide regra
  * de negócio.
  *
+ * `#header-<key>` (2026-09-10, pedido direto do usuário — coluna por
+ * marketplace em `ProductsView.vue`, cabeçalho precisa ser o LOGO, não
+ * texto) — mesmo mecanismo do `#cell-<key>`, opcional: sem esse slot o
+ * cabeçalho continua sendo só `column.title` (texto), nenhum consumidor
+ * existente precisa mudar.
+ *
  * Sem paginação/filtro embutidos de propósito (gap real, não implementado
  * nesta rodada — `Pagination` é um componente próprio no Figma, ainda não
  * mapeado em nenhum tier do catálogo). Ordenação também não ordena os
@@ -133,7 +139,9 @@ function toggleAll(): void {
             @click="handleSort(column)"
           >
             <span class="ui-data-table__header-content">
-              <span>{{ column.title }}</span>
+              <slot :name="`header-${column.key}`" :column="column">
+                <span>{{ column.title }}</span>
+              </slot>
               <Icon
                 v-if="column.sortable"
                 :icon="
