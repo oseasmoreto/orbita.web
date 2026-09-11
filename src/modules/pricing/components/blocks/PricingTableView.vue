@@ -3,6 +3,13 @@
  * Visão em tabela da tela de precificação — 1 linha por produto, parcelas
  * do breakdown como colunas. Extraído de `ProductMarketplacePricingView.vue`
  * em 2026-09-11, ver `docs/design/screens/pricing-dashboard-and-help.md`.
+ *
+ * O botão "editar preço" continua visível mesmo numa linha com
+ * `pricingUnavailableReason` (célula `practicedPrice`) — é o caminho pra
+ * resolver `category_required` (o `UpdatePracticedPriceModal.vue` que
+ * ele abre ganha o `Select` de categoria via `categoryOptions`,
+ * `ProductMarketplacePricingView.vue`), não só pra editar um preço que
+ * ainda não existe.
  */
 import { Info, PencilSimpleLine, Storefront } from '@/shared/components/icons/regular.generated'
 import DataTable from '@/shared/components/blocks/DataTable.vue'
@@ -92,6 +99,12 @@ function unavailableReasonKey(reason: PricingUnavailableReason | null): string {
     <template #cell-practicedPrice="{ row }">
       <div v-if="row.pricingUnavailableReason" class="pricing-table-view__table-price">
         <p class="pricing-table-view__suggested-hint">—</p>
+        <Button
+          :aria-label="$t('pricing.productMarketplacePricing.editPriceButton')"
+          :icon-before="PencilSimpleLine"
+          variant="ghost"
+          @click="emit('editPrice', row.source)"
+        />
       </div>
       <div v-else class="pricing-table-view__table-price">
         <p v-if="row.practicedPrice === null" class="pricing-table-view__suggested-hint">—</p>

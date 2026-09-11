@@ -1449,6 +1449,31 @@ mas `shippingCost` é o custo FIXO do vendedor (embalagem/etiqueta) e
 `operationalCost`) tanto no segmento da barra quanto no swatch da
 legenda.
 
+### Edição de categoria a partir do modal de preço praticado (pedido direto do usuário, mesmo dia)
+
+`UpdatePracticedPriceModal.vue` já suportava o `Select` de categoria —
+só `ProductMarketplacesView.vue` (tabela POR PRODUTO) passava
+`categoryOptions`. Com `pricingUnavailableReason === 'category_required'`
+sendo justamente sinalizado NESTA tela (`ProductMarketplacePricingView.vue`,
+tabela POR CONEXÃO), fazia sentido resolver ali mesmo, sem navegar até a
+tela por produto — `categoryOptions` (novo, `ref<SelectOption[]>`)
+carrega as categorias já vinculadas ao MARKETPLACE da conexão ativa
+(`listMarketplaceCategories`, mesmo endpoint compartilhado que
+`useProductMarketplaces.ts` já consome), recarregada a cada troca de aba
+de conexão. Botão "editar preço" (`PricingTableView.vue`,
+`PricingBarBreakdown.vue`) continua visível mesmo numa linha com
+`pricingUnavailableReason` — é precisamente o caminho pra abrir o modal e
+escolher a categoria que falta.
+
+**Verificado em browser real**: conectado Shein, criado produto sem
+categoria/peso, aviso `category_required` apareceu; aberto o modal pelo
+lápis da linha, `Select` de categoria mostrou as 3 categorias reais
+vinculadas a Shein (`Teste`/`Vestuário Feminino`/`Outras Categorias`),
+escolhida uma e salvo — aviso mudou pra `weight_and_dimensions_required`
+(esperado: Shein exige os dois requisitos, só um foi resolvido), sem
+erro de console/toast. Dado de teste criado e removido via `tinker`/UI,
+mesmo processo de sempre.
+
 ### Verificação
 
 Typecheck/ESLint/Biome/build de produção limpos, 415 testes (2 novos

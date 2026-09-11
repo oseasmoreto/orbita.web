@@ -22,6 +22,7 @@ import PricingTableView from '../components/blocks/PricingTableView.vue'
 import UpdatePracticedPriceModal from '../components/UpdatePracticedPriceModal.vue'
 import { useMarketplaceConnections } from '../composables/useMarketplaceConnections'
 import { useProductMarketplacePricingList } from '../composables/useProductMarketplacePricingList'
+import { listMarketplaceCategories } from '../services/pricingApi'
 import {
   buildPriceSegments,
   computeMarginPercent,
@@ -36,6 +37,7 @@ import type {
   ProductMarketplacePricing,
 } from '../types/productMarketplacePricing.type'
 import type { DataTableColumn } from '@/shared/components/ui/types/dataTable.type'
+import type { SelectOption } from '@/shared/components/ui/types/select.type'
 import type { TabBarOption } from '@/shared/components/ui/types/tabBar.type'
 
 const route = useRoute()
@@ -62,6 +64,39 @@ const marketplaceTabs = computed<TabBarOption[]>(() =>
   ),
 )
 
+/**
+ * Opções de categoria pro `Select` de `UpdatePracticedPriceModal.vue`
+ * (decisão 2026-09-11, pedido direto do usuário) — antes só
+ * `ProductMarketplacesView.vue` (tabela POR PRODUTO) passava essa prop;
+ * esta tela (tabela POR CONEXÃO) nunca precisou porque não tinha coluna
+ * de categoria própria. Motivo do pedido: com `pricingUnavailableReason
+ * === 'category_required'` (Shein, `commissionStrategy=category`), essa
+ * é justamente a tela onde o vendedor VÊ o aviso — faz sentido resolver
+ * a categoria no mesmo modal, sem precisar navegar até "Marketplaces do
+ * produto". Escopo de UMA categoria por vez: só a do marketplace da
+ * conexão ativa (`activeConnectionId`), refeita a cada troca de aba —
+ * mesmo endpoint COMPARTILHADO já usado por `useProductMarketplaces.ts`
+ * (`listMarketplaceCategories`, `GET /marketplaces/{id}/categories`).
+ */
+const categoryOptions = ref<SelectOption[]>([])
+
+async function refreshCategoryOptions(): Promise<void> {
+  const card = connections.cards.value.find(
+    (candidate) => candidate.connection?.id === activeConnectionId.value,
+  )
+
+  if (!card) {
+    categoryOptions.value = []
+    return
+  }
+
+  const result = await listMarketplaceCategories(card.marketplace.id, { perPage: 100 })
+  categoryOptions.value = result.items.map((categoryLink) => ({
+    label: categoryLink.category.title,
+    value: categoryLink.categoryId,
+  }))
+}
+
 onMounted(async () => {
   await connections.refresh()
 
@@ -77,7 +112,7 @@ onMounted(async () => {
   }
 
   if (activeConnectionId.value) {
-    await list.refresh()
+    await Promise.all([list.refresh(), refreshCategoryOptions()])
   }
 })
 
@@ -89,6 +124,7 @@ watch(activeConnectionId, (id, previousId) => {
   void router.replace({ name: 'marketplace-pricing', params: { userMarketplaceId: id } })
   list.reset()
   void list.refresh()
+  void refreshCategoryOptions()
 })
 
 const listErrorMessage = computed(() =>
@@ -298,6 +334,7 @@ const tableColumns = computed<DataTableColumn[]>(() => [
 
     <UpdatePracticedPriceModal
       v-model="isEditModalOpen"
+      :category-options="categoryOptions"
       :label="editingRow?.productName"
       :row="editingRow"
       @saved="handleSaved"
