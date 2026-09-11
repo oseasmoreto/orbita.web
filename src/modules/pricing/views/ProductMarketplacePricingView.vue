@@ -97,7 +97,13 @@ const listErrorMessage = computed(() =>
 
 const displayRows = computed(() =>
   list.items.value.map((row) => {
-    const active = resolveActivePricing(row)
+    const { pricing } = row
+
+    if (pricing === null) {
+      return { active: null, row, segments: [] }
+    }
+
+    const active = resolveActivePricing({ ...row, pricing })
     return { active, row, segments: buildPriceSegments(active.breakdown) }
   }),
 )
@@ -132,12 +138,50 @@ function handleSaved(): void {
 
 const viewMode = ref<PricingViewMode>('table')
 
+/**
+ * Linha-placeholder pra vínculo com `pricingUnavailableReason` — os
+ * campos monetários/booleanos abaixo nunca são lidos de verdade
+ * (`PricingTableView.vue` sempre checa `pricingUnavailableReason` antes
+ * de renderizar qualquer célula numérica), só existem pra satisfazer o
+ * tipo `PricingTableRow`.
+ */
+function buildUnavailableTableRow(row: ProductMarketplacePricing): PricingTableRow {
+  const emptySegments = Object.fromEntries(
+    SEGMENT_KEYS.map((key) => [key, { percent: '0.00', value: '0.00' }]),
+  ) as Record<SegmentKey, PricingTableSegmentCell>
+
+  return {
+    id: row.id,
+    isApproximated: false,
+    meetsTargetMargin: null,
+    practicedCampaignPrice: null,
+    practicedMarginPercent: null,
+    practicedPrice: null,
+    practicedProfit: null,
+    pricingUnavailableReason: row.pricingUnavailableReason,
+    productId: row.productId,
+    productName: row.productName,
+    source: row,
+    status: row.status,
+    suggestedCampaignPrice: '0.00',
+    suggestedMarginPercent: 0,
+    suggestedPrice: '0.00',
+    suggestedProfit: '0.00',
+    ...emptySegments,
+  }
+}
+
 const tableRows = computed<PricingTableRow[]>(() =>
   displayRows.value.map(({ row, segments }) => {
+    const { pricing } = row
+
+    if (pricing === null) {
+      return buildUnavailableTableRow(row)
+    }
+
     const segmentValues = Object.fromEntries(
       segments.map((segment) => [segment.key, { percent: segment.percent, value: segment.value }]),
     ) as Record<SegmentKey, PricingTableSegmentCell>
-    const { pricing } = row
     const hasPracticedPrice = row.practicedPrice !== null && pricing.practicedProfit !== null
 
     return {
@@ -150,6 +194,7 @@ const tableRows = computed<PricingTableRow[]>(() =>
         : null,
       practicedPrice: hasPracticedPrice ? row.practicedPrice : null,
       practicedProfit: hasPracticedPrice ? pricing.practicedProfit : null,
+      pricingUnavailableReason: null,
       productId: row.productId,
       productName: row.productName,
       source: row,

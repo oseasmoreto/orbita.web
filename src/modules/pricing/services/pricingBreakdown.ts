@@ -1,5 +1,6 @@
 import type {
   PricingBreakdown,
+  PricingEvaluation,
   ProductMarketplacePricing,
 } from '../types/productMarketplacePricing.type'
 
@@ -28,12 +29,23 @@ import type {
  * não um duplicado — os dois ficam vizinhos por serem conceitualmente
  * relacionados ("custo de envio do produto" e "custo operacional da
  * empresa").
+ *
+ * `calculatedFreight` entrou em 2026-09-11
+ * (`docs/api/planejamento-shein.md` §4.3) — frete calculado por PESO
+ * (`ShippingRule`), sempre `"0.00"` pra marketplace sem
+ * `requiresWeightAndDimensions`. Posicionado logo depois de
+ * `shippingCost`, mesmo raciocínio de vizinhança do parágrafo acima: os
+ * dois são custo de envio, só que um é o custo FIXO do vendedor
+ * (embalagem/etiqueta) e o outro é o frete calculado pelo motor por
+ * faixa de peso — conceitos relacionados, nunca somados/confundidos num
+ * só segmento.
  */
 export const SEGMENT_KEYS = [
   'costPrice',
   'commission',
   'fixedFee',
   'shippingCost',
+  'calculatedFreight',
   'operationalCost',
   'tax',
   'ads',
@@ -135,8 +147,15 @@ export function computeMarginPercent(profit: string, price: string): number {
  * (que o backend sempre manda juntos, sem exceção) decidem se há preço
  * praticado; `campaignPrice` virou `string | null` pra carregar esse
  * "não aplicável" sem mentir que é o preço sugerido.
+ *
+ * `row.pricing` exige não-`null` na assinatura (interseção, 2026-09-11)
+ * — chamador sempre guarda `row.pricingUnavailableReason` ANTES de
+ * chegar aqui (`ProductMarketplacePricingView.vue`), nunca chama isso
+ * pra um vínculo sem cálculo nenhum vindo do backend.
  */
-export function resolveActivePricing(row: ProductMarketplacePricing): ActivePricing {
+export function resolveActivePricing(
+  row: ProductMarketplacePricing & { pricing: PricingEvaluation },
+): ActivePricing {
   const { pricing } = row
 
   if (

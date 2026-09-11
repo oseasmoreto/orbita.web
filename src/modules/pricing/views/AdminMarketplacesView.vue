@@ -41,6 +41,7 @@ import MarketplaceLogo from '@/shared/components/ui/MarketplaceLogo.vue'
 import IconText from '@/shared/components/ui/IconText.vue'
 import AdminCategoryMarketplaceList from '../components/blocks/AdminCategoryMarketplaceList.vue'
 import AdminPricingRuleList from '../components/blocks/AdminPricingRuleList.vue'
+import AdminShippingRuleList from '../components/blocks/AdminShippingRuleList.vue'
 import { deleteAdminMarketplace } from '../services/pricingApi'
 import { useAdminMarketplaceList } from '../composables/useAdminMarketplaceList'
 import type { AdminMarketplace } from '../types/marketplace.type'
@@ -79,6 +80,7 @@ const activeMarketplaceTab = ref('details')
 const marketplaceDrawerTabs = computed<TabBarOption[]>(() => [
   { key: 'details', label: t('pricing.admin.marketplaces.form.tabs.details') },
   { key: 'pricingRules', label: t('pricing.admin.marketplaces.form.tabs.pricingRules') },
+  { key: 'shippingRules', label: t('pricing.admin.marketplaces.form.tabs.shippingRules') },
   { key: 'categories', label: t('pricing.admin.marketplaces.form.tabs.categories') },
 ])
 
@@ -202,6 +204,9 @@ function handleSaved(): void {
           </TabsContent>
           <TabsContent value="pricingRules">
             <AdminPricingRuleList :marketplace-id="drawer.editingRecord.value.id" />
+          </TabsContent>
+          <TabsContent value="shippingRules">
+            <AdminShippingRuleList :marketplace-id="drawer.editingRecord.value.id" />
           </TabsContent>
           <TabsContent value="categories">
             <AdminCategoryMarketplaceList :marketplace-id="drawer.editingRecord.value.id" />

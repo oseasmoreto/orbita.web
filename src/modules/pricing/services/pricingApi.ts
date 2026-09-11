@@ -21,6 +21,7 @@ import {
   toProductMarketplacePricing,
   toSimulatedPricingEvaluation,
 } from '../types/productMarketplacePricing.type'
+import { type ShippingRule, toShippingRule } from '../types/shippingRule.type'
 import { toUserMarketplace, type UserMarketplace } from '../types/userMarketplace.type'
 
 type MarketplaceResource = components['schemas']['MarketplaceResource']
@@ -30,6 +31,9 @@ type UpdateMarketplaceRequest = components['schemas']['UpdateMarketplaceRequest'
 type PricingRuleResource = components['schemas']['PricingRuleResource']
 type CreatePricingRuleRequest = components['schemas']['CreatePricingRuleRequest']
 type UpdatePricingRuleRequest = components['schemas']['UpdatePricingRuleRequest']
+type ShippingRuleResource = components['schemas']['ShippingRuleResource']
+type CreateShippingRuleRequest = components['schemas']['CreateShippingRuleRequest']
+type UpdateShippingRuleRequest = components['schemas']['UpdateShippingRuleRequest']
 type UserMarketplaceResource = components['schemas']['UserMarketplaceResource']
 type CreateUserMarketplaceRequest = components['schemas']['CreateUserMarketplaceRequest']
 type UpdateUserMarketplaceRequest = components['schemas']['UpdateUserMarketplaceRequest']
@@ -178,6 +182,62 @@ export async function deleteAdminPricingRule(
   pricingRuleId: string,
 ): Promise<void> {
   await apiClient.delete(`/admin/marketplaces/${marketplaceId}/pricing-rules/${pricingRuleId}`)
+}
+
+// ---------------------------------------------------------------------------
+// SHIPPING_RULE (`docs/api/planejamento-shein.md` §3, decisão 2026-09-11)
+// — mirror exato de PRICING_RULE acima: leitura via endpoint
+// COMPARTILHADO (`GET /marketplaces/{id}/shipping-rules`, `auth:sanctum`
+// só), escrita só pelo admin (`/admin/marketplaces/{id}/shipping-rules`).
+// Sempre aninhada a UM marketplace, faixa por PESO em vez de valor.
+// ---------------------------------------------------------------------------
+
+export interface ListShippingRulesParams {
+  page?: number
+  perPage?: number
+  sort?: string
+}
+
+export async function listShippingRules(
+  marketplaceId: string,
+  params: ListShippingRulesParams = {},
+): Promise<Paginated<ShippingRule>> {
+  const { data } = await apiClient.get<ApiResponse<Envelope<ShippingRuleResource>>>(
+    `/marketplaces/${marketplaceId}/shipping-rules`,
+    { params: { page: params.page, per_page: params.perPage, sort: params.sort } },
+  )
+
+  return { items: data.data.items.map(toShippingRule), meta: data.data.meta }
+}
+
+export async function createAdminShippingRule(
+  marketplaceId: string,
+  payload: CreateShippingRuleRequest,
+): Promise<ShippingRule> {
+  const { data } = await apiClient.post<ApiResponse<ShippingRuleResource>>(
+    `/admin/marketplaces/${marketplaceId}/shipping-rules`,
+    payload,
+  )
+  return toShippingRule(data.data)
+}
+
+export async function updateAdminShippingRule(
+  marketplaceId: string,
+  shippingRuleId: string,
+  payload: UpdateShippingRuleRequest,
+): Promise<ShippingRule> {
+  const { data } = await apiClient.patch<ApiResponse<ShippingRuleResource>>(
+    `/admin/marketplaces/${marketplaceId}/shipping-rules/${shippingRuleId}`,
+    payload,
+  )
+  return toShippingRule(data.data)
+}
+
+export async function deleteAdminShippingRule(
+  marketplaceId: string,
+  shippingRuleId: string,
+): Promise<void> {
+  await apiClient.delete(`/admin/marketplaces/${marketplaceId}/shipping-rules/${shippingRuleId}`)
 }
 
 // ---------------------------------------------------------------------------

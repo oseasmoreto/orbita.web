@@ -18,9 +18,16 @@ type SimulateProductMarketplacePricingResource =
  * booleano JSON nativo (`true`/`false`), não string. Corrigido aqui com
  * `Omit` + override, mesmo padrão já usado quando o schema gerado diverge
  * do runtime real — nunca redigitar o resource inteiro à mão.
+ *
+ * `NonNullable<...>` (2026-09-11) — `pricing` virou `{...} | null` no
+ * schema gerado (`docs/api/planejamento-shein.md` §4.2/§6); sem isso,
+ * `Omit<A | null, K>` colapsa pra `{}` (keyof de uma união com `null`
+ * é `never`), apagando todos os campos do tipo. A nulidade em si já é
+ * tratada fora daqui (`toProductMarketplacePricing`, guard explícito em
+ * `resource.pricing === null` antes de sequer chamar `toPricingEvaluation`).
  */
 type PricingEvaluationResource = Omit<
-  ProductMarketplacePricingResource['pricing'],
+  NonNullable<ProductMarketplacePricingResource['pricing']>,
   'is_approximated' | 'meets_target_margin'
 > & {
   is_approximated: boolean
@@ -91,6 +98,7 @@ type PricingEvaluationResource = Omit<
 export interface PricingBreakdownPercentages {
   ads: string
   affiliate: string
+  calculatedFreight: string
   commission: string
   costPrice: string
   coupon: string
@@ -102,9 +110,18 @@ export interface PricingBreakdownPercentages {
   tax: string
 }
 
+/**
+ * `calculatedFreight` (`docs/api/planejamento-shein.md` §4.3, decisão
+ * 2026-09-11) — frete calculado por peso (`ShippingRule`), somado ao
+ * `shippingCost` já existente (custo de embalagem do próprio vendedor —
+ * são custos DIFERENTES, nenhum substitui o outro). Sempre `"0.00"` pra
+ * marketplace sem `requiresWeightAndDimensions` (Shopee/TikTok
+ * inalterados, mesmo raciocínio de `individualFixedFee`).
+ */
 export interface PricingBreakdown {
   ads: string
   affiliate: string
+  calculatedFreight: string
   commission: string
   costPrice: string
   coupon: string
@@ -153,17 +170,37 @@ export interface PricingEvaluation {
 }
 
 /**
+ * `docs/api/planejamento-shein.md` §4.2 ponto 3 / §6 item 3 — por que
+ * `pricing` (abaixo) veio `null` pra esse vínculo: `category_required`
+ * (marketplace usa `commissionStrategy=category` — `AdminMarketplace` —
+ * e o vínculo ainda não tem `categoryId`, o caso comum de todo vínculo
+ * AUTO-criado) ou `weight_and_dimensions_required` (marketplace exige
+ * `requiresWeightAndDimensions` e o produto não tem peso/dimensão
+ * preenchidos). A tela sinaliza isso INLINE na própria linha, nunca
+ * trata como erro — é esperado, não uma falha.
+ */
+export type PricingUnavailableReason = 'category_required' | 'weight_and_dimensions_required'
+
+/**
  * `id` aqui é o `PRODUCT_MARKETPLACE.id` (o vínculo) — é o que
  * `PATCH /products/{productId}/marketplaces/{productMarketplaceId}`
  * espera como segundo segmento da URL (`productId` vem de `productId`
  * neste mesmo objeto).
+ *
+ * `pricing`/`pricingUnavailableReason` (decisão 2026-09-11) — os dois
+ * são mutuamente exclusivos: `pricing` vem `null` exatamente quando
+ * `pricingUnavailableReason` vem preenchido, nunca os dois juntos nem os
+ * dois `null`. Antes desta rodada `pricing` sempre existia (o motor
+ * calculava pra qualquer vínculo) — passou a poder faltar com a
+ * estratégia `category` (Shein) sem `categoryId` ainda escolhido.
  */
 export interface ProductMarketplacePricing {
   categoryId: string | null
   createdAt: string | null
   id: string
   practicedPrice: string | null
-  pricing: PricingEvaluation
+  pricing: PricingEvaluation | null
+  pricingUnavailableReason: PricingUnavailableReason | null
   productId: string
   productName: string
   status: ProductMarketplaceStatus
@@ -171,11 +208,14 @@ export interface ProductMarketplacePricing {
 }
 
 function toPricingBreakdownPercentages(
-  percentages: ProductMarketplacePricingResource['pricing']['suggested_breakdown']['percentage_of_total'],
+  percentages: NonNullable<
+    ProductMarketplacePricingResource['pricing']
+  >['suggested_breakdown']['percentage_of_total'],
 ): PricingBreakdownPercentages {
   return {
     ads: percentages.ads,
     affiliate: percentages.affiliate,
+    calculatedFreight: percentages.calculated_freight,
     commission: percentages.commission,
     costPrice: percentages.cost_price,
     coupon: percentages.coupon,
@@ -189,11 +229,12 @@ function toPricingBreakdownPercentages(
 }
 
 function toPricingBreakdown(
-  breakdown: ProductMarketplacePricingResource['pricing']['suggested_breakdown'],
+  breakdown: NonNullable<ProductMarketplacePricingResource['pricing']>['suggested_breakdown'],
 ): PricingBreakdown {
   return {
     ads: breakdown.ads,
     affiliate: breakdown.affiliate,
+    calculatedFreight: breakdown.calculated_freight,
     commission: breakdown.commission,
     costPrice: breakdown.cost_price,
     coupon: breakdown.coupon,
@@ -237,9 +278,36 @@ function toPricingEvaluation(
   }
 }
 
+/**
+ * `resource.pricing`/`resource.pricing_unavailable_reason` — mesmo
+ * achado do comentário de `PricingEvaluationResource` acima:
+ * `pricing_unavailable_reason` sai do schema gerado como `string`
+ * (nunca `string | null`), mas a fonte real
+ * (`ListProductMarketplacePricingAction`, backend) manda `null` sempre
+ * que `pricing` está presente — cast explícito aqui, mesmo padrão já
+ * usado pros 2 booleanos.
+ */
 export function toProductMarketplacePricing(
   resource: ProductMarketplacePricingResource,
 ): ProductMarketplacePricing {
+  const pricingUnavailableReason =
+    resource.pricing_unavailable_reason as unknown as PricingUnavailableReason | null
+
+  if (resource.pricing === null) {
+    return {
+      categoryId: resource.category_id,
+      createdAt: resource.created_at,
+      id: resource.id,
+      practicedPrice: resource.practiced_price,
+      pricing: null,
+      pricingUnavailableReason,
+      productId: resource.product_id,
+      productName: resource.product_name,
+      status: resource.status,
+      userMarketplaceId: resource.user_marketplace_id,
+    }
+  }
+
   const pricing = resource.pricing as unknown as PricingEvaluationResource
 
   return {
@@ -248,6 +316,7 @@ export function toProductMarketplacePricing(
     id: resource.id,
     practicedPrice: resource.practiced_price,
     pricing: toPricingEvaluation(pricing),
+    pricingUnavailableReason: null,
     productId: resource.product_id,
     productName: resource.product_name,
     status: resource.status,
@@ -295,13 +364,26 @@ export type PricingTableSegmentCell = Pick<PriceSegment, 'percent' | 'value'>
  * `ProductMarketplacePricingView.vue`) — extraído pra cá em 2026-09-11,
  * mesma componentização que gerou `PricingBarBreakdown.vue`
  * (`modules/pricing/components/blocks/`).
+ *
+ * `active`/`segments` viram `null`/`[]` (decisão 2026-09-11) quando
+ * `row.pricing` é `null` — não dá pra resolver preço ativo/segmentos sem
+ * cálculo nenhum vindo do backend. `PricingBarBreakdown.vue` mostra o
+ * motivo (`row.pricingUnavailableReason`) no lugar do preço/barra nesse
+ * caso.
  */
 export interface PricingDisplayRow {
-  active: ActivePricing
+  active: ActivePricing | null
   row: ProductMarketplacePricing
   segments: PriceSegment[]
 }
 
+/**
+ * `pricingUnavailableReason` (2026-09-11) — quando preenchido, os demais
+ * campos numéricos/booleanos desta linha não têm significado nenhum
+ * (mantidos com valor neutro só pra satisfazer o tipo — `0`/`'0.00'`/
+ * `false` — nunca lidos: `PricingTableView.vue` sempre checa o motivo
+ * ANTES de renderizar qualquer célula numérica).
+ */
 export type PricingTableRow = {
   id: string
   isApproximated: boolean
@@ -310,6 +392,7 @@ export type PricingTableRow = {
   practicedMarginPercent: number | null
   practicedPrice: string | null
   practicedProfit: string | null
+  pricingUnavailableReason: PricingUnavailableReason | null
   productId: string
   productName: string
   source: ProductMarketplacePricing

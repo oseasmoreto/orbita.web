@@ -21,6 +21,7 @@ import type { DataTableColumn } from '@/shared/components/ui/types/dataTable.typ
 import type {
   PricingTableRow,
   PricingTableSegmentCell,
+  PricingUnavailableReason,
 } from '../../types/productMarketplacePricing.type'
 
 defineProps<{
@@ -36,6 +37,19 @@ const emit = defineEmits<{
 
 function marginToneClass(profit: string, meetsTargetMargin?: boolean | null): string {
   return `pricing-table-view__product-margin--${outcomeTone(profit, meetsTargetMargin)}`
+}
+
+/** Mirror de `unavailableReasonLabel` (`PricingBarBreakdown.vue`). */
+const UNAVAILABLE_REASON_KEY: Record<PricingUnavailableReason, string> = {
+  category_required: 'pricing.productMarketplacePricing.pricingUnavailable.categoryRequired',
+  weight_and_dimensions_required:
+    'pricing.productMarketplacePricing.pricingUnavailable.weightAndDimensionsRequired',
+}
+
+function unavailableReasonKey(reason: PricingUnavailableReason | null): string {
+  return reason
+    ? UNAVAILABLE_REASON_KEY[reason]
+    : 'pricing.productMarketplacePricing.pricingUnavailable.categoryRequired'
 }
 </script>
 
@@ -57,17 +71,29 @@ function marginToneClass(profit: string, meetsTargetMargin?: boolean | null): st
       <StatusDot :color="productMarketplaceStatusColor(row.status)">
         {{ $t(productMarketplaceStatusLabelKey(row.status)) }}
       </StatusDot>
+      <p
+        v-if="row.pricingUnavailableReason"
+        class="pricing-table-view__unavailable"
+      >
+        {{ $t(unavailableReasonKey(row.pricingUnavailableReason)) }}
+      </p>
     </template>
 
-    <template v-for="key in SEGMENT_KEYS" :key="key" #[`cell-${key}`]="{ value }">
-      {{ formatMoney((value as PricingTableSegmentCell).value) }}
-      <span class="pricing-table-view__table-segment-percent">
-        ({{ formatPercent((value as PricingTableSegmentCell).percent, 1) }})
-      </span>
+    <template v-for="key in SEGMENT_KEYS" :key="key" #[`cell-${key}`]="{ row, value }">
+      <template v-if="row.pricingUnavailableReason">—</template>
+      <template v-else>
+        {{ formatMoney((value as PricingTableSegmentCell).value) }}
+        <span class="pricing-table-view__table-segment-percent">
+          ({{ formatPercent((value as PricingTableSegmentCell).percent, 1) }})
+        </span>
+      </template>
     </template>
 
     <template #cell-practicedPrice="{ row }">
-      <div class="pricing-table-view__table-price">
+      <div v-if="row.pricingUnavailableReason" class="pricing-table-view__table-price">
+        <p class="pricing-table-view__suggested-hint">—</p>
+      </div>
+      <div v-else class="pricing-table-view__table-price">
         <p v-if="row.practicedPrice === null" class="pricing-table-view__suggested-hint">—</p>
         <div v-else class="pricing-table-view__prices">
           <p class="pricing-table-view__product-price">
@@ -104,7 +130,16 @@ function marginToneClass(profit: string, meetsTargetMargin?: boolean | null): st
     </template>
 
     <template #cell-suggestedPrice="{ row }">
-      <div class="pricing-table-view__table-price">
+      <div v-if="row.pricingUnavailableReason" class="pricing-table-view__table-price">
+        <p class="pricing-table-view__suggested-hint">—</p>
+        <Button
+          :aria-label="$t('catalog.products.marketplacesButton')"
+          :icon-before="Storefront"
+          variant="ghost"
+          @click="emit('viewMarketplaces', row.productId)"
+        />
+      </div>
+      <div v-else class="pricing-table-view__table-price">
         <div class="pricing-table-view__prices">
           <p class="pricing-table-view__product-price">
             <CopyablePrice :value="row.suggestedPrice" />
@@ -195,5 +230,12 @@ function marginToneClass(profit: string, meetsTargetMargin?: boolean | null): st
 
 .pricing-table-view__table-segment-percent {
   color: $color-ink-40;
+}
+
+.pricing-table-view__unavailable {
+  margin-bottom: 0;
+  font-size: $font-size-2xs;
+  color: $color-accent-yellow;
+  white-space: normal;
 }
 </style>

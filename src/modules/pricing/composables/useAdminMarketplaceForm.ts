@@ -11,11 +11,13 @@ function emptyFormValues(): MarketplaceFormValues {
   return {
     active: true,
     comingSoon: false,
+    commissionStrategy: 'price_tier',
     description: null,
     individualFixedFee: null,
     logoBase64: null,
     name: '',
     requiresStoreDocumentType: false,
+    requiresWeightAndDimensions: false,
     tags: [],
     websiteUrl: null,
   }
@@ -32,12 +34,14 @@ function toFormValues(marketplace: AdminMarketplace): MarketplaceFormValues {
   return {
     active: marketplace.active,
     comingSoon: marketplace.comingSoon,
+    commissionStrategy: marketplace.commissionStrategy,
     description: marketplace.description,
     individualFixedFee:
       marketplace.individualFixedFee === null ? null : Number(marketplace.individualFixedFee),
     logoBase64: null,
     name: marketplace.name,
     requiresStoreDocumentType: marketplace.requiresStoreDocumentType,
+    requiresWeightAndDimensions: marketplace.requiresWeightAndDimensions,
     tags: marketplace.tags ?? [],
     websiteUrl: marketplace.websiteUrl,
   }
@@ -54,10 +58,12 @@ function toRequestPayload(values: MarketplaceFormValues) {
   return {
     active: values.active,
     coming_soon: values.comingSoon,
+    commission_strategy: values.commissionStrategy,
     description: values.description,
     individual_fixed_fee: values.individualFixedFee,
     name: values.name,
     requires_store_document_type: values.requiresStoreDocumentType,
+    requires_weight_and_dimensions: values.requiresWeightAndDimensions,
     tags: values.tags,
     website_url: values.websiteUrl,
     ...(values.logoBase64 ? { logo_base64: values.logoBase64 } : {}),

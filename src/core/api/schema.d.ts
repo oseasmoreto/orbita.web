@@ -244,6 +244,38 @@ export interface paths {
         patch: operations["adminPricingRule.update"];
         trace?: never;
     };
+    "/admin/marketplaces/{marketplace}/shipping-rules": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["adminShippingRule.store"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/marketplaces/{marketplace}/shipping-rules/{shippingRule}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete: operations["adminShippingRule.destroy"];
+        options?: never;
+        head?: never;
+        patch: operations["adminShippingRule.update"];
+        trace?: never;
+    };
     "/admin/product-categories": {
         parameters: {
             query?: never;
@@ -714,6 +746,22 @@ export interface paths {
             cookie?: never;
         };
         get: operations["pricingRule.show"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/marketplaces/{marketplace}/shipping-rules": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["shippingRule.index"];
         put?: never;
         post?: never;
         delete?: never;
@@ -1233,6 +1281,13 @@ export interface components {
              *     precificação ainda.
              */
             individual_fixed_fee: string | null;
+            /**
+             * @description docs/api/planejamento-shein.md §4.2/§4.1 — configuração
+             *     interna de precificação, admin-only (mesmo raciocínio de
+             *     individual_fixed_fee, fora do MarketplaceResource público).
+             */
+            commission_strategy: components["schemas"]["CommissionStrategy"];
+            requires_weight_and_dimensions: boolean;
             logo_url: string | null;
             description: string | null;
             tags: unknown[] | null;
@@ -1373,6 +1428,12 @@ export interface components {
             /** Format: uuid */
             plan_id: string;
         };
+        /**
+         * CommissionStrategy
+         * @description docs/api/planejamento-shein.md §4.2 — price_tier (default, comissão por faixa de PricingRule, Shopee/TikTok) ou category (comissão fixa por CategoryMarketplace.commission_percentage do vínculo, Shein).
+         * @enum {string}
+         */
+        CommissionStrategy: "price_tier" | "category";
         /** CompanyResource */
         CompanyResource: {
             id: string;
@@ -1425,6 +1486,12 @@ export interface components {
             requires_store_document_type?: boolean;
             /** @description "Taxa fixa para PF" — sem max:100 (não é percentual, é Money). */
             individual_fixed_fee?: number | null;
+            /**
+             * @description docs/api/planejamento-shein.md §4.2/§4.1 — default price_tier/
+             *     false preserva Shopee/TikTok sem mudança nenhuma.
+             */
+            commission_strategy?: components["schemas"]["CommissionStrategy"];
+            requires_weight_and_dimensions?: boolean;
             /**
              * @description Nunca URL externa (decisão 2026-08-31) — o admin manda a
              *     imagem em base64, nós hospedamos.
@@ -1510,6 +1577,18 @@ export interface components {
             value: string;
             type: components["schemas"]["SettingType"];
         };
+        /** CreateShippingRuleRequest */
+        CreateShippingRuleRequest: {
+            weight_min: number;
+            /**
+             * @description gte:weight_min só é confiável quando os dois campos vêm juntos
+             *     (sempre o caso no create) — mesmo raciocínio de
+             *     CreatePricingRuleRequest::range_max.
+             */
+            weight_max: number;
+            fixed_fee: number;
+            order: number;
+        };
         /** CreateTicketRequest */
         CreateTicketRequest: {
             subject: string;
@@ -1593,6 +1672,13 @@ export interface components {
             name: string;
             coming_soon: boolean;
             requires_store_document_type: boolean;
+            /**
+             * @description docs/api/planejamento-shein.md §4.1 — front mostra o campo
+             *     peso/dimensão como obrigatório no cadastro do produto antes
+             *     de tentar conectar (o backend também exige, ver
+             *     WeightAndDimensionsRequiredException).
+             */
+            requires_weight_and_dimensions: boolean;
             logo_url: string | null;
             description: string | null;
             tags: unknown[] | null;
@@ -1733,6 +1819,12 @@ export interface components {
                      *     tipo definido sempre mostra "0.00" aqui.
                      */
                     individual_fixed_fee: string;
+                    /**
+                     * @description docs/api/planejamento-shein.md §4.3 — frete calculado por
+                     *     peso (SHIPPING_RULE), "0.00" pra qualquer marketplace sem
+                     *     requires_weight_and_dimensions (Shopee/TikTok inalterados).
+                     */
+                    calculated_freight: string;
                     profit: string;
                     /**
                      * @description % que cada parcela acima vale sobre o preço de venda total
@@ -1750,6 +1842,7 @@ export interface components {
                         affiliate: string;
                         coupon: string;
                         individual_fixed_fee: string;
+                        calculated_freight: string;
                         profit: string;
                     };
                 };
@@ -1774,6 +1867,12 @@ export interface components {
                     affiliate: string;
                     coupon: string;
                     individual_fixed_fee: string;
+                    /**
+                     * @description docs/api/planejamento-shein.md §4.3 — frete calculado por
+                     *     peso (SHIPPING_RULE), "0.00" pra qualquer marketplace sem
+                     *     requires_weight_and_dimensions (Shopee/TikTok inalterados).
+                     */
+                    calculated_freight: string;
                     profit: string;
                     /**
                      * @description % que cada parcela acima vale sobre o preço de venda total
@@ -1791,6 +1890,7 @@ export interface components {
                         affiliate: string;
                         coupon: string;
                         individual_fixed_fee: string;
+                        calculated_freight: string;
                         profit: string;
                     };
                 } | null;
@@ -1804,7 +1904,14 @@ export interface components {
                  */
                 suggested_campaign_price: string;
                 practiced_campaign_price: string | null;
-            };
+            } | null;
+            /**
+             * @description docs/api/planejamento-shein.md §4.2 ponto 3 / §6 item 3 —
+             *     "category_required"/"weight_and_dimensions_required" (null
+             *     quando "pricing" está presente) — o front sinaliza isso na
+             *     própria tela de precificação, não só no momento de vincular.
+             */
+            pricing_unavailable_reason: string;
             /** Format: date-time */
             created_at: string | null;
         };
@@ -1915,6 +2022,17 @@ export interface components {
          * @enum {string}
          */
         SettingType: "int" | "string" | "enum" | "text" | "json" | "bool" | "float";
+        /** ShippingRuleResource */
+        ShippingRuleResource: {
+            id: string;
+            marketplace_id: string;
+            weight_min: string;
+            weight_max: string;
+            fixed_fee: string;
+            order: number;
+            /** Format: date-time */
+            created_at: string | null;
+        };
         /** SimulateProductMarketplacePricingResource */
         SimulateProductMarketplacePricingResource: {
             practiced_profit: string | null;
@@ -1956,6 +2074,12 @@ export interface components {
                  *     tipo definido sempre mostra "0.00" aqui.
                  */
                 individual_fixed_fee: string;
+                /**
+                 * @description docs/api/planejamento-shein.md §4.3 — frete calculado por
+                 *     peso (SHIPPING_RULE), "0.00" pra qualquer marketplace sem
+                 *     requires_weight_and_dimensions (Shopee/TikTok inalterados).
+                 */
+                calculated_freight: string;
                 profit: string;
                 /**
                  * @description % que cada parcela acima vale sobre o preço de venda total
@@ -1973,6 +2097,7 @@ export interface components {
                     affiliate: string;
                     coupon: string;
                     individual_fixed_fee: string;
+                    calculated_freight: string;
                     profit: string;
                 };
             };
@@ -2003,6 +2128,12 @@ export interface components {
                  *     tipo definido sempre mostra "0.00" aqui.
                  */
                 individual_fixed_fee: string;
+                /**
+                 * @description docs/api/planejamento-shein.md §4.3 — frete calculado por
+                 *     peso (SHIPPING_RULE), "0.00" pra qualquer marketplace sem
+                 *     requires_weight_and_dimensions (Shopee/TikTok inalterados).
+                 */
+                calculated_freight: string;
                 profit: string;
                 /**
                  * @description % que cada parcela acima vale sobre o preço de venda total
@@ -2020,6 +2151,7 @@ export interface components {
                     affiliate: string;
                     coupon: string;
                     individual_fixed_fee: string;
+                    calculated_freight: string;
                     profit: string;
                 };
             } | null;
@@ -2198,6 +2330,8 @@ export interface components {
             coming_soon?: boolean;
             requires_store_document_type?: boolean;
             individual_fixed_fee?: number | null;
+            commission_strategy?: components["schemas"]["CommissionStrategy"];
+            requires_weight_and_dimensions?: boolean;
             logo_base64?: string | null;
             description?: string | null;
             tags?: string[] | null;
@@ -2282,6 +2416,13 @@ export interface components {
             name?: string;
             value?: string;
             type?: components["schemas"]["SettingType"];
+        };
+        /** UpdateShippingRuleRequest */
+        UpdateShippingRuleRequest: {
+            weight_min?: number;
+            weight_max?: number;
+            fixed_fee?: number;
+            order?: number;
         };
         /** UpdateUserByAdminRequest */
         UpdateUserByAdminRequest: {
@@ -3327,6 +3468,99 @@ export interface operations {
                         success: boolean;
                         message: string;
                         data: components["schemas"]["PricingRuleResource"];
+                        errors: null;
+                    };
+                };
+            };
+            401: components["responses"]["AuthenticationException"];
+            422: components["responses"]["ValidationException"];
+        };
+    };
+    "adminShippingRule.store": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                marketplace: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateShippingRuleRequest"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        success: boolean;
+                        message: string;
+                        data: components["schemas"]["ShippingRuleResource"];
+                        errors: null;
+                    };
+                };
+            };
+            401: components["responses"]["AuthenticationException"];
+            422: components["responses"]["ValidationException"];
+        };
+    };
+    "adminShippingRule.destroy": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                marketplace: string;
+                shippingRule: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        success: boolean;
+                        message: string;
+                        data: null;
+                        errors: null;
+                    };
+                };
+            };
+            401: components["responses"]["AuthenticationException"];
+        };
+    };
+    "adminShippingRule.update": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                marketplace: string;
+                shippingRule: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["UpdateShippingRuleRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        success: boolean;
+                        message: string;
+                        data: components["schemas"]["ShippingRuleResource"];
                         errors: null;
                     };
                 };
@@ -4644,6 +4878,51 @@ export interface operations {
                         message: string;
                         data: {
                             items: components["schemas"]["PricingRuleResource"][];
+                            meta: {
+                                current_page: number;
+                                per_page: number;
+                                total: number;
+                            };
+                        };
+                        errors: null;
+                    };
+                };
+            };
+            401: components["responses"]["AuthenticationException"];
+        };
+    };
+    "shippingRule.index": {
+        parameters: {
+            query?: {
+                /**
+                 * @description Campos separados por vírgula. Prefixo "-" inverte pra desc. Permitidos: weight_min, order, created_at.
+                 * @example order
+                 */
+                sort?: string;
+                /**
+                 * @description Tamanho de página, teto em 100.
+                 * @example 15
+                 */
+                per_page?: number;
+            };
+            header?: never;
+            path: {
+                marketplace: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        success: boolean;
+                        message: string;
+                        data: {
+                            items: components["schemas"]["ShippingRuleResource"][];
                             meta: {
                                 current_page: number;
                                 per_page: number;

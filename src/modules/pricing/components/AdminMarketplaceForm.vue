@@ -32,15 +32,18 @@ import { computed, ref } from 'vue'
 import { Storefront } from '@/shared/components/icons/regular.generated'
 import { useAdminMarketplaceForm } from '../composables/useAdminMarketplaceForm'
 import type { MarketplaceFormValues } from '../schemas/marketplaceFormSchema'
-import type { AdminMarketplace } from '../types/marketplace.type'
+import type { AdminMarketplace, CommissionStrategy } from '../types/marketplace.type'
 import CrudFormActions from '@/shared/components/blocks/CrudFormActions.vue'
 import FormGroup from '@/shared/components/blocks/FormGroup.vue'
 import Button from '@/shared/components/ui/Button.vue'
 import IconTile from '@/shared/components/ui/IconTile.vue'
 import Input from '@/shared/components/ui/Input.vue'
+import Select from '@/shared/components/ui/Select.vue'
 import TagsInput from '@/shared/components/ui/TagsInput.vue'
 import Toggle from '@/shared/components/ui/Toggle.vue'
 import { useNumberFieldModel } from '@/shared/composables/useNumberFieldModel'
+import { useI18n } from 'vue-i18n'
+import type { SelectOption } from '@/shared/components/ui/types/select.type'
 
 const props = defineProps<{
   marketplace: AdminMarketplace | null
@@ -52,9 +55,22 @@ const emit = defineEmits<{
   saved: [marketplace: AdminMarketplace]
 }>()
 
+const { t } = useI18n()
+
 const { errors, isSubmitting, reset, submit, values } = useAdminMarketplaceForm()
 
 reset(props.marketplace ?? undefined)
+
+const commissionStrategyOptions: SelectOption[] = [
+  {
+    label: t('pricing.admin.marketplaces.form.commissionStrategyOptions.priceTier'),
+    value: 'price_tier',
+  },
+  {
+    label: t('pricing.admin.marketplaces.form.commissionStrategyOptions.category'),
+    value: 'category',
+  },
+]
 
 const websiteUrlInput = computed<string>({
   get: () => values.websiteUrl ?? '',
@@ -170,6 +186,10 @@ async function handleSubmit(): Promise<void> {
         v-model="values.requiresStoreDocumentType"
         :label="$t('pricing.admin.marketplaces.form.fields.requiresStoreDocumentType')"
       />
+      <Toggle
+        v-model="values.requiresWeightAndDimensions"
+        :label="$t('pricing.admin.marketplaces.form.fields.requiresWeightAndDimensions')"
+      />
 
       <FormGroup
         :error="fieldError('individualFixedFee')"
@@ -180,6 +200,17 @@ async function handleSubmit(): Promise<void> {
           v-model="individualFixedFeeInput"
           :invalid="Boolean(fieldError('individualFixedFee'))"
           type="number"
+        />
+      </FormGroup>
+
+      <FormGroup
+        :label="$t('pricing.admin.marketplaces.form.fields.commissionStrategy')"
+        :label-tooltip="$t('pricing.admin.marketplaces.form.tooltips.commissionStrategy')"
+      >
+        <Select
+          :model-value="values.commissionStrategy"
+          :options="commissionStrategyOptions"
+          @update:model-value="(value) => (values.commissionStrategy = value as CommissionStrategy)"
         />
       </FormGroup>
     </div>

@@ -25,11 +25,21 @@ import { z } from 'zod'
  * para PF") é valor FIXO em R$, sem `max:100`, mesma regra de
  * `couponValue` (`userMarketplaceFormSchema.ts`) — ainda sem uso em
  * nenhum cálculo de precificação.
+ *
+ * `commissionStrategy`/`requiresWeightAndDimensions`
+ * (`docs/api/planejamento-shein.md` §4.1/§4.2, decisão 2026-09-11) — o
+ * primeiro escolhe o motor de comissão (`price_tier`/`PricingRule` ou
+ * `category`/`CategoryMarketplace`), o segundo liga a exigência de
+ * peso/dimensão no produto ANTES de vincular a esse marketplace e o
+ * cálculo de frete via `ShippingRule`. Sem validação Zod extra além do
+ * enum/boolean em si — a combinação (Shein usa os dois juntos) é decisão
+ * de negócio do admin, não uma regra de formato replicável no cliente.
  */
 export function createMarketplaceFormSchema(t: (key: string) => string) {
   return z.object({
     active: z.boolean(),
     comingSoon: z.boolean(),
+    commissionStrategy: z.enum(['price_tier', 'category']),
     description: z.string().nullable(),
     individualFixedFee: z
       .number()
@@ -38,6 +48,7 @@ export function createMarketplaceFormSchema(t: (key: string) => string) {
     logoBase64: z.string().nullable(),
     name: z.string().min(1, t('pricing.admin.marketplaces.form.errors.nameRequired')),
     requiresStoreDocumentType: z.boolean(),
+    requiresWeightAndDimensions: z.boolean(),
     tags: z.array(z.string()),
     websiteUrl: z
       .string()

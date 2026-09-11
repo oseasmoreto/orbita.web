@@ -466,6 +466,20 @@ export default {
   errorMessageProductAlreadyLinkedToMarketplace:
     'Esse produto já está vinculado a esse marketplace.',
   /**
+   * `ApiMessageKey::ErrorProductCategoryRequired`
+   * (`docs/api/planejamento-shein.md` §4.2/§6, decisão 2026-09-11) —
+   * marketplace com `commissionStrategy=category` (Shein) exige
+   * `categoryId` no vínculo antes de calcular preço; `GET .../simulate`
+   * e `POST /products/{id}/marketplaces` (link manual, sem consumidor
+   * no frontend hoje) devolvem isso. Mesmo motivo que
+   * `pricingUnavailableReason: "category_required"` sinaliza inline na
+   * tela de precificação — esta chave é o eco em texto do mesmo caso,
+   * pro raro caminho em que o erro chega via toast em vez do aviso
+   * inline (ex.: `usePracticedPriceSimulation.ts`).
+   */
+  errorMessageProductCategoryRequired:
+    'Escolha uma categoria pra esse produto nesse marketplace antes de calcular o preço.',
+  /**
    * `ApiMessageKey::ErrorProductLimitReached` — `CreateProductAction`
    * (backend) já bloqueia a criação quando `PRODUCT.count() >= PLAN.max_products`,
    * achado real ao levantar o item "usePlanLimit" da Fase 3 (a validação
@@ -507,6 +521,17 @@ export default {
    * os campos destacados".
    */
   errorMessageValidation: 'Confira os campos destacados abaixo.',
+  /**
+   * `ApiMessageKey::ErrorWeightAndDimensionsRequired`
+   * (`docs/api/planejamento-shein.md` §4.1/§6, decisão 2026-09-11) —
+   * marketplace com `requiresWeightAndDimensions=true` (Shein) exige
+   * `weight`/`height`/`width`/`length` do produto preenchidos antes de
+   * vincular/calcular preço. Mesmo raciocínio de
+   * `errorMessageProductCategoryRequired` — eco em texto de
+   * `pricingUnavailableReason: "weight_and_dimensions_required"`.
+   */
+  errorMessageWeightAndDimensionsRequired:
+    'Esse marketplace exige peso e dimensões do produto — complete o cadastro antes de calcular o preço.',
   errors: {
     unknown: 'Ocorreu um erro inesperado. Tente novamente.',
     /**
@@ -1077,6 +1102,10 @@ export default {
           active: 'Status',
         },
         form: {
+          commissionStrategyOptions: {
+            category: 'Fixa por categoria de produto',
+            priceTier: 'Por faixa de preço (padrão)',
+          },
           createSuccess: 'Marketplace criado com sucesso.',
           createTitle: 'Novo marketplace',
           editTitle: 'Editar marketplace',
@@ -1089,11 +1118,13 @@ export default {
             active: 'Marketplace ativo',
             chooseLogo: 'Escolher arquivo',
             comingSoon: 'Em breve (bloqueia conexão de novos usuários)',
+            commissionStrategy: 'Estratégia de comissão',
             description: 'Descrição',
             individualFixedFee: 'Taxa fixa para PF (R$)',
             logo: 'Logo',
             name: 'Nome',
             requiresStoreDocumentType: 'Exige informar PF/PJ ao conectar',
+            requiresWeightAndDimensions: 'Exige peso e dimensões do produto pra vincular',
             tags: 'Tags',
             websiteUrl: 'Site',
           },
@@ -1106,8 +1137,11 @@ export default {
             categories: 'Categorias',
             details: 'Dados do marketplace',
             pricingRules: 'Regras de comissão',
+            shippingRules: 'Regras de frete',
           },
           tooltips: {
+            commissionStrategy:
+              'Como a comissão desse marketplace é calculada: por faixa de preço (Regras de comissão) ou fixa por categoria de produto (aba Categorias). Configuração interna, não muda o que o vendedor vê.',
             individualFixedFee:
               'Taxa fixa cobrada de lojas pessoa física neste marketplace. Só armazenado nesta rodada, ainda sem uso no cálculo de precificação.',
           },
@@ -1197,6 +1231,43 @@ export default {
           inactive: 'Inativa',
         },
         title: 'Categorias de produto',
+      },
+      shippingRules: {
+        columns: {
+          fixedFee: 'Taxa fixa',
+          order: 'Ordem',
+          weightMax: 'Peso até',
+          weightMin: 'Peso a partir de',
+        },
+        createButton: 'Nova regra',
+        deleteConfirm: {
+          description: 'Essa ação não pode ser desfeita.',
+          title: 'Excluir regra de frete?',
+        },
+        deleteSuccess: 'Regra de frete excluída com sucesso.',
+        empty: 'Nenhuma regra de frete cadastrada ainda.',
+        form: {
+          createSuccess: 'Regra de frete criada com sucesso.',
+          createTitle: 'Nova regra de frete',
+          editTitle: 'Editar regra de frete',
+          errors: {
+            fixedFeeMin: 'Taxa fixa não pode ser negativa.',
+            orderInteger: 'Ordem deve ser um número inteiro.',
+            orderMin: 'Ordem não pode ser negativa.',
+            weightMaxBelowMin: 'Peso final deve ser maior ou igual ao peso inicial.',
+            weightMaxMin: 'Peso final não pode ser negativo.',
+            weightMinMin: 'Peso inicial não pode ser negativo.',
+          },
+          fields: {
+            fixedFee: 'Taxa fixa (R$)',
+            order: 'Ordem',
+            weightMax: 'Peso até (kg)',
+            weightMin: 'Peso a partir de (kg)',
+          },
+          submitCreate: 'Criar regra',
+          submitEdit: 'Salvar alterações',
+          updateSuccess: 'Regra de frete atualizada com sucesso.',
+        },
       },
     },
     marketplaces: {
@@ -1290,10 +1361,24 @@ export default {
       practicedBadge: 'Praticado',
       priceCopied: 'Preço copiado para a área de transferência.',
       priceCopyFailed: 'Não foi possível copiar o preço.',
+      /**
+       * `pricingUnavailableReason` (`docs/api/planejamento-shein.md`
+       * §4.2/§6, decisão 2026-09-11) — mensagem inline por linha quando o
+       * backend não calculou `pricing` pra esse vínculo. Nunca tratado
+       * como erro (sem toast/vermelho) — é um estado esperado pro
+       * vínculo AUTO-criado que ainda precisa de 1 passo do vendedor.
+       */
+      pricingUnavailable: {
+        categoryRequired:
+          'Escolha uma categoria pra esse produto nesse marketplace pra ver o preço (aba "Marketplaces" do produto).',
+        weightAndDimensionsRequired:
+          'Esse marketplace exige peso e dimensões — complete o cadastro do produto pra ver o preço.',
+      },
       searchPlaceholder: 'Buscar produto por nome...',
       segments: {
         ads: 'Ads',
         affiliate: 'Afiliado',
+        calculatedFreight: 'Frete calculado',
         commission: 'Comissão',
         costPrice: 'Custo',
         coupon: 'Cupom',

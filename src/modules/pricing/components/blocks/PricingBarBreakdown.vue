@@ -21,7 +21,10 @@ import {
   productMarketplaceStatusLabelKey,
 } from '../../types/productMarketplace.type'
 import type { SegmentKey } from '../../services/pricingBreakdown'
-import type { PricingDisplayRow } from '../../types/productMarketplacePricing.type'
+import type {
+  PricingDisplayRow,
+  PricingUnavailableReason,
+} from '../../types/productMarketplacePricing.type'
 
 defineProps<{
   rows: PricingDisplayRow[]
@@ -42,6 +45,29 @@ function segmentLabel(key: SegmentKey): string {
 
 function marginToneClass(profit: string, meetsTargetMargin?: boolean | null): string {
   return `pricing-bar-breakdown__product-margin--${outcomeTone(profit, meetsTargetMargin)}`
+}
+
+/**
+ * `docs/api/planejamento-shein.md` §4.2/§6 — mensagem inline pro motivo
+ * de `active === null` (sem cálculo nenhum vindo do backend, nunca
+ * tratado como erro). `weight_and_dimensions_required` aponta pro botão
+ * "editar produto" já existente no cabeçalho da linha (lápis, esquerda);
+ * `category_required` aponta pro botão "Ver marketplaces do produto"
+ * (Storefront, à direita) — é lá que a categoria do vínculo é escolhida
+ * (`ProductMarketplacesView.vue`), este componente não tem esse campo.
+ */
+const UNAVAILABLE_REASON_KEY: Record<PricingUnavailableReason, string> = {
+  category_required: 'pricing.productMarketplacePricing.pricingUnavailable.categoryRequired',
+  weight_and_dimensions_required:
+    'pricing.productMarketplacePricing.pricingUnavailable.weightAndDimensionsRequired',
+}
+
+function unavailableReasonLabel(reason: PricingUnavailableReason | null): string {
+  return t(
+    reason
+      ? UNAVAILABLE_REASON_KEY[reason]
+      : 'pricing.productMarketplacePricing.pricingUnavailable.categoryRequired',
+  )
 }
 </script>
 
@@ -78,7 +104,7 @@ function marginToneClass(profit: string, meetsTargetMargin?: boolean | null): st
           </div>
 
           <div class="pricing-bar-breakdown__product-meta">
-            <div class="pricing-bar-breakdown__prices">
+            <div v-if="active" class="pricing-bar-breakdown__prices">
               <p class="pricing-bar-breakdown__product-price">
                 <CopyablePrice v-if="!active.isPracticed" :value="active.price" />
                 <template v-else>{{ formatMoney(active.price) }}</template>
@@ -87,7 +113,7 @@ function marginToneClass(profit: string, meetsTargetMargin?: boolean | null): st
                     'pricing-bar-breakdown__product-margin',
                     marginToneClass(
                       active.profit,
-                      active.isPracticed ? row.pricing.meetsTargetMargin : null,
+                      active.isPracticed ? row.pricing?.meetsTargetMargin : null,
                     ),
                   ]"
                 >
@@ -103,9 +129,9 @@ function marginToneClass(profit: string, meetsTargetMargin?: boolean | null): st
               </p>
               <p v-if="active.isPracticed" class="pricing-bar-breakdown__suggested-hint">
                 {{ $t('pricing.productMarketplacePricing.suggestedPriceLabel') }}:
-                <CopyablePrice :value="row.pricing.suggestedPrice" />
+                <CopyablePrice :value="row.pricing?.suggestedPrice ?? '0'" />
                 <Tooltip
-                  v-if="row.pricing.isApproximated"
+                  v-if="row.pricing?.isApproximated"
                   :text="$t('pricing.productMarketplacePricing.isApproximatedTooltip')"
                 >
                   <span tabindex="0">
@@ -126,6 +152,9 @@ function marginToneClass(profit: string, meetsTargetMargin?: boolean | null): st
                 </Tooltip>
               </p>
             </div>
+            <p v-else class="pricing-bar-breakdown__unavailable">
+              {{ unavailableReasonLabel(row.pricingUnavailableReason) }}
+            </p>
 
             <Button
               :aria-label="$t('pricing.productMarketplacePricing.editPriceButton')"
@@ -142,7 +171,7 @@ function marginToneClass(profit: string, meetsTargetMargin?: boolean | null): st
           </div>
         </div>
 
-        <div class="pricing-bar-breakdown__bar">
+        <div v-if="segments.length > 0" class="pricing-bar-breakdown__bar">
           <Tooltip
             v-for="segment in segments"
             :key="segment.key"
@@ -262,6 +291,13 @@ function marginToneClass(profit: string, meetsTargetMargin?: boolean | null): st
   white-space: nowrap;
 }
 
+.pricing-bar-breakdown__unavailable {
+  margin-bottom: 0;
+  font-size: $font-size-sm;
+  color: $color-accent-yellow;
+  text-align: right;
+}
+
 .pricing-bar-breakdown__suggested-hint :deep(svg) {
   display: inline-block;
   vertical-align: middle;
@@ -316,6 +352,10 @@ function marginToneClass(profit: string, meetsTargetMargin?: boolean | null): st
   background-color: color-mix(in srgb, $color-accent-orange 70%, $color-accent-red);
 }
 
+.pricing-bar-breakdown__segment--calculatedFreight {
+  background-color: color-mix(in srgb, $color-accent-orange 40%, $color-accent-red);
+}
+
 .pricing-bar-breakdown__segment--operationalCost {
   background-color: color-mix(in srgb, $color-accent-orange 10%, $color-accent-red);
 }
@@ -358,6 +398,10 @@ function marginToneClass(profit: string, meetsTargetMargin?: boolean | null): st
 
 .pricing-bar-breakdown__legend-swatch--shippingCost {
   @extend .pricing-bar-breakdown__segment--shippingCost;
+}
+
+.pricing-bar-breakdown__legend-swatch--calculatedFreight {
+  @extend .pricing-bar-breakdown__segment--calculatedFreight;
 }
 
 .pricing-bar-breakdown__legend-swatch--operationalCost {

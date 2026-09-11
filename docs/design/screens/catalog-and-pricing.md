@@ -1361,3 +1361,123 @@ só "Margem média" com um tooltip novo explicando o que ela considera.
   média" com o ícone de tooltip fica na MESMA linha do label (sem cair
   órfão), hover no ícone abre o tooltip com o texto correto
   ("Considerando uma unidade de cada produto.").
+
+## Suporte a Shein — `commission_strategy`/`requires_weight_and_dimensions`, `ShippingRule`, `pricingUnavailableReason`, `calculatedFreight` (2026-09-11)
+
+Aviso cross-session do backend (`docs/api/planejamento-shein.md`) reportou
+suporte novo a marketplaces que cobram comissão fixa por categoria e/ou
+exigem peso/dimensão do produto (primeiro caso real: Shein, já seedado
+`commission_strategy=category`/`requires_weight_and_dimensions=true`).
+Cobre 4 mudanças de contrato, implementadas juntas nesta rodada:
+
+### `AdminMarketplaceForm` — 2 campos novos
+
+- **`requiresWeightAndDimensions`** (`Toggle`, público —
+  `MarketplaceFields`, não admin-only) — "Exige peso e dimensões do
+  produto pra vincular". Ao lado de `requiresStoreDocumentType`, mesmo
+  padrão visual.
+- **`commissionStrategy`** (`Select`, admin-only — só existe em
+  `AdminMarketplace`, nunca em `Marketplace` público) — "Estratégia de
+  comissão": "Por faixa de preço (padrão)" (`price_tier`) ou "Fixa por
+  categoria de produto" (`category`). Bindado via `:model-value`/
+  `@update:model-value` com cast (`value as CommissionStrategy`), não
+  `v-model` direto — mesmo padrão já usado por
+  `UpdatePracticedPriceModal.vue` pro `Select` de `status`
+  (`ProductMarketplaceStatus`): `Select.vue` só modela `defineModel<string>()`,
+  um enum literal (`'price_tier' | 'category'`) não é atribuível direto
+  a esse `v-model` sem o cast.
+
+### Aba nova "Regras de frete" (`AdminShippingRuleList`/`AdminShippingRuleForm`)
+
+Mirror exato de "Regras de comissão"
+(`AdminPricingRuleList`/`AdminPricingRuleForm`) — mesma estrutura de
+composables (`useAdminShippingRuleList`/`useAdminShippingRuleForm`),
+mesmo `Modal` de criar/editar dentro do Drawer de edição do marketplace,
+mesma `DataTable` com `PaginationNav`. Diferença de forma: faixa por
+**peso** (`weightMin`/`weightMax`, kg) em vez de valor, sem `percentage`
+(frete é só taxa fixa, nunca percentual). CRUD disponível pra qualquer
+marketplace (não escondido atrás de `requiresWeightAndDimensions`) —
+mesmo critério já usado por "Regras de comissão"/"Categorias": o admin
+decide o que cadastrar, a tela não pré-filtra por configuração.
+
+### `pricingUnavailableReason` — tela de precificação
+
+`ProductMarketplacePricingResource.pricing` virou `{...} | null`: quando
+o backend não consegue calcular preço pra um vínculo (`category_required`
+— marketplace `commission_strategy=category` sem `categoryId` ainda
+escolhido, o caso comum de todo vínculo AUTO-criado; ou
+`weight_and_dimensions_required` — marketplace exige peso/dimensão e o
+produto não tem), `pricing` vem `null` e `pricingUnavailableReason` vem
+preenchido. **Nunca tratado como erro** (sem toast, sem vermelho) — é
+esperado pra um vínculo que ainda precisa de 1 passo do vendedor.
+
+- **`PricingDisplayRow.active`/`PricingTableRow.pricingUnavailableReason`**
+  (`productMarketplacePricing.type.ts`) — `active: ActivePricing | null`
+  na visão em barra, `pricingUnavailableReason` novo na visão em tabela.
+  `resolveActivePricing()` (`pricingBreakdown.ts`) passou a exigir
+  `pricing` não-nulo na assinatura (interseção de tipo) — o chamador
+  (`ProductMarketplacePricingView.vue`, `displayRows`/`tableRows`)
+  sempre guarda `row.pricing === null` ANTES de chamar, via destructure +
+  spread (`resolveActivePricing({ ...row, pricing })`) pra o narrowing do
+  TypeScript propagar corretamente pro parâmetro da função.
+- **`PricingBarBreakdown.vue`**: quando `active` é `null`, a seção de
+  preço/badge é substituída por uma mensagem amarela
+  (`.pricing-bar-breakdown__unavailable`) com o motivo — a barra
+  segmentada inteira some (`v-if="segments.length > 0"`), mas o
+  cabeçalho da linha (nome do produto, status, botões "editar
+  produto"/"ver marketplaces") continua normal — são exatamente os 2
+  botões que resolvem os 2 motivos (editar produto → preencher peso/
+  dimensão; ver marketplaces do produto → escolher categoria, campo só
+  existe nessa tela).
+- **`PricingTableView.vue`**: mensagem equivalente aparece embaixo do
+  `StatusDot` na coluna "Status"; toda célula de parcela/preço praticado/
+  preço sugerido mostra "—" em vez de tentar formatar `undefined`.
+- **Totais** (`meta.totals` — margem média, receita, lucro) já vêm do
+  backend excluindo esses vínculos — nenhuma mudança no frontend, só
+  consumido como sempre.
+
+### `calculatedFreight` — novo segmento do breakdown
+
+12º segmento (era 11) em `SEGMENT_KEYS` (`pricingBreakdown.ts`),
+posicionado logo depois de `shippingCost` — os dois são custo de envio,
+mas `shippingCost` é o custo FIXO do vendedor (embalagem/etiqueta) e
+`calculatedFreight` é o frete calculado pelo motor por faixa de peso
+(`ShippingRule`), sempre `"0.00"` pra marketplace sem
+`requiresWeightAndDimensions` (Shopee/TikTok inalterados). Cor nova
+(`--calculatedFreight`, `color-mix` entre `$color-accent-orange` e
+`$color-accent-red`, tom intermediário entre `shippingCost` e
+`operationalCost`) tanto no segmento da barra quanto no swatch da
+legenda.
+
+### Verificação
+
+Typecheck/ESLint/Biome/build de produção limpos, 415 testes (2 novos
+arquivos: cobertura de `commissionStrategy`/`requiresWeightAndDimensions`
+em `marketplaceFormSchema.test.ts`, `shippingRuleFormSchema.test.ts`
+novo; `pricingBreakdown.test.ts` ganhou teste de `calculatedFreight`
+como segmento distinto). Browser real (Playwright, porta 5174): drawer
+de edição do Shein mostra os 2 campos novos e a aba "Regras de frete"
+funcional (criar regra real, aparece na lista); conectado o Shein a um
+usuário de teste e criado um produto sem categoria, a tela de
+precificação mostrou a mensagem `category_required` corretamente nas 2
+visões (tabela e barra), sem erro de console, com a coluna/legenda
+"Frete calculado" presentes. Dado de teste criado via `tinker`
+(`Application/Pricing/Actions/CreateUserMarketplaceAction` real, não
+`Model::create()` direto) e via UI (produto), removido por completo ao
+final da verificação.
+
+**Achado real do processo, não do código**: `npm run generate:api-types`
+contra o backend local nesta sessão capturou um estado quebrado (rota
+`POST /auth/register` comentada no working tree não-commitado de outra
+sessão trabalhando no mesmo backend) — o schema gerado perdia
+`RegisterUserRequest`/`SsoAccountResource` e outros tipos de `Identity`
+inteiros. Resolvido sem depender da regeneração automática: `schema.d.ts`
+restaurado pro commit (`git checkout`) e as adições de Shein
+(`CommissionStrategy`, `ShippingRuleResource`, `CreateShippingRuleRequest`/
+`UpdateShippingRuleRequest`, campos novos em `MarketplaceResource`/
+`AdminMarketplaceResource`/`Create`/`UpdateMarketplaceRequest`,
+`calculated_freight`/`pricing_unavailable_reason` nos dois Resources de
+precificação, rotas/operations de `shipping-rules`) replicadas manualmente
+a partir do conteúdo já gerado (salvo à parte antes do `checkout`) — nunca
+editar `schema.d.ts` "no escuro", mas também nunca aceitar uma regeneração
+que reflete um estado intermediário quebrado de outra sessão.

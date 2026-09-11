@@ -4,6 +4,16 @@ type MarketplaceResource = components['schemas']['MarketplaceResource']
 type AdminMarketplaceResource = components['schemas']['AdminMarketplaceResource']
 
 /**
+ * `price_tier` (default — comissão por faixa de `PricingRule`, Shopee/
+ * TikTok) ou `category` (comissão fixa por
+ * `CategoryMarketplace.commissionPercentage` do vínculo, Shein) —
+ * `docs/api/planejamento-shein.md` §4.2. Resolvido pelo backend, nunca
+ * calculado no cliente — admin-only (`AdminMarketplace`), o usuário comum
+ * não escolhe/vê essa configuração interna.
+ */
+export type CommissionStrategy = components['schemas']['CommissionStrategy']
+
+/**
  * `logo_url`/`description`/`tags`/`website_url` — pedidos pro backend em
  * 2026-08-31 pra fechar o gap real de "pixel perfect" do grid de cards
  * (`MarketplacesView.vue`): a referência visual do usuário tinha logo por
@@ -27,12 +37,23 @@ type AdminMarketplaceResource = components['schemas']['AdminMarketplaceResource'
  * `ConnectMarketplaceModal.vue` só mostra o campo quando esta flag é
  * verdadeira). Aparece tanto na versão pública (`GET /marketplaces`,
  * pro usuário decidir antes de conectar) quanto na admin.
+ *
+ * `requiresWeightAndDimensions` (`docs/api/planejamento-shein.md` §4.1,
+ * decisão 2026-09-11) — quando `true`, o produto precisa ter
+ * `weight`/`height`/`width`/`length` preenchidos ANTES de vincular a
+ * esse marketplace (o backend também trava isso,
+ * `WeightAndDimensionsRequiredException`) e o cálculo de precificação
+ * passa a somar `calculatedFreight` (`PricingBreakdown`) via
+ * `ShippingRule` por peso. Pública (não admin-only, diferente de
+ * `commissionStrategy` em `AdminMarketplace` abaixo) — o front precisa
+ * dela pra avisar o vendedor antes do round-trip, não só depois do 422.
  */
 export interface MarketplaceFields {
   comingSoon: boolean
   description: string | null
   logoUrl: string | null
   requiresStoreDocumentType: boolean
+  requiresWeightAndDimensions: boolean
   tags: string[] | null
   websiteUrl: string | null
 }
@@ -42,6 +63,7 @@ function toMarketplaceFields(resource: {
   description: string | null
   logo_url: string | null
   requires_store_document_type: boolean
+  requires_weight_and_dimensions: boolean
   tags: unknown[] | null
   website_url: string | null
 }): MarketplaceFields {
@@ -50,6 +72,7 @@ function toMarketplaceFields(resource: {
     description: resource.description,
     logoUrl: resource.logo_url,
     requiresStoreDocumentType: resource.requires_store_document_type,
+    requiresWeightAndDimensions: resource.requires_weight_and_dimensions,
     tags: resource.tags as string[] | null,
     websiteUrl: resource.website_url,
   }
@@ -86,9 +109,17 @@ export function toMarketplace(resource: MarketplaceResource): Marketplace {
  * interna). Só armazenado nesta rodada, ainda sem uso em nenhum cálculo
  * de precificação (mesmo status que `ads_percentage` teve antes de
  * entrar na fórmula) — vem numa rodada futura.
+ *
+ * `commissionStrategy` (`docs/api/planejamento-shein.md` §4.2, decisão
+ * 2026-09-11) — configuração interna de qual motor de comissão o
+ * `ProductMarketplacePricingCalculator` usa pra esse marketplace
+ * (`price_tier`/`PricingRule` ou `category`/`CategoryMarketplace`),
+ * admin-only (fora de `MarketplaceResource` público, mesmo raciocínio de
+ * `individualFixedFee`).
  */
 export interface AdminMarketplace extends MarketplaceFields {
   active: AdminMarketplaceResource['active']
+  commissionStrategy: AdminMarketplaceResource['commission_strategy']
   createdAt: AdminMarketplaceResource['created_at']
   id: AdminMarketplaceResource['id']
   individualFixedFee: AdminMarketplaceResource['individual_fixed_fee']
@@ -98,6 +129,7 @@ export interface AdminMarketplace extends MarketplaceFields {
 export function toAdminMarketplace(resource: AdminMarketplaceResource): AdminMarketplace {
   return {
     active: resource.active,
+    commissionStrategy: resource.commission_strategy,
     createdAt: resource.created_at,
     id: resource.id,
     individualFixedFee: resource.individual_fixed_fee,

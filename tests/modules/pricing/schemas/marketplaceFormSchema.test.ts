@@ -5,11 +5,13 @@ const marketplaceFormSchema = createMarketplaceFormSchema((key) => key)
 const validPayload = {
   active: true,
   comingSoon: false,
+  commissionStrategy: 'price_tier' as const,
   description: null,
   individualFixedFee: null,
   logoBase64: null,
   name: 'Shopee',
   requiresStoreDocumentType: false,
+  requiresWeightAndDimensions: false,
   tags: [],
   websiteUrl: null,
 }
@@ -78,6 +80,25 @@ describe('marketplaceFormSchema', () => {
   it('rejects a negative individualFixedFee', () => {
     expect(
       marketplaceFormSchema.safeParse({ ...validPayload, individualFixedFee: -1 }).success,
+    ).toBe(false)
+  })
+
+  it('accepts requiresWeightAndDimensions: true', () => {
+    expect(
+      marketplaceFormSchema.safeParse({ ...validPayload, requiresWeightAndDimensions: true })
+        .success,
+    ).toBe(true)
+  })
+
+  it('accepts commissionStrategy: category', () => {
+    expect(
+      marketplaceFormSchema.safeParse({ ...validPayload, commissionStrategy: 'category' }).success,
+    ).toBe(true)
+  })
+
+  it('rejects an unknown commissionStrategy', () => {
+    expect(
+      marketplaceFormSchema.safeParse({ ...validPayload, commissionStrategy: 'flat_fee' }).success,
     ).toBe(false)
   })
 })

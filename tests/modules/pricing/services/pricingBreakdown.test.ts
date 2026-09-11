@@ -13,6 +13,10 @@ import type {
 const breakdown: PricingBreakdown = {
   ads: '3.50',
   affiliate: '2.00',
+  // `calculatedFreight` (2026-09-11, Shein) — frete calculado por peso
+  // (`ShippingRule`), sempre "0.00" nesta fixture (marketplace sem
+  // `requiresWeightAndDimensions`, mesmo caso de Shopee/TikTok).
+  calculatedFreight: '0.00',
   commission: '13.98',
   costPrice: '20.00',
   coupon: '1.00',
@@ -31,6 +35,7 @@ const breakdown: PricingBreakdown = {
   percentageOfTotal: {
     ads: '5.01',
     affiliate: '2.86',
+    calculatedFreight: '0.00',
     commission: '20.00',
     costPrice: '28.61',
     coupon: '1.43',
@@ -141,6 +146,7 @@ describe('buildPriceSegments', () => {
       'commission',
       'fixedFee',
       'shippingCost',
+      'calculatedFreight',
       'operationalCost',
       'tax',
       'ads',
@@ -212,6 +218,26 @@ describe('buildPriceSegments', () => {
       value: '2.00',
       widthPercent: 2.86,
     })
+  })
+
+  it('reflects a real calculatedFreight (Shein-style weight-based shipping) as its own segment, distinct from shippingCost', () => {
+    const sheinBreakdown: PricingBreakdown = {
+      ...breakdown,
+      calculatedFreight: '6.50',
+      percentageOfTotal: { ...breakdown.percentageOfTotal, calculatedFreight: '9.30' },
+    }
+
+    const segments = buildPriceSegments(sheinBreakdown)
+    const freightSegment = segments.find((segment) => segment.key === 'calculatedFreight')
+    const shippingCostSegment = segments.find((segment) => segment.key === 'shippingCost')
+
+    expect(freightSegment).toEqual({
+      key: 'calculatedFreight',
+      percent: '9.30',
+      value: '6.50',
+      widthPercent: 9.3,
+    })
+    expect(shippingCostSegment?.value).toBe('3.00')
   })
 
   it('clamps a negative segment (prejuízo) to 0 width instead of a negative flex-basis, but keeps the real negative % for display', () => {
